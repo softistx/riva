@@ -21,8 +21,9 @@ import { graphql } from '../generated/gql';
 export const PATIENTS_QUERY = graphql(`
 	query Patients($school: ID!, $first: Int, $after: String) {
 		patients(school: $school, first: $first, after: $after) {
-			edges { node { __typename id name } cursor }
-			pageInfo { hasNextPage endCursor }
+			__typename
+			edges { __typename node { __typename id name } cursor }
+			pageInfo { __typename hasNextPage endCursor }
 		}
 	}
 `);

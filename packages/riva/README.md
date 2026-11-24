@@ -88,6 +88,7 @@ user.cancel(client, { id: '1' }); // aborts the fetch, restores the previous sta
 ```
 
 - **Status model**: `idle | pending | success | error`, plus `isFetching`. A background refetch keeps `status: 'success'` and the old data with `isFetching: true`; an error keeps the last data.
+- **Staleness**: besides `staleTime` and `invalidate`, data the cache can no longer read (an evicted entity) counts as stale, so `ensure` fetches it and an observed entry refetches.
 - **Dedupe**: one in-flight fetch per key; concurrent `ensure` and `subscribe` share it.
 - **Subscribe options**: `client.subscribe(def, vars, listener, { staleTime })` overrides the definition's `staleTime` for this observer's first fetch decision only, e.g. to trust data an `ensure` just loaded (riva-react's Suspense uses `{ staleTime: 1000 }`). Later invalidations, polls and refetches keep the definition's own `staleTime`.
 - **Options**: `staleTime` (0), `gcTime` (5 min in a browser, `Infinity` on the server: no timers, a per-request client is just dropped), `retry` (3 in a browser, 0 on the server; a count or `(failures, error) => boolean`), `retryDelay` (default `min(1000 * 2 ** failures, 30_000)`), `refetchOnFocus` / `refetchOnReconnect` (true; observed and stale entries only, browser only), `refetchEvery` (polling while observed; browser only, like focus and reconnect: no timer is armed on the server).

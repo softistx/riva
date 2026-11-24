@@ -82,7 +82,7 @@ Options (`opts`):
 
 With `suspense: true`, the component suspends while there is no data, and `data` is no longer optional in its type. A failure with no data is thrown to the nearest error boundary. With `enabled: false` it never suspends: the query reads `idle`.
 
-What a Suspense render fetched is not fetched again when the component mounts, whatever the query's `staleTime`.
+What a Suspense render fetched is not fetched again when the component mounts, whatever the query's `staleTime`. After an entity is evicted, a suspending component suspends again while the query refetches.
 
 ```tsx
 import { Suspense } from 'react';
