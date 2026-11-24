@@ -27,7 +27,7 @@ binding until the owner changes it.
 | D12 | **One client per request** on the server, one in the browser. Definitions are stateless; values live in a `RivaClient`. Reading a value outside a client on the server throws. |
 | D13 | **Mutations in a BFF** go through `/_data` (allowlisted, same-origin JSON, session). React Router actions stay for forms, with a helper that writes their result into the cache. |
 | D14 | **REST typed by OpenAPI** through `openapi-httpyz`; a free-fetcher mode for schema-less APIs. |
-| D15 | **Pilot: self-learning-ui.** Subscriptions and SSE in v1.1, devtools in v1.2, persistence/offline in v2. |
+| D15 | **Pilot: one of our BFF apps.** Subscriptions and SSE in v1.1, devtools in v1.2, persistence/offline in v2. |
 
 ## 2. Packages
 
@@ -170,8 +170,7 @@ Rules of the API:
 
 ## 7. Out of v1
 
-- v1.1: subscriptions (graphql-client's), SSE / streamed events (schoolz's
-  assistant chat as the case).
+- v1.1: subscriptions (graphql-client's), SSE / streamed events (an assistant chat as the case).
 - v1.2: devtools panel (cache, signals, requests).
 - v2: persistence (IndexedDB) and offline mutation queue.
 - Other framework adapters: on demand.
@@ -193,4 +192,4 @@ Integration branch `feat/v1` off `develop`; one PR per slice into it; one PR
 10. `riva-react-router`: per-request client, dehydrate/hydrate, `/_data`, action helper, revalidation bridge.
 11. Docs and `plugins/riva` (use-riva skill, references/packages.md, riva-upgrade-assistant).
 12. graphql-client: deprecate `normalizedCache` and `./react` in favour of riva (graphql repo).
-13. Pilot: self-learning-ui adopts riva in place of its hand-made fetch/useFetcher/polling.
+13. Pilot: a BFF app adopts riva in place of its hand-made fetch/useFetcher/polling.
