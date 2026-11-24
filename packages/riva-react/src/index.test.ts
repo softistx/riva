@@ -1,6 +1,14 @@
 import { expect, test } from 'bun:test';
-import { VERSION } from './index';
+import * as api from './index';
 
-test('exposes its version', () => {
-	expect(VERSION).toBe('0.0.0');
+test('the main entry exports the provider and the hooks, nothing from the opt-in subpaths', () => {
+	expect(Object.keys(api).sort()).toEqual([
+		'RivaProvider',
+		'VERSION',
+		'useAtom',
+		'useClient',
+		'useMutation',
+		'useQuery',
+		'useValue',
+	]);
 });

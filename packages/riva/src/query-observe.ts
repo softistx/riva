@@ -11,6 +11,11 @@ import {
 import { abandon, join, pin } from './query-run';
 import { isBrowser } from './scope';
 
+export interface ObserveOptions {
+	/** Replaces the definition's `staleTime` for this observer's first fetch decision only (ms). */
+	staleTime?: number;
+}
+
 function poll(c: Ctx, e: Entry): void {
 	const ms = e.def.options.refetchEvery;
 	if (isBrowser() && ms !== undefined && ms > 0 && ms < Infinity)
@@ -33,6 +38,7 @@ export function observe(
 	def: AnyQuery,
 	vars: unknown,
 	listener: Listener<State>,
+	opts?: ObserveOptions,
 ): Unsubscribe {
 	const e = entryOf(c, def, vars);
 	c.sched.clearTimeout(e.gc);
@@ -47,7 +53,7 @@ export function observe(
 	}
 	if (e.observers++ === 0) poll(c, e);
 	const off = c.client.subscribe(e.out, listener);
-	if (stale(c, e)) join(c, e);
+	if (stale(c, e, opts?.staleTime)) join(c, e);
 	let done = false;
 	return () => {
 		if (done) return;

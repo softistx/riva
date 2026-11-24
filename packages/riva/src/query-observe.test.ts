@@ -101,3 +101,31 @@ test('focus refetches a stale observed entry, unless it opted out', async () => 
 	expect(calls).toBe(1);
 	off();
 });
+
+test('a subscribe staleTime overrides the first fetch decision only', async () => {
+	let calls = 0;
+	const q = query<void, number>({
+		id: 'observe/stale-override',
+		retry: 0,
+		fetch: async () => ++calls,
+	});
+	const a = createRivaClient();
+	await q.ensure(a);
+	const off = a.subscribe(q, undefined, () => {}, { staleTime: 1000 });
+	await flush();
+	expect(calls).toBe(1);
+	off();
+	// A later invalidation still refetches an observed entry.
+	const off2 = a.subscribe(q, undefined, () => {}, { staleTime: 1000 });
+	q.invalidate(a);
+	await flush();
+	expect(calls).toBe(2);
+	off2();
+	const b = createRivaClient();
+	await q.ensure(b);
+	expect(calls).toBe(3);
+	const off3 = b.subscribe(q, undefined, () => {});
+	await flush();
+	expect(calls).toBe(4);
+	off3();
+});
