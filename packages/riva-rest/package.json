@@ -19,6 +19,11 @@
 			"import": "./dist/index.js",
 			"default": "./dist/index.js"
 		},
+		"./entities": {
+			"types": "./dist/entities/index.d.ts",
+			"import": "./dist/entities/index.js",
+			"default": "./dist/entities/index.js"
+		},
 		"./package.json": "./package.json"
 	},
 	"keywords": [
@@ -44,6 +49,9 @@
 		"typecheck": "bun check"
 	},
 	"devDependencies": {
+		"@softistx/httpyz": "^0.6.1",
+		"@softistx/openapi-httpyz": "^0.4.1",
+		"@softistx/riva": "workspace:*",
 		"@types/bun": "^1.4.5"
 	},
 	"peerDependencies": {
@@ -55,5 +63,11 @@
 		"@softistx/openapi-httpyz": {
 			"optional": true
 		}
+	},
+	"nxgt": {
+		"entrypoints": [
+			"src/index.ts",
+			"src/entities/index.ts"
+		]
 	}
 }
