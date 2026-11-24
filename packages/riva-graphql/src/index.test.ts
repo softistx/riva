@@ -7,7 +7,6 @@ test('the main entry exports the transport and the definitions, nothing from the
 		'graphqlClientTransport',
 		'mutation',
 		'operationOf',
-		'persistedIdOf',
 		'provideGraphQL',
 		'query',
 		'toRivaError',

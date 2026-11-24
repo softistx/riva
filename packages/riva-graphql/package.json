@@ -54,24 +54,21 @@
 		"typecheck": "bun check"
 	},
 	"devDependencies": {
-		"@graphql-codegen/plugin-helpers": "^8.0.0",
+		"@graphql-codegen/cli": "^8.0.0",
+		"@graphql-codegen/client-preset": "^7.0.0",
 		"@graphql-typed-document-node/core": "^3.2.0",
 		"@softistx/graphql-client": "^0.9.0",
 		"@softistx/riva": "workspace:*",
 		"@types/bun": "^1.4.5",
-		"graphql": "^16.11.0"
+		"graphql": "^17.0.0"
 	},
 	"peerDependencies": {
 		"@softistx/riva": "^0.0.0",
 		"@softistx/graphql-client": "^0.9.0",
-		"@graphql-codegen/plugin-helpers": "^8.0.0",
 		"@graphql-typed-document-node/core": "^3.2.0",
 		"graphql": "^16.11.0 || ^17.0.0"
 	},
 	"peerDependenciesMeta": {
-		"@graphql-codegen/plugin-helpers": {
-			"optional": true
-		},
 		"@graphql-typed-document-node/core": {
 			"optional": true
 		},

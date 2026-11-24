@@ -14,6 +14,7 @@ type Handler = (body: Record<string, unknown>) => Response;
 let handle: Handler = () => new Response();
 const bodies: Record<string, unknown>[] = [];
 let server: ReturnType<typeof Bun.serve>;
+const servers: ReturnType<typeof Bun.serve>[] = [];
 
 beforeAll(() => {
 	server = Bun.serve({
@@ -25,7 +26,9 @@ beforeAll(() => {
 		},
 	});
 });
-afterAll(() => server.stop(true));
+afterAll(async () => {
+	await Promise.all([server, ...servers].map((s) => s.stop(true)));
+});
 
 const transport = (options: object = {}) =>
 	graphqlClientTransport(
@@ -96,8 +99,9 @@ test('a bare error status is a RivaHttpError', async () => {
 
 test('an unreachable API is a RivaNetworkError', async () => {
 	const dead = Bun.serve({ port: 0, fetch: () => new Response() });
+	servers.push(dead);
 	const url = `http://localhost:${dead.port}/`;
-	dead.stop(true);
+	await dead.stop(true);
 	const t = graphqlClientTransport(createGraphQLClient({ url }));
 	const e = await send(t).catch((x) => x);
 	expect(e).toBeInstanceOf(RivaNetworkError);

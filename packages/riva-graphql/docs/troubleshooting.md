@@ -56,21 +56,27 @@ A `TypeError`, thrown when the definition is created.
 generates: { 'app/generated/': { preset: 'client', presetConfig: { persistedDocuments: true } } }
 ```
 
-## `@softistx/riva-graphql/codegen: the operation "X" is defined twice (a.graphql and b.graphql); …`
+## `@softistx/riva-graphql/codegen: the operation "X" is defined twice (sha256:a… and sha256:b…); operation names must be unique.`
 
-**Why:** operation names are the allowlist's ids (and the runtime's, without persisted ids), so they are unique.
+**Why:** operation names are the ids of `ids: 'name'` (and the runtime's, without persisted ids), so they are unique.
 
 **Fix:** rename one of them.
 
-Related: `an anonymous query in <file>; name it so it has an id.` and `<file> uses the fragment "F", which no document defines.` have the same fix: name the operation, or add the fragment's file to `documents`.
+Related: `the persisted document <hash> must hold exactly one operation.` and `… must be a named query or mutation.` come from a text with no operation, several, an anonymous one or a subscription. Fix the document that produced it.
 
 ## A query is refused by the BFF with an unknown id
 
 **When:** the `/_data` route does not know the id a definition sends.
 
-**Why:** the runtime id is the document's `__meta__.hash` (the client preset's `persistedDocuments`), else its operation name. The plugin's default keys the manifest by the SHA-256 of the printed operation and its fragments, which equals the preset's hash only when both hash the same text.
+**Why:** the runtime id is the document's `__meta__.hash` (the client preset's `persistedDocuments`), else its operation name. The manifest keeps the keys of the preset's `persisted-documents.json` as they are, so they match, unless the manifest is stale (codegen ran without the `afterAllFileWrite` step), or documents carry no hash while the manifest is keyed by hash.
 
-**Fix:** with no `persistedDocuments`, set `ids: 'name'` in the plugin's config so the manifest is keyed by name. With them, make the plugin's ids and the preset's agree, or key by name.
+**Fix:** run `writeAllowlist` from `hooks.afterAllFileWrite` (see "Allowlist codegen" in the [README](../README.md#allowlist-codegen)) so it follows each codegen run. With no `persistedDocuments`, use `ids: 'name'`.
+
+## Two definitions share one cache entry
+
+**Why:** a definition's `id` is the document's persisted id, else its operation name; two definitions with the same `id` collide.
+
+**Fix:** pass a distinct `id` when you define one document twice with different options.
 
 ## An error has the API's code but `error.fields` is undefined
 

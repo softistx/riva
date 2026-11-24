@@ -1,6 +1,6 @@
 # @softistx/riva-graphql
 
-GraphQL for [riva](https://github.com/softistx/riva/blob/develop/packages/riva/README.md) over [`@softistx/graphql-client`](https://github.com/softistx/graphql): `query`, `mutation` and `infinite` definitions typed from a `TypedDocumentNode` (variables and data are inferred, never annotated), a per-client transport, errors mapped to riva's, and a codegen plugin that emits the allowlist a BFF's `/_data` route executes.
+GraphQL for [riva](https://github.com/softistx/riva/blob/develop/packages/riva/README.md) over [`@softistx/graphql-client`](https://github.com/softistx/graphql): `query`, `mutation` and `infinite` definitions typed from a `TypedDocumentNode` (variables and data are inferred, never annotated), a per-client transport, errors mapped to riva's, and a codegen helper that builds the allowlist a BFF's `/_data` route executes from the client preset's persisted documents.
 
 Errors and fixes: [docs](./docs/README.md). Work in progress, see the [spec](https://github.com/softistx/riva/blob/develop/docs/spec.md). The normalized GraphQL cache is a later slice: today a definition keeps its data as is.
 
@@ -8,9 +8,33 @@ Errors and fixes: [docs](./docs/README.md). Work in progress, see the [spec](htt
 bun add @softistx/riva @softistx/riva-graphql @softistx/graphql-client graphql
 ```
 
-Peers: `@softistx/riva` and `@softistx/graphql-client`. `graphql`, `@graphql-codegen/plugin-helpers` and `@graphql-typed-document-node/core` are optional: the plugin needs the first two, and the types of every definition need the third (`@softistx/graphql-client` already brings it). The runtime entries import none of them.
+Peers: `@softistx/riva` and `@softistx/graphql-client`. `graphql` and `@graphql-typed-document-node/core` are optional: the codegen helper needs the first, and the types of every definition need the second (`@softistx/graphql-client` already brings it). The runtime entries import none of them.
 
-GraphQL documents are written as constants in `SCREAMING_SNAKE_CASE` (`PATIENTS_QUERY`); the client preset's codegen derives the types. Use `documentMode: 'documentNode'` (the preset's default): a definition reads the document's operation, so a `TypedDocumentString` is refused.
+## Documents
+
+Documents are written in your code with the client preset's `graphql()` function, as constants in `SCREAMING_SNAKE_CASE` (`PATIENTS_QUERY`); codegen derives the types and, with `persistedDocuments`, a hash per operation. Use `documentMode: 'documentNode'` (the preset's default): a definition reads the document's operation, so a `TypedDocumentString` is refused.
+
+```ts
+// app/patients/graphql.ts
+import { graphql } from '../generated/gql';
+
+export const PATIENTS_QUERY = graphql(`
+	query Patients($school: ID!, $first: Int, $after: String) {
+		patients(school: $school, first: $first, after: $after) {
+			edges { node { id name } cursor }
+			pageInfo { hasNextPage endCursor }
+		}
+	}
+`);
+
+export const RENAME_PATIENT_MUTATION = graphql(`
+	mutation RenamePatient($id: ID!, $name: String!) {
+		renamePatient(id: $id, name: $name) { id name }
+	}
+`);
+```
+
+The examples below use these two constants, an `url` such as `https://api.example.com/graphql`, and a `client` made as shown next.
 
 ## Provide the transport
 
@@ -44,7 +68,7 @@ Any object with `execute(operation, variables, { signal })` is a transport. The 
 
 ```ts
 import { query } from '@softistx/riva-graphql';
-import { PATIENTS_QUERY } from './patients.graphql';
+import { PATIENTS_QUERY } from './graphql';
 
 export const patients = query(PATIENTS_QUERY, { staleTime: '30s' });
 
@@ -53,7 +77,7 @@ const state = client.get(patients, { school: 'north' }); // state.data is the do
 patients.invalidate(client, { school: 'north' });
 ```
 
-A document with no variables takes none: `viewer.ensure(client)`. The options are the core's (`staleTime`, `gcTime`, `retry`, `refetchEvery`, …) minus `fetch`. The definition's `id` is the document's persisted id, else its operation name; pass `id` to define one document twice with different options.
+A document with no variables takes none: `viewer.ensure(client)`. The options are the core's (`staleTime`, `gcTime`, `retry`, `refetchEvery`, …) minus `fetch`. The definition's `id` is the document's persisted id, else its operation name; pass `id` to define one document twice with different options. **Ids must be unique**: two definitions with the same `id` (an override reused by mistake, or two documents sharing an operation name) collide on one cache entry.
 
 A document that is not exactly one named query or mutation is refused when the definition is created, with a `TypeError` that says why: no operation, several operations, no name, a subscription, or the wrong helper (`query()` on a mutation).
 
@@ -61,7 +85,7 @@ A document that is not exactly one named query or mutation is refused when the d
 
 ```ts
 import { mutation } from '@softistx/riva-graphql';
-import { RENAME_PATIENT_MUTATION } from './patients.graphql';
+import { RENAME_PATIENT_MUTATION } from './graphql';
 
 export const renamePatient = mutation(RENAME_PATIENT_MUTATION, {
 	invalidates: [patients], // observed lists refetch once it succeeded
@@ -76,7 +100,7 @@ The options are the core's (`optimistic`, `updates`, `invalidates`, `retry`), ty
 
 ```ts
 import { infinite } from '@softistx/riva-graphql/infinite';
-import { PATIENTS_QUERY } from './patients.graphql';
+import { PATIENTS_QUERY } from './graphql';
 
 export const patientsFeed = infinite(PATIENTS_QUERY, {
 	connection: (data) => data.patients, // { edges, pageInfo }
@@ -88,11 +112,20 @@ const { data, hasNext } = client.get(patientsFeed, { school: 'north' });
 data?.nodes; // the flattened nodes, typed from the document
 ```
 
-The document declares the cursor variables (`$after`, `$before`); pass `cursor: { after: 'cursor' }` when they are named otherwise. The caller's variables leave the cursors out. The list's id is the query's id plus `#infinite`, so `query(PATIENTS_QUERY)` and `infinite(PATIENTS_QUERY, …)` never share a cache entry.
+The document declares the cursor variables (`$after`, `$before`); name them with `cursor` when they are called otherwise:
+
+```ts
+export const feed = infinite(PATIENTS_BY_CURSOR_QUERY, {
+	connection: (data) => data.patients,
+	cursor: { after: 'afterCursor' }, // query Patients($afterCursor: String) { … }
+});
+```
+
+The caller's variables leave the cursors out. The list's id is the query's id plus `#infinite`, so `query(PATIENTS_QUERY)` and `infinite(PATIENTS_QUERY, …)` never share a cache entry.
 
 ## Errors
 
-The transport maps `@softistx/graphql-client`'s errors to riva's, so `instanceof` holds and the core's retry policy applies (never retried: a refusal, 4xx; retried: 5xx, 408, 429, the network):
+The transport maps `@softistx/graphql-client`'s errors to riva's, so `instanceof` holds and the core's retry policy applies (never retried: a refusal, 4xx; retried: 5xx, 408, 429, the network). An `ApiError` that carries no status is read as 400, so it is not retried:
 
 | graphql-client | riva | `code` | retried |
 |---|---|---|---|
@@ -117,36 +150,62 @@ if (state.error instanceof RivaRequestError) {
 
 `toRivaError(error, signal?)` is exported for a transport of your own.
 
-## Allowlist codegen plugin
+## Allowlist codegen
 
-`@softistx/riva-graphql/codegen` is a `@graphql-codegen` plugin, for Node only. It writes the manifest a BFF's `/_data` route reads: one entry per query and mutation, `{ id, name, kind, document }`, keyed by id and sorted, so the same documents give the same bytes.
+A BFF's `/_data` route executes only documents it knows by id. The client preset (`@graphql-codegen/client-preset`, run by `@graphql-codegen/cli`) with `persistedDocuments: true` writes `persisted-documents.json`, `{ [hash]: text }`, and puts the same hash on each document as `__meta__.hash`, the id a definition sends. `@softistx/riva-graphql/codegen` turns that file into the manifest: one entry per query and mutation, `{ id, name, kind, document }`, keyed by the preset's hash **as it is** (never recomputed, so an id matches by construction) and sorted, so the same documents give the same bytes.
 
 ```ts
-// codegen.ts
+// codegen.ts (needs @graphql-codegen/cli and @graphql-codegen/client-preset)
 import type { CodegenConfig } from '@graphql-codegen/cli';
 
 export default {
 	schema: 'schema.graphql',
-	documents: ['app/**/*.graphql'],
+	documents: ['app/**/*.{ts,tsx}'],
 	generates: {
-		'app/generated/allowlist.json': {
-			plugins: ['@softistx/riva-graphql/codegen'],
-			config: { ids: 'hash' }, // or 'name'
+		'app/generated/': {
+			preset: 'client',
+			presetConfig: { persistedDocuments: true },
 		},
 	},
+	// Runs once every file is written, whatever the order of the outputs.
+	hooks: { afterAllFileWrite: ['bun scripts/allowlist.ts'] },
 } satisfies CodegenConfig;
 ```
 
-- `document` is the operation's text followed by the fragments it uses (sorted by name).
-- With `ids: 'hash'` (default) the id is the SHA-256 of that text in hex, computed by `persistedIdOf`, the function the runtime exports. With `ids: 'name'` the id is the operation name, for documents with no persisted id.
-- Two operations with one name fail the run, naming both files. So does an unnamed operation, or a fragment no document defines. Subscriptions are skipped.
+```ts
+// scripts/allowlist.ts
+import { writeAllowlist } from '@softistx/riva-graphql/codegen';
+
+await writeAllowlist(
+	'app/generated/persisted-documents.json',
+	'app/generated/allowlist.json',
+);
+```
+
+`buildAllowlist(persisted, config?)` is the same step without the files: it takes the parsed `persisted-documents.json` and returns the manifest.
+
+```ts
+import { buildAllowlist } from '@softistx/riva-graphql/codegen';
+
+const manifest = buildAllowlist({
+	'sha256:ab12…': 'fragment F on Patient { id } query Patients { patients { ...F } }',
+});
+// { 'sha256:ab12…': { id: 'sha256:ab12…', name: 'Patients', kind: 'query', document: '…' } }
+```
+
+- `document` is the preset's text for the operation: the operation and the fragments it uses.
+- `ids: 'persisted'` (default) keys by the preset's hash. `ids: 'name'` keys by operation name, for documents with no persisted id (the runtime then uses the name as the id).
+- It fails on a text with no operation or several, an anonymous one, a subscription, and two operations of one name.
+- Do not rely on the order of outputs inside one codegen run: the manifest is built after all of them, from the hook.
 
 ## Entry points
 
 | Import | Holds | Notes |
 |---|---|---|
-| `@softistx/riva-graphql` | `query`, `mutation`, `provideGraphQL`, `graphqlClientTransport`, `toRivaError`, `operationOf`, `persistedIdOf` | Imports no peer at runtime. |
+| `@softistx/riva-graphql` | `query`, `mutation`, `provideGraphQL`, `graphqlClientTransport`, `toRivaError`, `operationOf`, `VERSION` | Imports `@softistx/riva` only; no optional peer. |
 | `@softistx/riva-graphql/infinite` | `infinite` | Imports `@softistx/riva/infinite`. |
-| `@softistx/riva-graphql/codegen` | `plugin`, `buildAllowlist` | Node and codegen only; needs `graphql` and `@graphql-codegen/plugin-helpers`. |
+| `@softistx/riva-graphql/codegen` | `buildAllowlist`, `writeAllowlist` | Node and codegen only; needs `graphql`. |
+
+Exported types: `GraphQLTransport`, `Operation`, `OperationKind`, `VarsOf` and `GraphQLQueryOptions`, `GraphQLMutationOptions` (main entry); `GraphQLInfiniteOptions` (`/infinite`); `AllowlistConfig`, `AllowlistEntry`, `AllowlistManifest` (`/codegen`).
 
 The core plus the main entry stays under 8 kB gzipped, `@softistx/graphql-client` and `graphql` not counted.

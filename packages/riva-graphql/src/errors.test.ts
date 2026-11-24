@@ -123,3 +123,11 @@ test('errors are read by name, so another copy of the package maps too', () => {
 	});
 	expect(toRivaError(copy)).toBeInstanceOf(RivaRequestError);
 });
+
+test('an ApiError with no status is read as 400 and never retried; a 503 status error retries, a 404 does not', () => {
+	const noStatus = toRivaError(api('X')) as RivaRequestError;
+	expect([noStatus.status, noStatus.retryable]).toEqual([400, false]);
+	const retryable = (status: number) =>
+		(toRivaError(new ApiStatusError(status, null)) as RivaHttpError).retryable;
+	expect([retryable(503), retryable(404)]).toEqual([true, false]);
+});
