@@ -62,3 +62,69 @@ client.effect(() => {
 	if (n < 5) client.set(count, n + 1); // converges
 });
 ```
+
+## Invalid duration
+
+Code: `RIVA_DURATION` (`RivaError`).
+
+**When:** an option such as `staleTime`, `gcTime` or `refetchEvery` got a value it cannot read, at the `query({...})` call.
+
+**Why:** a duration is a non-negative number of milliseconds (or `Infinity`), or a string of a number (decimals allowed, e.g. `"1.5s"`) and exactly one unit: `ms`, `s`, `m`, `h`.
+
+**Fix:**
+
+```ts
+query({ id: 'user', staleTime: '30s', gcTime: '5m', fetch }); // not "30" or "5 min"
+```
+
+## Cannot derive a cache key
+
+Code: `RIVA_KEY` (`RivaError`).
+
+**When:** the variables of a query hold a function, a symbol, a bigint, a non-finite number, an invalid `Date` or a circular reference.
+
+**Why:** the key is the definition id plus the stable-serialized variables, so they must be JSON-like.
+
+**Fix:** pass plain data; convert before the call (`id.toString()` for a bigint, an ISO string for an odd date), and keep callbacks out of the variables.
+
+```ts
+user.ensure(client, { id: String(id) });
+```
+
+## The request was aborted
+
+Code: `RIVA_ABORT` (`RivaAbortError`).
+
+**When:** `ensure` rejects with it after the `signal` you passed aborted, or after `cancel` aborted the fetch you were waiting on.
+
+**Why:** abort is a decision, not a failure: it is never retried and never stored as the query's error; the entry returns to its previous state.
+
+**Fix:** catch it where you abort.
+
+```ts
+try {
+	await user.ensure(client, { id }, { signal });
+} catch (e) {
+	if (!(e instanceof RivaAbortError)) throw e;
+}
+```
+
+## HTTP <status>
+
+Code: `HTTP_<status>` (`RivaHttpError`, a `RivaRequestError`).
+
+**When:** a fetcher threw `new RivaHttpError(status)` without a message, so the message is `HTTP 503`, `HTTP 404`...
+
+**Why:** the server answered with an error status. It is retried for 5xx, 408 and 429 (per `retry`) and never for other statuses.
+
+**Fix:** read `error.status` and `error.cause`; fix the request for a 4xx, or raise `retry` / wait for the server for a 5xx. Pass your own message as the second argument for a clearer text.
+
+## Network error
+
+Code: `RIVA_NETWORK` (`RivaNetworkError`, a `RivaRequestError`).
+
+**When:** a fetcher threw `new RivaNetworkError()` without a message: the request never got a response (offline, DNS, CORS, connection reset).
+
+**Why:** it is always retryable, so the engine retries it per `retry` before settling the error state.
+
+**Fix:** check connectivity and the URL; look at `error.cause` for the underlying failure. On the server `retry` defaults to 0, so set it to retry there.
