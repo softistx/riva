@@ -24,6 +24,11 @@
 			"import": "./dist/entities/index.js",
 			"default": "./dist/entities/index.js"
 		},
+		"./infinite": {
+			"types": "./dist/infinite/index.d.ts",
+			"import": "./dist/infinite/index.js",
+			"default": "./dist/infinite/index.js"
+		},
 		"./package.json": "./package.json"
 	},
 	"keywords": [
@@ -54,7 +59,8 @@
 	"nxgt": {
 		"entrypoints": [
 			"src/index.ts",
-			"src/entities/index.ts"
+			"src/entities/index.ts",
+			"src/infinite/index.ts"
 		]
 	}
 }

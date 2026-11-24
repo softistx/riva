@@ -149,12 +149,11 @@ export function armGc(c: Ctx, e: Entry): void {
 	}, ms);
 }
 
-const sameState = (a: State, b: State): boolean =>
-	a.status === b.status &&
-	a.data === b.data &&
-	a.error === b.error &&
-	a.isFetching === b.isFetching &&
-	a.updatedAt === b.updatedAt;
+/** Shallow: the standard fields and whatever `derive` adds. */
+const sameState = (a: State, b: State): boolean => {
+	const k = Object.keys(a) as Array<keyof State>;
+	return k.length === Object.keys(b).length && k.every((x) => a[x] === b[x]);
+};
 
 export function entryOf(c: Ctx, def: AnyQuery, vars: unknown): Entry {
 	const { client } = c;
@@ -163,7 +162,7 @@ export function entryOf(c: Ctx, def: AnyQuery, vars: unknown): Entry {
 	if (!e) {
 		const a = atom<State>(IDLE, { name: key });
 		const lay = atom<Lay[]>([], { name: `${key}#layers` });
-		const cache = def.options.cache;
+		const { cache, derive } = def.options;
 		e = {
 			key,
 			def,
@@ -174,11 +173,12 @@ export function entryOf(c: Ctx, def: AnyQuery, vars: unknown): Entry {
 				(get) => {
 					const s = get(a);
 					const ls = get(lay);
-					if (!cache && !ls.length) return s;
+					if (!cache && !ls.length && !derive) return s;
 					let data =
 						cache && s.data !== undefined ? cache.read(client, s.data) : s.data;
 					for (const l of ls) data = l(data);
-					return { ...s, data };
+					const out = { ...s, data };
+					return derive ? (derive(client, out, vars) as State) : out;
 				},
 				{ equals: sameState, name: key },
 			),

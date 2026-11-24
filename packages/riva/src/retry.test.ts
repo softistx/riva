@@ -6,7 +6,7 @@ import {
 	RivaNetworkError,
 	RivaRequestError,
 } from './errors';
-import { raceAbort, retryDelay, shouldRetry, sleep } from './retry';
+import { raceAbort, retryDelay, shouldRetry, sleep, withRetry } from './retry';
 
 const g = globalThis as { document?: unknown };
 const saved = g.document;
@@ -95,4 +95,24 @@ test('raceAbort settles with the promise, or rejects on abort even if it never s
 	await expect(
 		raceAbort(Promise.reject(new Error('x')), new AbortController().signal),
 	).rejects.toThrow('x');
+});
+
+test('withRetry retries a failing call, then returns its value', async () => {
+	let n = 0;
+	const sched = {
+		setTimeout: (f: () => void) => (f(), 0),
+		clearTimeout() {},
+	} as never;
+	const out = await withRetry(
+		sched,
+		{ retry: 2, retryDelay: () => 0 },
+		new AbortController().signal,
+		async () => {
+			n++;
+			if (n < 3) throw new RivaHttpError(500, 'x');
+			return 'ok';
+		},
+	);
+	expect(out).toBe('ok');
+	expect(n).toBe(3);
 });

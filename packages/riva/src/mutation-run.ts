@@ -2,7 +2,7 @@ import type { RivaClient } from './client';
 import { RivaAbortError } from './errors';
 import type { MutationOptions, RunOptions } from './mutation';
 import type { Lay } from './query-entry';
-import { raceAbort, retryDelay, shouldRetry, sleep } from './retry';
+import { raceAbort, withRetry } from './retry';
 
 const SEQ = {};
 
@@ -43,18 +43,12 @@ export async function execute<Vars, Data>(
 			if (out !== undefined && o.cache?.layer)
 				drops.push(o.cache.layer(client, out).drop);
 		});
-		let data: Data;
-		for (let failures = 0; ; ) {
-			try {
-				data = await raceAbort(o.run(vars, { signal, client }), signal);
-				break;
-			} catch (x) {
-				if (!shouldRetry(o.retry ?? 0, failures, x)) throw x;
-				const ms = retryDelay(o.retryDelay, failures++);
-				await sleep(client.queries.sched, ms, signal);
-				if (signal.aborted) throw new RivaAbortError();
-			}
-		}
+		const data = await withRetry(
+			client.queries.sched,
+			{ retry: o.retry ?? 0, retryDelay: o.retryDelay },
+			signal,
+			() => o.run(vars, { signal, client }),
+		);
 		// A throw here rolls back like a failed run.
 		const inv =
 			typeof o.invalidates === 'function'

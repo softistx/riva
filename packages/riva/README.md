@@ -61,7 +61,7 @@ Calling `atom.get()` (or `set`, `subscribe`) with no client in scope throws `Riv
 
 ## Queries
 
-A query is a stateless definition: an `id`, and a `fetch` that gets typed variables and returns data. The core is transport-agnostic (the GraphQL and REST adapters supply the id and the fetcher); here it is over a plain `fetch`. Cache entries live in the `RivaClient`, keyed by the id and the stable-serialized variables.
+A query is a stateless definition: an `id`, and a `fetch` that gets typed variables and returns data. The core is transport-agnostic (the GraphQL and REST adapters supply the id and the fetcher); here it is over a plain `fetch`. Cache entries live in the `RivaClient`, keyed by the id and the stable-serialized variables. A query is typed `Query<Vars, Data, State>`: `client.get` and `subscribe` return `State`, which is `QueryState<Data>` unless a definition (such as `infinite`) derives more.
 
 ```ts
 import { createRivaClient, query, RivaHttpError } from '@softistx/riva';
@@ -209,6 +209,52 @@ evict(client, 'Patient:1'); // removes it: queries see the field as missing
 
 `identifyOf(policy, obj)` gives the `Type:id` ref of an object under a policy's identity rule. Types: `EntityPolicy`, `EntitiesOptions`, `Identify`, `Fields`; and `CachePolicy` from the main entry.
 
-### Size budget
+## Infinite lists
 
-The main entry `@softistx/riva` stays within 6144 B gzipped, the main entry with `entities` within 8192 B, and core + react within 9216 B. `bun run size` checks them.
+`@softistx/riva/infinite`: `infinite`. A cursor-paginated list is a query whose data is the pages loaded so far. It reads like any query (`client.get`, `subscribe`, `ensure`, `invalidate`, `setData`, staleness, `gcTime`, `retry`, `cache`) and adds `fetchNext` and `fetchPrevious`. The default page shape is a Relay connection (`edges[].node`, `pageInfo` with `hasNextPage`, `hasPreviousPage`, `startCursor`, `endCursor`).
+
+```ts
+import { createRivaClient } from '@softistx/riva';
+import { entities } from '@softistx/riva/entities';
+import { type Connection, infinite } from '@softistx/riva/infinite';
+
+type Patient = { __typename: 'Patient'; id: string; name: string };
+type Page = { patients: Connection<Patient> };
+
+const feed = infinite({
+	id: 'patientsFeed',
+	cache: entities(), // every page is normalized: a node edit shows everywhere
+	staleTime: '30s',
+	fetch: async (v: { search: string; after?: string }, { signal }): Promise<Page> =>
+		(await fetch(`/api/patients?search=${v.search}&after=${v.after ?? ''}`, { signal })).json(),
+	connection: (page) => page.patients,
+	// cursor: { after: 'cursor' }, // when the variable is not named `after` (and `before`)
+});
+
+const client = createRivaClient();
+await feed.ensure(client, { search: 'a' }); // the first page
+await feed.fetchNext(client, { search: 'a' }); // appends the next page
+await feed.fetchPrevious(client, { search: 'a' }); // prepends the previous page
+
+const s = client.get(feed, { search: 'a' });
+s.data?.nodes; // every loaded node, flattened (memoized per data)
+s.data?.pages; // the pages as fetched
+s.hasNext; s.hasPrevious; s.isFetchingNext; s.isFetchingPrevious;
+```
+
+- `Page` and `Node` are inferred from `fetch` and `connection`. The caller's variables are those of `fetch` without `after` and `before`; the library adds the cursor, and strips a cursor variable the caller passes. With another name, set `cursor: { after: 'name', before: 'name' }` (both must be declared in the variables).
+- `fetchNext` and `fetchPrevious` return one promise while in flight (deduped), and resolve at once when there is no next or previous page, or no page loaded yet. They use `retry` and `retryDelay`. An error keeps the loaded pages and sets `status: 'error'` and `error`; the next successful page clears it. `cancel` aborts them as well as a refetch.
+- A refetch (stale, `invalidate`, focus) re-runs every loaded page in order, from the first page's cursor, taking each next cursor from the fresh page before it, so inserted or removed items never skip or repeat a node. It stops when `hasNextPage` turns false (a list that shrank loads fewer pages) and swaps all pages in as one change; an error or abort keeps the old pages.
+- `fetchNext` and `fetchPrevious` wait for a refetch in flight, then read the cursor from the fresh pages (no next page: nothing happens). A page that arrives after the list moved under it (a refetch finished, `setData` replaced the pages) is not mixed in: it is fetched again from the new cursor. An `invalidate` made meanwhile is kept, so the next read refetches.
+- The page and the `isFetchingNext` / `isFetchingPrevious` reset land as one change.
+- With `cache: entities()`, nodes are shared with every other query. `writeEntity` and `invalidateEntity` reach the feed like any query.
+- `setData` and `tx.set` on a feed take the stored shape, `{ pages, params }`, where `params[i]` is the cursor page `i` was fetched with (`{}` for the first, `{ after }` going forward, `{ before }` going back); `nodes` and the flags are derived and never stored. An optimistic edit of a node belongs in the entity layer, an added or removed node in `tx.set` on the pages.
+- Pagination is forward-only for servers that do not take `before`: `hasPrevious` then stays false.
+
+### Exported types and helpers
+
+`infinite`; types `Infinite`, `InfiniteOptions`, `InfiniteData`, `InfiniteList`, `InfiniteState`, `Connection`, `Edge`, `PageInfo`, `PageParam`, `Cursors` and `FeedVars`.
+
+## Size budget
+
+The main entry `@softistx/riva` stays within 6144 B gzipped, the main entry with `entities` or with `infinite` within 8192 B each, the main entry with every subpath within 10240 B, and core + react within 9216 B. `bun run size` checks them.
