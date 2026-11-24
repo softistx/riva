@@ -39,10 +39,10 @@ export class RivaClient {
 	}
 
 	/** A query's state: a pure read, tracked in a computed or effect, never fetches. */
-	get<Vars, Data>(
-		def: Query<Vars, Data>,
+	get<Vars, Data, S extends QueryState<unknown>>(
+		def: Query<Vars, Data, S>,
 		...vars: VarsArgs<Vars>
-	): QueryState<Data>;
+	): S;
 	get<T>(def: Readable<T>): T;
 	get(
 		// biome-ignore lint/suspicious/noExplicitAny: implementation of the overloads
@@ -59,19 +59,19 @@ export class RivaClient {
 	}
 
 	/** Observes a query: fetches when missing or stale, polls and refetches while observed. */
-	subscribe<Vars, Data>(
-		def: Query<Vars, Data>,
+	subscribe<Vars, Data, S extends QueryState<unknown>>(
+		def: Query<Vars, Data, S>,
 		vars: Vars,
-		listener: Listener<QueryState<Data>>,
+		listener: Listener<S>,
 	): Unsubscribe;
-	subscribe<Data>(
-		def: Query<void, Data>,
-		listener: Listener<QueryState<Data>>,
+	subscribe<Data, S extends QueryState<unknown>>(
+		def: Query<void, Data, S>,
+		listener: Listener<S>,
 	): Unsubscribe;
 	subscribe<T>(def: Readable<T>, listener: Listener<T>): Unsubscribe;
 	subscribe(
 		// biome-ignore lint/suspicious/noExplicitAny: implementation of the overloads
-		def: Readable<unknown> | Query<any, any>,
+		def: Readable<unknown> | Query<any, any, any>,
 		a: unknown,
 		b?: unknown,
 	): Unsubscribe {

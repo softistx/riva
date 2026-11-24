@@ -59,6 +59,8 @@ export interface QueryOptions<Vars, Data> {
 	refetchEvery?: Duration;
 	/** How the data is stored. Default: as is (a keyed cache). */
 	cache?: CachePolicy;
+	/** @internal Shapes the state readers see, last (after the policy and the layers); read inside a computed. */
+	derive?: (client: RivaClient, state: QueryState<Data>, vars: Vars) => unknown;
 }
 
 export interface EnsureOptions {
@@ -73,8 +75,14 @@ export type VarsArgs<Vars, Rest extends unknown[] = []> = [Vars] extends [
 	? [vars?: Vars, ...rest: Rest]
 	: [vars: Vars, ...rest: Rest];
 
-/** A stateless query definition: the data lives in a `RivaClient`. */
-export interface Query<Vars, Data> {
+/** A stateless query definition: the data lives in a `RivaClient`. `S` is the state readers get (`QueryState<Data>` unless a module derives more). */
+export interface Query<
+	Vars,
+	Data,
+	S extends QueryState<unknown> = QueryState<Data>,
+> {
+	/** @internal Phantom: carries `S` to `client.get` and `subscribe`. */
+	readonly '~state'?: S;
 	readonly kind: 'query';
 	readonly id: string;
 	/** @internal */
@@ -88,6 +96,7 @@ export interface Query<Vars, Data> {
 		readonly refetchOnReconnect: boolean;
 		readonly refetchEvery: number | undefined;
 		readonly cache: CachePolicy | undefined;
+		readonly derive: QueryOptions<Vars, Data>['derive'];
 	};
 	/** Fetches when missing or stale and awaits; resolves the cache when fresh. */
 	ensure(

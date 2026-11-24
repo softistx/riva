@@ -4,7 +4,7 @@
  * splits shared code into chunks), packages stay external. A combined row
  * bundles a virtual entry that imports the main entry and the opt-in
  * subpaths, so what they share is counted once.
- * Grow `@softistx/riva + subpaths` as subpaths land (hard cap: core + react
+ * Grow `@softistx/riva + all subpaths` as subpaths land (hard cap: core + react
  * 9216 B); add riva-react in its slice.
  */
 export interface Budget {
@@ -23,6 +23,23 @@ export const budgets: Budget[] = [
 			'packages/riva/dist/entities/index.js',
 		],
 		limit: 8192,
+	},
+	{
+		name: '@softistx/riva + infinite',
+		entry: [
+			'packages/riva/dist/index.js',
+			'packages/riva/dist/infinite/index.js',
+		],
+		limit: 8192,
+	},
+	{
+		name: '@softistx/riva + all subpaths',
+		entry: [
+			'packages/riva/dist/index.js',
+			'packages/riva/dist/entities/index.js',
+			'packages/riva/dist/infinite/index.js',
+		],
+		limit: 10240,
 	},
 ];
 
