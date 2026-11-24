@@ -96,6 +96,23 @@ export function entities(opts?: EntitiesOptions): EntityPolicy {
 			stored.seen = seen;
 			return seen;
 		},
+		layer(client, data) {
+			const { pending } = normalize(bound(client, opts, identify), data);
+			client.set(storeOf(client).ov, (ls) => [...ls, pending]);
+			return {
+				drop: () =>
+					client.set(storeOf(client).ov, (ls) =>
+						ls.filter((l) => l !== pending),
+					),
+			};
+		},
+		commit(client, data) {
+			const store = bound(client, opts, identify);
+			const { pending } = normalize(store, data);
+			client.batch(() => {
+				for (const [ref, fields] of pending) store.merge(ref, fields);
+			});
+		},
 		release(client, stored) {
 			const store = bound(client, opts, identify);
 			store.roots.delete(stored);

@@ -32,6 +32,10 @@ export interface CachePolicy<Stored = unknown> {
 	read(client: RivaClient, stored: Stored): unknown;
 	/** The entry was replaced or collected: drop what `write` retained. */
 	release(client: RivaClient, stored: Stored): void;
+	/** Mutations: shows `data` over the committed data until `drop` (an optimistic layer). */
+	layer?(client: RivaClient, data: unknown): { drop(): void };
+	/** Mutations: merges a server result into the committed data, notifying its readers. */
+	commit?(client: RivaClient, data: unknown): void;
 }
 
 export interface QueryOptions<Vars, Data> {

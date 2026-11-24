@@ -24,13 +24,18 @@ export interface Inflight {
 	prev: State;
 }
 
+/** An optimistic write: maps the value below it to the value readers see. */
+export type Lay = (prev: unknown) => unknown;
+
 export interface Entry {
 	key: string;
 	def: AnyQuery;
 	vars: unknown;
 	/** The graph atom holding the state: the one notification mechanism. */
 	atom: Atom<State>;
-	/** What readers see: the atom, or a computed reading `data` through the cache policy. */
+	/** The optimistic layers over the atom's data, oldest first. */
+	lay: Atom<Lay[]>;
+	/** What readers see: the atom's data through the cache policy, under the layers. */
 	out: Readable<State>;
 	observers: number;
 	invalidated: boolean;
@@ -65,6 +70,14 @@ export const peek = (c: Ctx, e: Entry): State =>
 /** The state as readers see it (data read through the cache policy), untracked. */
 export const view = (c: Ctx, e: Entry): State =>
 	c.client.untracked(() => c.client.get(e.out));
+
+/** The data without the entry's own layers, untracked. */
+export const committed = (c: Ctx, e: Entry): unknown =>
+	c.client.untracked(() => {
+		const d = peek(c, e).data;
+		const cache = e.def.options.cache;
+		return cache && d !== undefined ? cache.read(c.client, d) : d;
+	});
 
 /** The data as the entry stores it: through the cache policy, which may refuse it by throwing. */
 export const toStored = (c: Ctx, e: Entry, data: unknown): unknown => {
@@ -122,7 +135,12 @@ export function armGc(c: Ctx, e: Entry): void {
 	e.gc = c.sched.setTimeout(() => {
 		e.gc = undefined;
 		// A computed or listener still reading the atom keeps the entry alive.
-		if (e.observers || e.run || nodeOf(c.client.graph, e.atom).refs)
+		if (
+			e.observers ||
+			e.run ||
+			nodeOf(c.client.graph, e.atom).refs ||
+			(nodeOf(c.client.graph, e.lay).value as Lay[]).length
+		)
 			return armGc(c, e);
 		if (c.entries.get(e.key) !== e) return;
 		c.entries.delete(e.key);
@@ -144,23 +162,26 @@ export function entryOf(c: Ctx, def: AnyQuery, vars: unknown): Entry {
 	let e = c.entries.get(key);
 	if (!e) {
 		const a = atom<State>(IDLE, { name: key });
+		const lay = atom<Lay[]>([], { name: `${key}#layers` });
 		const cache = def.options.cache;
 		e = {
 			key,
 			def,
 			vars,
 			atom: a,
-			out: cache
-				? computed(
-						(get) => {
-							const s = get(a);
-							return s.data === undefined
-								? s
-								: { ...s, data: cache.read(client, s.data) };
-						},
-						{ equals: sameState, name: key },
-					)
-				: a,
+			lay,
+			out: computed(
+				(get) => {
+					const s = get(a);
+					const ls = get(lay);
+					if (!cache && !ls.length) return s;
+					let data =
+						cache && s.data !== undefined ? cache.read(client, s.data) : s.data;
+					for (const l of ls) data = l(data);
+					return { ...s, data };
+				},
+				{ equals: sameState, name: key },
+			),
 			observers: 0,
 			invalidated: false,
 			run: undefined,

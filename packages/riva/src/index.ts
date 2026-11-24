@@ -29,6 +29,14 @@ export {
 } from './errors';
 export { stableKey } from './key';
 export {
+	type Invalidation,
+	type Mutation,
+	type MutationOptions,
+	mutation,
+	type RunOptions,
+	type Tx,
+} from './mutation';
+export {
 	type CachePolicy,
 	type EnsureOptions,
 	type FetchContext,
