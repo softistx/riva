@@ -1,0 +1,53 @@
+{
+	"name": "@softistx/riva-graphql",
+	"version": "0.0.0",
+	"description": "GraphQL transport for riva over @softistx/graphql-client, with persisted ids and the allowlist codegen plugin.",
+	"license": "MIT",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"files": [
+		"dist",
+		"docs",
+		"README.md",
+		"package.json",
+		"LICENSE"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
+		},
+		"./package.json": "./package.json"
+	},
+	"keywords": [
+		"state",
+		"signals",
+		"cache",
+		"graphql",
+		"rest",
+		"ssr"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/softistx/riva.git",
+		"directory": "packages/riva-graphql"
+	},
+	"publishConfig": {
+		"registry": "https://registry.npmjs.org/",
+		"access": "public"
+	},
+	"scripts": {
+		"build": "bun run ../../build.ts",
+		"test": "bun test src",
+		"typecheck": "bun check"
+	},
+	"devDependencies": {
+		"@types/bun": "^1.4.5"
+	},
+	"peerDependencies": {
+		"@softistx/riva": "^0.0.0",
+		"@softistx/graphql-client": "^0.9.0"
+	}
+}

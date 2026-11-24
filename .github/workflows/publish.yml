@@ -1,0 +1,47 @@
+name: Publish
+
+# Every public @softistx/riva* package publishes to registry.npmjs.org only,
+# from a tag. Versions are made locally (`bun run changeset:version`, merged as
+# a "Version packages" PR); the release owner then tags from an up-to-date
+# `develop` (`bunx changeset tag && git push --follow-tags`).
+# scripts/publish.ts skips versions already on npm, so a re-run resumes.
+on:
+  push:
+    tags: ["v*", "**@*"]
+  release:
+    types: [published]
+  workflow_dispatch:
+
+concurrency:
+  group: publish-${{ github.sha }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+env:
+  NPM_SOFTISTX_READ_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+jobs:
+  publish:
+    name: Publish
+    runs-on: ${{ fromJSON(vars.CI_RUNNER_LIBS || '"ubuntu-latest"') }}
+    timeout-minutes: 20
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      # Only a commit already on develop publishes.
+      - name: Require the commit on develop
+        run: |
+          git fetch origin develop
+          git merge-base --is-ancestor "$GITHUB_SHA" origin/develop
+      - name: Setup
+        uses: ./.github/actions/setup
+      - name: Build packages
+        run: bun run build
+      - name: Publish to npmjs
+        run: bun run scripts/publish.ts
+        env:
+          NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}

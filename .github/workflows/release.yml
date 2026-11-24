@@ -1,0 +1,41 @@
+name: Release
+
+# Opens the changesets "Version packages" PR and publishes nothing:
+# publishing is publish.yml, on a tag.
+on:
+  push:
+    branches: [develop]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+  pull-requests: write
+
+env:
+  NPM_SOFTISTX_READ_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+jobs:
+  release:
+    name: Release
+    runs-on: ${{ fromJSON(vars.CI_RUNNER_LIBS || '"ubuntu-latest"') }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Setup
+        uses: ./.github/actions/setup
+      - name: Build packages
+        run: bun run build
+      - name: Version
+        uses: changesets/action@v2
+        with:
+          version-script: bun run changeset:version
+          pr-title: 'chore: Version packages'
+          commit-message: 'chore: Version packages'
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

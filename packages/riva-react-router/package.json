@@ -1,0 +1,61 @@
+{
+	"name": "@softistx/riva-react-router",
+	"version": "0.0.0",
+	"description": "React Router host for riva: per-request client, dehydrate and hydrate, the /_data resource route, action-result helper and revalidation bridge.",
+	"license": "MIT",
+	"type": "module",
+	"main": "./dist/index.js",
+	"types": "./dist/index.d.ts",
+	"files": [
+		"dist",
+		"docs",
+		"README.md",
+		"package.json",
+		"LICENSE"
+	],
+	"exports": {
+		".": {
+			"types": "./dist/index.d.ts",
+			"import": "./dist/index.js",
+			"default": "./dist/index.js"
+		},
+		"./package.json": "./package.json"
+	},
+	"keywords": [
+		"state",
+		"signals",
+		"cache",
+		"graphql",
+		"rest",
+		"ssr"
+	],
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/softistx/riva.git",
+		"directory": "packages/riva-react-router"
+	},
+	"publishConfig": {
+		"registry": "https://registry.npmjs.org/",
+		"access": "public"
+	},
+	"scripts": {
+		"build": "bun run ../../build.ts",
+		"test": "bun test src",
+		"typecheck": "bun check"
+	},
+	"devDependencies": {
+		"@types/bun": "^1.4.5"
+	},
+	"peerDependencies": {
+		"@softistx/riva": "^0.0.0",
+		"@softistx/riva-react": "^0.0.0",
+		"react": "^19.0.0",
+		"react-router": "^8.0.0",
+		"@softistx/alxia-react-router": "^0.83.1"
+	},
+	"peerDependenciesMeta": {
+		"@softistx/alxia-react-router": {
+			"optional": true
+		}
+	}
+}

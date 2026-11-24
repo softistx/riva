@@ -1,0 +1,47 @@
+name: 'Setup'
+description: 'Common setup steps for CI jobs'
+
+inputs:
+  save-cache:
+    description: 'Save the Bun cache at the end of the job. "false" for a job that installs versions bun.lock does not hold: it restores the cache and never writes it.'
+    default: 'true'
+
+runs:
+  using: 'composite'
+  steps:
+    # Node for the tools that run under node (graphql-codegen and what it
+    # loads use Set.prototype.difference, Node 22+): the runners'
+    # system Node may be older (18 on the self-hosted ones).
+    - name: Setup Node
+      uses: actions/setup-node@v4
+      with:
+        node-version: '24'
+    # The runners carry no Bun, and the version must match the one
+    # the lockfile was written with.
+    - name: Setup Bun
+      uses: oven-sh/setup-bun@v2
+      with:
+        bun-version: 1.4.5
+    # Bun's download cache, keyed on the lockfile: an unchanged bun.lock
+    # installs from disk, not from the registry.
+    - name: Cache Bun's install cache
+      if: inputs.save-cache == 'true'
+      uses: actions/cache@v4
+      with:
+        path: ~/.bun/install/cache
+        key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+        restore-keys: |
+          bun-${{ runner.os }}-
+    - name: Restore Bun's install cache
+      if: inputs.save-cache != 'true'
+      uses: actions/cache/restore@v4
+      with:
+        path: ~/.bun/install/cache
+        key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+        restore-keys: |
+          bun-${{ runner.os }}-
+    - name: Install dependencies
+      # Every scope, @softistx/* included, installs from npmjs with no token;
+      # the siblings are workspace links.
+      run: bun i --frozen-lockfile
+      shell: bash

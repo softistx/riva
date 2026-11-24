@@ -1,0 +1,10 @@
+# Bun is the package manager here, so registry configuration lives in bunfig,
+# not in a .npmrc.
+#
+# @softistx/* are read from npmjs with the owner's read-only token (the env
+# var NPM_SOFTISTX_READ_TOKEN: the org secret NPM_TOKEN in CI, the file
+# ~/.config/secrets/npm-sofistx-read-token locally). Bun omits the credential
+# when the variable is unset, so an install without it still works while the
+# packages are public (softistx/plugins#233).
+[install.scopes]
+"@softistx" = { url = "https://registry.npmjs.org", token = "$NPM_SOFTISTX_READ_TOKEN" }
