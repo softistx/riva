@@ -62,3 +62,49 @@ client.effect(() => {
 	if (n < 5) client.set(count, n + 1); // converges
 });
 ```
+
+## Invalid duration
+
+Code: `RIVA_DURATION` (`RivaError`).
+
+**When:** an option such as `staleTime`, `gcTime` or `refetchEvery` got a value `toMs` cannot read, at the `query({...})` call.
+
+**Why:** a duration is a non-negative number of milliseconds (or `Infinity`), or a string of digits and one unit: `ms`, `s`, `m`, `h`.
+
+**Fix:**
+
+```ts
+query({ id: 'user', staleTime: '30s', gcTime: '5m', fetch }); // not "30" or "5 min"
+```
+
+## Cannot derive a cache key
+
+Code: `RIVA_KEY` (`RivaError`).
+
+**When:** the variables of a query hold a function, a symbol, a bigint, a non-finite number, an invalid `Date` or a circular reference.
+
+**Why:** the key is the definition id plus the stable-serialized variables, so they must be JSON-like.
+
+**Fix:** pass plain data; convert before the call (`id.toString()` for a bigint, an ISO string for an odd date), and keep callbacks out of the variables.
+
+```ts
+user.ensure(client, { id: String(id) });
+```
+
+## The request was aborted
+
+Code: `RIVA_ABORT` (`RivaAbortError`).
+
+**When:** `ensure` rejects with it after the `signal` you passed aborted, or after `cancel` aborted the fetch you were waiting on.
+
+**Why:** abort is a decision, not a failure: it is never retried and never stored as the query's error; the entry returns to its previous state.
+
+**Fix:** catch it where you abort.
+
+```ts
+try {
+	await user.ensure(client, { id }, { signal });
+} catch (e) {
+	if (!(e instanceof RivaAbortError)) throw e;
+}
+```

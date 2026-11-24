@@ -8,7 +8,7 @@ export {
 	type Unsubscribe,
 } from './atom';
 export { batch, untracked } from './batch';
-export { createRivaClient, RivaClient } from './client';
+export { type ClientOptions, createRivaClient, RivaClient } from './client';
 export {
 	type Computed,
 	type ComputedOptions,
@@ -16,6 +16,26 @@ export {
 	type Getter,
 	type Readable,
 } from './computed';
+export { type Duration, toMs } from './duration';
 export { effect } from './effect';
-export { RivaError, RivaScopeError } from './errors';
+export type { ClientEvents, Scheduler } from './env';
+export {
+	RivaAbortError,
+	RivaError,
+	RivaHttpError,
+	RivaNetworkError,
+	RivaRequestError,
+	RivaScopeError,
+} from './errors';
+export { stableKey } from './key';
+export {
+	type EnsureOptions,
+	type FetchContext,
+	type Query,
+	type QueryOptions,
+	type QueryState,
+	type QueryStatus,
+	query,
+	type VarsArgs,
+} from './query';
 export { setDefaultClient } from './scope';
