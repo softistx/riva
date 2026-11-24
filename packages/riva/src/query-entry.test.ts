@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { createRivaClient } from './client';
 import type { Scheduler } from './env';
-import { query } from './query';
+import { type CachePolicy, query } from './query';
 import { armGc, type Ctx, entryOf, peek, put, stale } from './query-entry';
 
 function setup(gcTime?: number) {
@@ -94,4 +94,32 @@ test('armGc arms no timer when gcTime is Infinity', () => {
 	const { c, q, timers } = setup(Infinity);
 	entryOf(c, q, 1);
 	expect(timers.length).toBe(0);
+});
+
+test('a cache policy stores, reads (tracked) and releases the entry data', async () => {
+	const log: string[] = [];
+	const cache: CachePolicy<{ boxed: number }> = {
+		write: (_c, data) => {
+			log.push(`write ${data}`);
+			return { boxed: data as number };
+		},
+		read: (_c, s) => s.boxed * 10,
+		release: (_c, s) => void log.push(`release ${s.boxed}`),
+	};
+	let n = 0;
+	const q = query<void, number>({ id: 'p', cache, fetch: async () => ++n });
+	const client = createRivaClient();
+	expect(await q.ensure(client)).toBe(10);
+	expect(client.get(q).data).toBe(10);
+	q.invalidate(client);
+	await q.ensure(client);
+	q.setData(client, undefined, (prev) => (prev ?? 0) / 10 + 5);
+	expect(client.get(q).data).toBe(70);
+	expect(log).toEqual([
+		'write 1',
+		'write 2',
+		'release 1',
+		'write 7',
+		'release 2',
+	]);
 });

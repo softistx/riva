@@ -105,5 +105,56 @@ Defined once here so adapters throw them and `instanceof` holds.
 - `RivaRequestError` (`status?`, `retryable`, `cause`): a failed request. `RivaHttpError(status)` has code `HTTP_<status>` and is retryable for 5xx, 408 and 429; `RivaNetworkError` (`RIVA_NETWORK`) is retryable.
 - `RivaAbortError` (`RIVA_ABORT`): never retried.
 - Never retried either: a `RivaRequestError` with `retryable: false`. Any other error is retried per `retry`.
-- `RIVA_DURATION`: an invalid duration string. `RIVA_KEY`: variables the key cannot serialize (function, symbol, bigint, cycle).
+- `RIVA_DURATION`: an invalid duration string. `RIVA_KEY`: variables the key cannot serialize (function, symbol, bigint, cycle). `RIVA_CACHE`: data the entity cache cannot store (see below).
 
+## Normalized cache
+
+`@softistx/riva/entities`: `entities`, `readEntity`, `writeEntity`, `invalidateEntity`, `evict`. By default a query keeps its data as is, keyed by id and variables. Pass `cache: entities()` from the opt-in `@softistx/riva/entities` entry to store each entity (an object with a string `__typename` and an `id` or `_id`) once, shared by every query that returns it. A refetch of one query then updates the others, and a `client.get` inside a computed re-evaluates only when an entity it read changed.
+
+```ts
+import { createRivaClient, query } from '@softistx/riva';
+import { entities, evict, invalidateEntity, readEntity, writeEntity } from '@softistx/riva/entities';
+
+type Patient = { __typename: 'Patient'; id: string; name: string };
+
+const cache = entities({
+	keys: { Book: (b) => b['isbn'] as string }, // identity of a type (default: id, then _id)
+	// identify: (obj) => 'Type:id' | undefined,    // or replace the identity rule
+});
+
+const patients = query({
+	id: 'patients',
+	cache,
+	fetch: async () => (await fetch('/api/patients')).json() as Promise<{ items: Patient[] }>,
+});
+const patient = query({
+	id: 'patient',
+	cache,
+	fetch: async (v: { id: string }) => (await fetch(`/api/patients/${v.id}`)).json() as Promise<Patient>,
+});
+
+const client = createRivaClient();
+await patients.ensure(client);
+await patient.ensure(client, { id: '1' });
+
+writeEntity(client, 'Patient:1', { name: 'Ann' }); // merged; both queries see it
+writeEntity(client, 'Patient:1', (prev) => ({ visits: (prev?.['visits'] as number) + 1 }));
+readEntity(client, 'Patient:1'); // tracked inside a computed; undefined when missing
+invalidateEntity(client, 'Patient:1'); // marks stale every query reaching it, refetches observed ones
+evict(client, 'Patient:1'); // removes it: queries see the field as missing
+```
+
+- Entities are merged field by field into one store per client (two clients never share). Nested entities, and entities inside arrays, are normalized too; other objects stay inline. An entity unchanged since the last read keeps its identity.
+- A query entry holds the entities it reaches. When the entry is replaced or collected (`gcTime`) they are released, and an entity nobody holds is removed. Collection marks what the live entries (and `writeEntity` writes) reach and drops the rest, so entities that reference each other are collected too; a cycle is cut where it loops back when read.
+- A ref to a missing entity reads as `undefined`, never throws. Data that is not JSON (a function, a class instance other than `Date`, a bigint, a cycle) throws `RIVA_CACHE`; nothing is written.
+- The store follows the identity rules (`keys`, `identify`) of the first policy used on a client. A later policy with other rules, or with rules after `readEntity`/`writeEntity` filled the store, throws `RIVA_CACHE`; share one `entities()` (or the same options objects) between a client's queries. The GraphQL selection-aware walker (fields with arguments, aliases, fragments) comes with `@softistx/riva-graphql`.
+- A refused `setData` throws `RIVA_CACHE` and leaves the entry untouched. A refused result of a fetch sets the error status, keeps the previous data and rejects the fetch.
+- `CachePolicy` (`write`, `read`, `release`) is the hook behind it, exported from the main entry for other policies.
+
+### Exported types and helpers
+
+`identifyOf(policy, obj)` gives the `Type:id` ref of an object under a policy's identity rule. Types: `EntityPolicy`, `EntitiesOptions`, `Identify`, `Fields`; and `CachePolicy` from the main entry.
+
+### Size budget
+
+The main entry `@softistx/riva` stays within 6144 B gzipped, the main entry with `entities` within 8192 B, and core + react within 9216 B. `bun run size` checks them.

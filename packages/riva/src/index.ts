@@ -29,6 +29,7 @@ export {
 } from './errors';
 export { stableKey } from './key';
 export {
+	type CachePolicy,
 	type EnsureOptions,
 	type FetchContext,
 	type Query,

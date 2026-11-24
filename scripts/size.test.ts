@@ -19,3 +19,13 @@ test('a missing measurement fails', () => {
 test('the core budget is 6144 B', () => {
 	expect(budgets.find((b) => b.name === '@softistx/riva')?.limit).toBe(6144);
 });
+
+test('the core and subpath rows: 6144 B and 8192 B, the second under the 9216 B core + react cap', () => {
+	const row = budgets.find((b) => b.name === '@softistx/riva + entities');
+	expect(row?.limit).toBe(8192);
+	expect(row?.entry).toEqual([
+		'packages/riva/dist/index.js',
+		'packages/riva/dist/entities/index.js',
+	]);
+	expect(row?.limit).toBeLessThanOrEqual(9216);
+});

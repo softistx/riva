@@ -27,6 +27,8 @@ export class RivaClient {
 	readonly graph: graph.Graph = graph.createGraph(this);
 	/** @internal */
 	readonly queries: QueryCache;
+	/** @internal Per-client state of opt-in modules, by their own key. */
+	readonly slots = new Map<object, unknown>();
 
 	constructor(options: ClientOptions = {}) {
 		this.queries = createQueryCache(

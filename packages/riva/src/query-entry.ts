@@ -1,5 +1,6 @@
 import { type Atom, atom } from './atom';
 import type { RivaClient } from './client';
+import { computed, type Readable } from './computed';
 import type { ClientEvents, Scheduler } from './env';
 import { nodeOf } from './graph';
 import { stableKey } from './key';
@@ -29,6 +30,8 @@ export interface Entry {
 	vars: unknown;
 	/** The graph atom holding the state: the one notification mechanism. */
 	atom: Atom<State>;
+	/** What readers see: the atom, or a computed reading `data` through the cache policy. */
+	out: Readable<State>;
 	observers: number;
 	invalidated: boolean;
 	run: Inflight | undefined;
@@ -59,6 +62,47 @@ const IDLE: State = Object.freeze({
 export const peek = (c: Ctx, e: Entry): State =>
 	nodeOf(c.client.graph, e.atom).value as State;
 
+/** The state as readers see it (data read through the cache policy), untracked. */
+export const view = (c: Ctx, e: Entry): State =>
+	c.client.untracked(() => c.client.get(e.out));
+
+/** The data as the entry stores it: through the cache policy, which may refuse it by throwing. */
+export const toStored = (c: Ctx, e: Entry, data: unknown): unknown => {
+	const cache = e.def.options.cache;
+	return cache && data !== undefined
+		? cache.write(c.client, data, peek(c, e).data)
+		: data;
+};
+
+/** Writes a patch whose `data` is already stored, then releases the data it replaced. */
+export function putStored(c: Ctx, e: Entry, patch: Partial<State>): void {
+	const cache = e.def.options.cache;
+	const prev = peek(c, e).data;
+	put(c, e, patch);
+	if (cache && 'data' in patch && prev !== undefined && prev !== patch.data)
+		cache.release(c.client, prev);
+}
+
+/**
+ * Writes a patch that may carry new data, through the cache policy. A policy
+ * that refuses the data leaves the old data and sets the error state; the
+ * error is returned.
+ */
+export function putData(c: Ctx, e: Entry, patch: Partial<State>): unknown {
+	if (!e.def.options.cache || !('data' in patch)) return void put(c, e, patch);
+	let error: unknown;
+	c.client.batch(() => {
+		try {
+			putStored(c, e, { ...patch, data: toStored(c, e, patch.data) });
+		} catch (x) {
+			error = x;
+			const { data: _, ...rest } = patch;
+			put(c, e, { ...rest, status: 'error', error: x });
+		}
+	});
+	return error;
+}
+
 /** Writes a patch over the current state (one notification). */
 export const put = (c: Ctx, e: Entry, patch: Partial<State>): void =>
 	c.client.set(e.atom, { ...peek(c, e), ...patch });
@@ -80,19 +124,43 @@ export function armGc(c: Ctx, e: Entry): void {
 		// A computed or listener still reading the atom keeps the entry alive.
 		if (e.observers || e.run || nodeOf(c.client.graph, e.atom).refs)
 			return armGc(c, e);
-		if (c.entries.get(e.key) === e) c.entries.delete(e.key);
+		if (c.entries.get(e.key) !== e) return;
+		c.entries.delete(e.key);
+		const stored = peek(c, e).data;
+		if (stored !== undefined) e.def.options.cache?.release(c.client, stored);
 	}, ms);
 }
 
+const sameState = (a: State, b: State): boolean =>
+	a.status === b.status &&
+	a.data === b.data &&
+	a.error === b.error &&
+	a.isFetching === b.isFetching &&
+	a.updatedAt === b.updatedAt;
+
 export function entryOf(c: Ctx, def: AnyQuery, vars: unknown): Entry {
+	const { client } = c;
 	const key = stableKey(def.id, vars);
 	let e = c.entries.get(key);
 	if (!e) {
+		const a = atom<State>(IDLE, { name: key });
+		const cache = def.options.cache;
 		e = {
 			key,
 			def,
 			vars,
-			atom: atom<State>(IDLE, { name: key }),
+			atom: a,
+			out: cache
+				? computed(
+						(get) => {
+							const s = get(a);
+							return s.data === undefined
+								? s
+								: { ...s, data: cache.read(client, s.data) };
+						},
+						{ equals: sameState, name: key },
+					)
+				: a,
 			observers: 0,
 			invalidated: false,
 			run: undefined,

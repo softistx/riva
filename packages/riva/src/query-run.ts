@@ -6,7 +6,9 @@ import {
 	type Inflight,
 	peek,
 	put,
+	putData,
 	type State,
+	view,
 } from './query-entry';
 import { raceAbort, retryDelay, shouldRetry, sleep } from './retry';
 
@@ -57,22 +59,24 @@ function start(c: Ctx, e: Entry): Inflight {
 		isFetching: true,
 	});
 	// A cancelled fetch (no longer `e.run`) writes nothing.
-	const done = (patch: Partial<State>) => {
+	const done = (patch: Partial<State>): unknown => {
 		if (e.run !== f) return;
 		e.run = undefined;
 		e.invalidated = false;
-		put(c, e, { isFetching: false, ...patch });
+		const refused = putData(c, e, { isFetching: false, ...patch });
 		armGc(c, e);
+		return refused;
 	};
 	f.promise = loop(c, e, f).then(
 		(data) => {
-			done({
+			const refused = done({
 				status: 'success',
 				data,
 				error: undefined,
 				updatedAt: c.sched.now(),
 			});
-			return data;
+			if (refused) throw refused;
+			return e.def.options.cache ? (view(c, e).data ?? data) : data;
 		},
 		(error) => {
 			if (f.set) return f.set.v;
