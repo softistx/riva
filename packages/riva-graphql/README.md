@@ -2,7 +2,7 @@
 
 GraphQL for [riva](https://github.com/softistx/riva/blob/develop/packages/riva/README.md) over [`@softistx/graphql-client`](https://github.com/softistx/graphql): `query`, `mutation` and `infinite` definitions typed from a `TypedDocumentNode` (variables and data are inferred, never annotated), a per-client transport, errors mapped to riva's, and a codegen helper that builds the allowlist a BFF's `/_data` route executes from the client preset's persisted documents.
 
-Errors and fixes: [docs](./docs/README.md). Work in progress, see the [spec](https://github.com/softistx/riva/blob/develop/docs/spec.md). The normalized GraphQL cache is a later slice: today a definition keeps its data as is.
+Errors and fixes: [docs](./docs/README.md). Work in progress, see the [spec](https://github.com/softistx/riva/blob/develop/docs/spec.md).
 
 ```sh
 bun add @softistx/riva @softistx/riva-graphql @softistx/graphql-client graphql
@@ -27,6 +27,12 @@ export const PATIENTS_QUERY = graphql(`
 	}
 `);
 
+export const PATIENT_QUERY = graphql(`
+	query Patient($id: ID!) {
+		patient(id: $id) { __typename id name }
+	}
+`);
+
 export const RENAME_PATIENT_MUTATION = graphql(`
 	mutation RenamePatient($id: ID!, $name: String!) {
 		renamePatient(id: $id, name: $name) { id name }
@@ -34,7 +40,7 @@ export const RENAME_PATIENT_MUTATION = graphql(`
 `);
 ```
 
-The examples below use these two constants, an `url` such as `https://api.example.com/graphql`, and a `client` made as shown next.
+The examples below use these constants (`PATIENTS_QUERY` and `PATIENT_QUERY`, which the cache section selects `__typename` in), an `url` such as `https://api.example.com/graphql`, and a `client` made as shown next.
 
 ## Provide the transport
 
@@ -127,24 +133,31 @@ The caller's variables leave the cursors out. The list's id is the query's id pl
 ## Normalized cache
 
 ```ts
-import { query, mutation } from '@softistx/riva-graphql';
+import { mutation, query } from '@softistx/riva-graphql';
 import { normalized } from '@softistx/riva-graphql/cache';
+import { PATIENT_QUERY, PATIENTS_QUERY, RENAME_PATIENT_MUTATION } from './graphql';
 
+// PATIENT_QUERY: query Patient($id: ID!) { patient(id: $id) { __typename id name } }
 const cache = normalized({ possibleTypes: { Person: ['Patient', 'Doctor'] } });
 
 export const patient = query(PATIENT_QUERY, { cache });
 export const patients = query(PATIENTS_QUERY, { cache });
-export const rename = mutation(RENAME_PATIENT_MUTATION, { cache });
+export const rename = mutation(RENAME_PATIENT_MUTATION, {
+	cache, // the mutation's result updates every entity it returns
+	optimistic: (v) => ({ renamePatient: { __typename: 'Patient', id: v.id, name: v.name } }),
+});
 ```
+
+`query()` and `mutation()` take `cache?: CachePolicy | OperationCache`: a core policy as is, or an `OperationCache`, an object with `forOperation(op)` that returns the policy for the operation (`op.document`, `name`, `kind`, `id`). `normalized()` is one; a cache of your own implements `forOperation` the same way. `infinite()` and the core `query()` take core policies only.
 
 `normalized()` walks the operation's selection set and stores each object that has a `__typename` and an `id` once, as an entity, so two queries that show the same patient update each other, and a mutation's result updates every query showing it. It is built on the core entity store (`@softistx/riva/entities`): `readEntity`, `writeEntity`, `useFragment` and a mutation's optimistic layer, commit and rollback work as with `entities()`.
 
-- **Aliases** are stored under the field's name and read back under the response key.
-- **Field arguments** get one stored field per argument set, variables resolved: `friends({"first":1})`. `readEntity` shows these field keys.
-- **Fragments** (inline and named) and type conditions work. Pass `possibleTypes` for fragments on interfaces and unions.
-- **Identity** options are the core's (`keys`, `identify`). Share one `normalized()` between a client's definitions: a second one with other identity rules is refused by the core.
-- **Selections must include `__typename`**, which the client preset's `addTypenameSelectionDocumentTransform` adds. Without it an object is stored embedded in its parent, not as an entity.
-- **A miss is a miss**: if a selected field or entity is missing from the store, the query's data is `undefined` and the query is fetched, never half-served.
+- **Aliases** are stored under the field's name and read back under the response key; one field selected under two aliases has its sub-selections merged.
+- **Field arguments** get one stored field per argument set, variables resolved. They are not shown by `readEntity` or a plain `entities()` read, which skip those keys; read them through the query.
+- **Fragments** (inline and named) and type conditions work. `possibleTypes` maps each interface or union to the names of its member types (`{ Person: ['Patient', 'Doctor'] }`, as codegen's `fragment-matcher` writes it), and may nest abstract types. Without it, a fragment on an abstract type is applied only to the objects whose `__typename` equals its condition; for an object with no `__typename` the cache cannot tell and reads the fragment's fields too, so a miss stays visible.
+- **Identity** options are the core's (`keys`, `identify`). Share one `normalized()` between a client's definitions: a second one with other identity rules is refused by the core ([the core page](../riva/docs/troubleshooting.md#this-client-already-uses-other-entity-identity-rules)).
+- **Selections must include `__typename`** below the operation's root, which the client preset's `addTypenameSelectionDocumentTransform` adds. A document that does not is refused when `query()` or `mutation()` is called, with a `TypeError`; the document is never rewritten, since a persisted id is the hash of its text.
+- **A miss is a miss**: if a selected field or entity is missing from the store, the query's data is `undefined`, never half-served. An observed query then refetches once; if the server still leaves a selected field out, the query ends in the error status with code `RIVA_CACHE`.
 - The cache holds JSON: a `Date`, a function or a `NaN` in a result throws a `RivaError` with code `RIVA_CACHE`.
 
 ## Errors
@@ -228,7 +241,7 @@ const manifest = buildAllowlist({
 |---|---|---|
 | `@softistx/riva-graphql` | `query`, `mutation`, `provideGraphQL`, `graphqlClientTransport`, `toRivaError`, `operationOf`, `VERSION` | Imports `@softistx/riva` only; no optional peer. |
 | `@softistx/riva-graphql/infinite` | `infinite` | Imports `@softistx/riva/infinite`. |
-| `@softistx/riva-graphql/cache` | `normalized`, `fieldKey`, `fieldNameOf`, `stableJson` | Imports `@softistx/riva/entities`; no `graphql` value import. |
+| `@softistx/riva-graphql/cache` | `normalized` | Imports `@softistx/riva/entities`; no `graphql` value import. |
 | `@softistx/riva-graphql/codegen` | `buildAllowlist`, `writeAllowlist` | Node and codegen only; needs `graphql`. |
 
 Exported types: `GraphQLTransport`, `Operation`, `OperationKind`, `VarsOf` and `GraphQLQueryOptions`, `GraphQLMutationOptions`, `OperationCache` (main entry); `NormalizedOptions`, `PossibleTypes` (`/cache`); `GraphQLInfiniteOptions` (`/infinite`); `AllowlistConfig`, `AllowlistEntry`, `AllowlistManifest` (`/codegen`).

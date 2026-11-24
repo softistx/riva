@@ -39,6 +39,8 @@ export interface Entry {
 	out: Readable<State>;
 	observers: number;
 	invalidated: boolean;
+	/** A refetch was started because the policy could not read the stored data. */
+	missed: boolean;
 	run: Inflight | undefined;
 	gc: unknown;
 	poll: unknown;
@@ -188,6 +190,7 @@ export function entryOf(c: Ctx, def: AnyQuery, vars: unknown): Entry {
 			),
 			observers: 0,
 			invalidated: false,
+			missed: false,
 			run: undefined,
 			gc: undefined,
 			poll: undefined,

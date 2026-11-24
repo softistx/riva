@@ -23,16 +23,25 @@ export interface EntityPolicy extends CachePolicy<EntityRoot> {
 	identify(obj: Fields): string | undefined;
 }
 
+/** What a codec sees of the entity store: identity and fields, nothing to write. */
+export interface EntityReader {
+	identify(obj: Fields): string | undefined;
+	/** The committed fields of an entity, untracked. */
+	peek(ref: string): Record<string, unknown> | undefined;
+	/** The fields as a reader sees them: tracked, the optimistic layers over them. */
+	fields(ref: string): Record<string, unknown> | undefined;
+}
+
 /**
  * How data becomes entities and back, for a policy that knows the shape of the
  * data (a GraphQL selection). `denormalize` runs in a computed: read each
- * entity through `fieldsOf`, so what it reads is tracked.
+ * entity through `fields`, so what it reads is tracked.
  */
 export interface EntityCodec {
 	/** `vars` are the variables of the query or mutation that gave `data`. */
-	normalize(store: EntityStore, data: unknown, vars: unknown): Normalized;
+	normalize(store: EntityReader, data: unknown, vars: unknown): Normalized;
 	denormalize(
-		store: EntityStore,
+		store: EntityReader,
 		root: unknown,
 		local: Map<string, unknown>,
 	): unknown;

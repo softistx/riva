@@ -1,13 +1,13 @@
-import type { EntityStore, Stored } from '@softistx/riva/entities';
-import { fieldsOf, isPlain, isRef } from '@softistx/riva/entities';
+import type { EntityReader } from '@softistx/riva/entities';
+import { isPlain, isRef } from '@softistx/riva/entities';
 import type { FieldNode, SelectionSetNode } from 'graphql';
 import { fieldKey } from './field-key';
 import { collectFields, subSelections, type Walk } from './selection';
-import { mergeValues } from './values';
+import { mergeValues, type Stored } from './values';
 import type { Root } from './write';
 
 interface Reader extends Walk {
-	readonly store: EntityStore;
+	readonly store: EntityReader;
 }
 
 /** Marks a read that met a missing field or entity. */
@@ -22,13 +22,16 @@ type Missing = typeof missing;
  */
 export function readResult(
 	walk: Walk,
-	store: EntityStore,
+	store: EntityReader,
 	root: Root,
 ): Record<string, unknown> | undefined {
 	const reader: Reader = { ...walk, variables: root.vars, store };
-	const data = readObject(reader, root.data, [
-		walk.document.operation.selectionSet,
-	]);
+	const data = readObject(
+		reader,
+		root.data,
+		[walk.document.operation.selectionSet],
+		true,
+	);
 	return data === missing ? undefined : data;
 }
 
@@ -36,12 +39,14 @@ function readObject(
 	reader: Reader,
 	source: Stored,
 	sets: readonly SelectionSetNode[],
+	root = false,
 ): Record<string, unknown> | Missing {
 	const typename = source['__typename'];
 	const { fields, undecided } = collectFields(
 		sets,
 		typeof typename === 'string' ? typename : undefined,
-		reader,
+		// The root has no `__typename`: a fragment on the root type applies.
+		root ? { ...reader, matches: () => true } : reader,
 		false,
 	);
 	const result: Record<string, unknown> = {};
@@ -73,7 +78,7 @@ function readValue(
 		return items.includes(missing) ? missing : items;
 	}
 	if (isRef(value)) {
-		const target = fieldsOf(reader.store, value.__ref);
+		const target = reader.store.fields(value.__ref);
 		return target ? readObject(reader, target, sets) : missing;
 	}
 	return isPlain(value) ? readObject(reader, value, sets) : value;

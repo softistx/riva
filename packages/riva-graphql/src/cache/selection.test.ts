@@ -5,7 +5,7 @@ import { cacheDocumentOf, collectFields, variablesOf } from './selection';
 
 function keysOf(
 	walk: ReturnType<typeof walkOf>,
-	typename?: string,
+	typename = 'Query',
 	undecidedApply = false,
 ) {
 	const { fields, undecided } = collectFields(
@@ -32,7 +32,7 @@ describe('collectFields', () => {
 		);
 		const { fields } = collectFields(
 			[walk.document.operation.selectionSet],
-			undefined,
+			'Query',
 			walk,
 			false,
 		);

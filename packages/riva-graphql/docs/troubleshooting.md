@@ -100,11 +100,15 @@ Related: `the persisted document <hash> must hold exactly one operation.` and `â
 
 ## `The GraphQL cache holds JSON: field X holds Y.`
 
+Code: `RIVA_CACHE` (`RivaError`).
+
 **Why:** `normalized()` stores plain JSON; a `Date`, a class instance, a function or a non-finite number in a result (a custom scalar parsed by the client) cannot be stored.
 
 **Fix:** keep the scalar serialized in the result, or parse it at the point of use.
 
 ## `The GraphQL cache stores an operation's data: an object.`
+
+Code: `RIVA_CACHE` (`RivaError`).
 
 **Why:** the transport returned something other than an object for the operation's data.
 
@@ -112,24 +116,47 @@ Related: `the persisted document <hash> must hold exactly one operation.` and `â
 
 ## `The document has no fragment X` and `The document holds no operation`
 
+Both are `TypeError`s, thrown when `query()` or `mutation()` is called.
+
 **Why:** the document given to `query()` or `mutation()` with a `normalized()` cache spreads a fragment it does not define, or defines no operation.
 
 **Fix:** pass the preset's document, which carries the fragments it uses.
 
-## Objects are stored inside their parent, not as entities
+## `riva-graphql: the field "X" selects no __typename, which the cache needs to identify objects: â€¦`
 
-**Why:** the selection has no `__typename`, so no object has an identity.
+A `TypeError`, thrown when `query()` or `mutation()` is called with a `normalized()` cache.
 
-**Fix:** use the client preset's `addTypenameSelectionDocumentTransform`, or select `__typename` yourself.
+**Why:** an object with no `__typename` has no identity, so it could not be stored as an entity. The cache refuses the document rather than rewrite it: a persisted id is the hash of the document's text.
+
+**Fix:** add the client preset's `addTypenameSelectionDocumentTransform` to its `documentTransforms` (or select `__typename` yourself in every selection set below the root).
+
+```ts
+// codegen.ts
+import { addTypenameSelectionDocumentTransform } from '@graphql-codegen/client-preset';
+
+presetConfig: { persistedDocuments: true, documentTransforms: [addTypenameSelectionDocumentTransform] }
+```
+
+## `The query's result is incomplete in the cache: the server did not return every selected field.`
+
+Code: `RIVA_CACHE` (`RivaError`), shown as the query's error status.
+
+**When:** an observed query with a `normalized()` cache fetched twice and still reads as a miss.
+
+**Why:** a missing field or entity makes the whole result `undefined`; the engine refetches once, and if the server's answer still lacks a selected field it stops instead of looping.
+
+**Fix:** have the API return every selected field (`null` for an empty one), or remove it from the selection. See the [core page](../../riva/docs/troubleshooting.md).
 
 ## `This client already uses other entity identity rulesâ€¦`
 
+Code: `RIVA_CACHE` (`RivaError`).
+
 **Why:** two `normalized()` (or `entities()`) policies with different `keys` or `identify` were used on one client.
 
-**Fix:** create one `normalized(options)` and pass it to every definition.
+**Fix:** create one `normalized(options)` and pass it to every definition. The core explains it in [its troubleshooting page](../../riva/docs/troubleshooting.md#this-client-already-uses-other-entity-identity-rules).
 
-## A query refetches although another query showed its data
+## A query fetches although another query showed the same entity
 
-**Why:** a missing field or entity makes the whole result `undefined`: the new query selects a field no earlier query fetched, or an argument set not yet stored (`friends({"first":2})` is not `friends({"first":1})`).
+**Why:** each query entry has its own root: which fields it selected and with which arguments. A query's first fetch is unconditional, and it reads from the store afterwards. Later, a field or entity its selection needs that no write has stored (an argument set not yet fetched: `friends({"first":2})` is not `friends({"first":1})`) makes its data `undefined`, and an observed query refetches once.
 
-**Fix:** expected; the query fetches once and then reads from the store.
+**Fix:** expected: the query fetches, then reads from the store.

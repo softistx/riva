@@ -1,6 +1,9 @@
 import { RivaError } from '@softistx/riva';
 import { isPlain } from '@softistx/riva/entities';
 
+/** The fields of an entity, or of an object stored inside one, by field key. */
+export type Stored = Record<string, unknown>;
+
 /**
  * Refuses a value JSON could not hold: the cache holds JSON as the network
  * sends it (a custom scalar arrives as a string). `field` names the field

@@ -1,6 +1,7 @@
 import { type Atom, atom } from '../atom';
 import type { RivaClient } from '../client';
 import { nodeOf } from '../graph';
+import { fieldsOf } from './denormalize';
 import { type Identify, makeIdentify } from './identity';
 import { equal, refsIn } from './json';
 
@@ -47,6 +48,11 @@ export class EntityStore {
 	peek(ref: string): Stored | undefined {
 		const a = this.atoms.get(ref);
 		return a && this.client.untracked(() => this.client.get(a));
+	}
+
+	/** The fields as a reader sees them: tracked, the optimistic layers over them. */
+	fields(ref: string): Stored | undefined {
+		return fieldsOf(this, ref);
 	}
 
 	/** Whether any entity holds fields. */

@@ -1,10 +1,13 @@
 import type { Listener, Unsubscribe } from './atom';
+import { RivaError } from './errors';
 import {
 	type AnyQuery,
 	armGc,
 	type Ctx,
 	type Entry,
 	entryOf,
+	peek,
+	put,
 	type State,
 	stale,
 } from './query-entry';
@@ -32,6 +35,35 @@ function refetch(c: Ctx, flag: 'refetchOnFocus' | 'refetchOnReconnect'): void {
 		if (e.observers && e.def.options[flag] && !e.run && stale(c, e)) pin(c, e);
 }
 
+/**
+ * A fetched, observed entry whose stored data the policy cannot read (an
+ * entity evicted, a selected field the server left out) is refetched once; a
+ * second miss right after is an error, so it never loops.
+ */
+function complete(c: Ctx, e: Entry, s: State): void {
+	if (s.data !== undefined) e.missed = false;
+	else if (
+		e.def.options.cache &&
+		!e.run &&
+		s.status === 'success' &&
+		peek(c, e).data !== undefined
+	) {
+		if (e.missed)
+			put(c, e, {
+				status: 'error',
+				error: new RivaError(
+					'RIVA_CACHE',
+					"The query's result is incomplete in the cache: the server did not return every selected field.",
+				),
+			});
+		else {
+			e.missed = true;
+			e.invalidated = true;
+			pin(c, e);
+		}
+	}
+}
+
 /** Counts an observer, fetches when needed, polls; the returned function undoes it. */
 export function observe(
 	c: Ctx,
@@ -52,7 +84,10 @@ export function observe(
 		};
 	}
 	if (e.observers++ === 0) poll(c, e);
-	const off = c.client.subscribe(e.out, listener);
+	const off = c.client.subscribe(e.out, (s) => {
+		listener(s);
+		complete(c, e, s);
+	});
 	if (stale(c, e, opts?.staleTime)) join(c, e);
 	let done = false;
 	return () => {

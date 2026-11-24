@@ -68,6 +68,8 @@ function walkFields(
 ): Record<string, unknown> {
 	const out: Record<string, unknown> = {};
 	for (const k in fields) {
+		// A GraphQL argument field (`friends({"first":1})`) is not part of a plain result.
+		if (k.includes('(')) continue;
 		const x = walk(store, fields[k], c);
 		if (x !== undefined) out[k] = x;
 	}

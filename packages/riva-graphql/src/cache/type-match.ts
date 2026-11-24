@@ -4,7 +4,7 @@ export type PossibleTypes = Readonly<Record<string, readonly string[]>>;
 /**
  * Whether a fragment's type condition holds for an object's `__typename`:
  * `true`, `false`, or `undefined` when the cache cannot tell (an abstract
- * type with no `possibleTypes`).
+ * type with no `possibleTypes`, or an object with no `__typename`).
  */
 export type TypeMatcher = (
 	condition: string | undefined,
@@ -21,8 +21,8 @@ export function typeMatcher(possibleTypes: PossibleTypes = {}): TypeMatcher {
 	const members = closure(possibleTypes);
 	const known = members.size > 0;
 	return (condition, typename) => {
-		if (condition === undefined || typename === undefined) return true;
-		if (condition === typename) return true;
+		if (condition === undefined || condition === typename) return true;
+		if (typename === undefined) return undefined;
 		const types = members.get(condition);
 		if (types) return types.has(typename);
 		return known ? false : undefined;

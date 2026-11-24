@@ -121,6 +121,16 @@ query({ id: 'a', cache, fetch });
 query({ id: 'b', cache, fetch });
 ```
 
+## The query's result is incomplete in the cache: the server did not return every selected field.
+
+Code: `RIVA_CACHE` (`RivaError`).
+
+**When:** an observed query with a cache whose `read` returns `undefined` (a selection-aware cache such as `normalized()`), even right after a fetch: the entry shows the error status.
+
+**Why:** a miss (an evicted entity, a field the data never held) makes the engine invalidate and refetch the entry once. If the fresh result still reads as a miss, the server answered without a selected field, and a second refetch would give the same, so it stops.
+
+**Fix:** have the API return every selected field (a nullable field must come back as `null`, not be left out), or remove the field from the selection.
+
 ## The request was aborted
 
 Code: `RIVA_ABORT` (`RivaAbortError`).

@@ -2,19 +2,17 @@
 import { describe, expect, expectTypeOf, test } from 'bun:test';
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import {
+	query as coreQuery,
 	createRivaClient,
 	type Query,
 	type RivaClient,
 	RivaError,
 } from '@softistx/riva';
-import {
-	evict,
-	readEntity,
-	storeOf,
-	writeEntity,
-} from '@softistx/riva/entities';
+import { evict, readEntity, writeEntity } from '@softistx/riva/entities';
 import { parse } from 'graphql';
+import { storeOfClient } from '../../test/cache';
 import { fakeTransport } from '../../test/fixtures';
+import { infinite } from '../infinite';
 import { mutation, query } from '../query';
 import { provideGraphQL } from '../transport';
 import { normalized } from './normalized';
@@ -129,7 +127,9 @@ describe('normalized() over the entity store', () => {
 		const p = rename.run(client, { id: '1', name: 'Zed' });
 		expect(client.get(patient, { id: '1' }).data?.patient.name).toBe('Zed');
 		expect(client.get(patients).data?.patients[0]?.name).toBe('Zed');
-		expect(storeOf(client).peek('Patient:1')).toMatchObject({ name: 'Ada' });
+		expect(storeOfClient(client).peek('Patient:1')).toMatchObject({
+			name: 'Ada',
+		});
 		d.reject(new Error('refused'));
 		await p.catch(() => {});
 		expect(client.get(patient, { id: '1' }).data?.patient.name).toBe('Ada');
@@ -166,11 +166,17 @@ describe('aliases and arguments', () => {
 		const { client } = setup(() => friends(1));
 		const data = await aliased.ensure(client, { id: '1', n: 1 });
 		expect(data.me.label).toBe('Ada');
-		expect(readEntity(client, 'Patient:1')).toMatchObject({
+		// The argument field is in the store; a plain `readEntity` leaves it out.
+		expect(storeOfClient(client).peek('Patient:1')).toMatchObject({
 			name: 'Ada',
-			'friends({"first":1})': [{ id: '2' }],
+			'friends({"first":1})': [{ __ref: 'Patient:2' }],
 		});
-		expect(readEntity(client, 'Patient:1')).not.toHaveProperty('label');
+		expect(storeOfClient(client).peek('Patient:1')).not.toHaveProperty('label');
+		expect(readEntity(client, 'Patient:1')).toEqual({
+			__typename: 'Patient',
+			id: '1',
+			name: 'Ada',
+		});
 	});
 
 	test('one stored field per argument set, both readable', async () => {
@@ -179,8 +185,7 @@ describe('aliases and arguments', () => {
 		);
 		await aliased.ensure(client, { id: '1', n: 1 });
 		await aliased.ensure(client, { id: '1', n: 2 });
-		const stored =
-			readEntity<Record<string, unknown[]>>(client, 'Patient:1') ?? {};
+		const stored = storeOfClient(client).peek('Patient:1') ?? {};
 		expect(stored['friends({"first":1})']).toHaveLength(1);
 		expect(stored['friends({"first":2})']).toHaveLength(2);
 		expect(
@@ -207,6 +212,39 @@ describe('policy behaviours', () => {
 		await patient.ensure(client, { id: '1' });
 		evict(client, 'Patient:1');
 		expect(client.get(patient, { id: '1' }).data).toBeUndefined();
+	});
+
+	test('an evicted entity is refetched once an observer needs it', async () => {
+		const { client, transport } = setup(answers({ ada: 'Ada' }));
+		await patient.ensure(client, { id: '1' });
+		const off = client.subscribe(patient, { id: '1' }, () => {});
+		evict(client, 'Patient:1');
+		await new Promise((r) => setTimeout(r, 20));
+		expect(transport.calls.length).toBe(2);
+		expect(client.get(patient, { id: '1' }).data?.patient.name).toBe('Ada');
+		off();
+	});
+
+	test('a server that omits a selected field ends in RIVA_CACHE, not a loop', async () => {
+		const { client, transport } = setup(() => ({
+			patient: { __typename: 'Patient', id: '1' },
+		}));
+		const off = client.subscribe(patient, { id: '1' }, () => {});
+		await patient.ensure(client, { id: '1' }).catch(() => {});
+		await new Promise((r) => setTimeout(r, 50));
+		const state = client.get(patient, { id: '1' });
+		expect(transport.calls.length).toBe(2);
+		expect(state.status).toBe('error');
+		expect((state.error as RivaError).code).toBe('RIVA_CACHE');
+		off();
+	});
+
+	test('a document without __typename is refused when the query is defined', () => {
+		const DOC = parse('query Bare { patient { id } }') as TypedDocumentNode<
+			unknown,
+			{ [k: string]: never }
+		>;
+		expect(() => query(DOC, { cache })).toThrow(/^riva-graphql: /);
 	});
 
 	test('keys override the identity, from the fields by name', async () => {
@@ -294,5 +332,23 @@ const types = () => {
 	const opts = normalized({ possibleTypes: { Node: ['Patient'] } });
 	expectTypeOf(opts.forOperation).parameter(0).toHaveProperty('document');
 };
+const rejected = () => {
+	// An operation cache binds a document; neither the core `query()` nor
+	// `infinite()` has one to give it.
+	coreQuery<{ id: string }, { patient: Named }>({
+		id: 'x',
+		fetch: async () => ({ patient: ada }),
+		// @ts-expect-error an OperationCache is not a core CachePolicy
+		cache,
+	});
+	infinite(PATIENTS_QUERY, {
+		connection: () => ({}) as never,
+		// @ts-expect-error an OperationCache is not accepted by infinite()
+		cache,
+	});
+	// @ts-expect-error a cache option is a policy or an operation cache
+	query(PATIENT_QUERY, { cache: 'normalized' });
+};
 void types;
+void rejected;
 void (null as unknown as RivaClient);

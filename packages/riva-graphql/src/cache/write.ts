@@ -1,18 +1,13 @@
 import { RivaError } from '@softistx/riva';
-import type {
-	EntityStore,
-	Fields,
-	Normalized,
-	Stored,
-} from '@softistx/riva/entities';
+import type { EntityReader, Fields, Normalized } from '@softistx/riva/entities';
 import { isPlain, isRef } from '@softistx/riva/entities';
 import type { FieldNode, SelectionSetNode } from 'graphql';
 import { fieldKey } from './field-key';
 import { collectFields, subSelections, type Walk } from './selection';
-import { assertJson } from './values';
+import { assertJson, type Stored } from './values';
 
 interface Writer extends Walk {
-	readonly store: EntityStore;
+	readonly store: EntityReader;
 	/** The fields to merge, by entity, once the whole walk succeeded. */
 	readonly pending: Map<string, Stored>;
 }
@@ -33,7 +28,7 @@ export interface Root {
  */
 export function writeResult(
 	walk: Walk,
-	store: EntityStore,
+	store: EntityReader,
 	data: unknown,
 ): Normalized {
 	if (!isPlain(data))
@@ -46,7 +41,8 @@ export function writeResult(
 	const { fields } = collectFields(
 		[operation.selectionSet],
 		undefined,
-		walk,
+		// The root has no `__typename`: a fragment on the root type applies.
+		{ ...walk, matches: () => true },
 		true,
 	);
 	const entries = writeFields(writer, data, fields, undefined);
@@ -97,12 +93,13 @@ function writeFields(
 	for (const [responseKey, nodes] of fields) {
 		if (!Object.hasOwn(data, responseKey)) continue;
 		const key = fieldKey(nodes[0] as FieldNode, writer.variables);
+		// The same field under two aliases: the second walk merges over the first.
 		entries[key] = writeValue(
 			writer,
 			data[responseKey],
 			key,
 			subSelections(nodes),
-			previous?.[key],
+			Object.hasOwn(entries, key) ? entries[key] : previous?.[key],
 		);
 	}
 	return entries;
@@ -123,8 +120,18 @@ function writeValue(
 		return value;
 	}
 	if (Array.isArray(value))
-		return value.map((item) =>
-			writeValue(writer, item, field, sets, undefined),
+		return value.map((item, i) =>
+			writeValue(
+				writer,
+				item,
+				field,
+				sets,
+				// Lists of one length are read item by item: two queries selecting
+				// other fields of the items both stay whole.
+				Array.isArray(existing) && existing.length === value.length
+					? existing[i]
+					: undefined,
+			),
 		);
 	if (!isPlain(value)) {
 		assertJson(value, field);

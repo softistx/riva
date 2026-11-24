@@ -234,4 +234,46 @@ describe('writeResult', () => {
 			"The GraphQL cache stores an operation's data",
 		);
 	});
+	test('one field under two aliases merges its sub-selections at the root', () => {
+		const { root, store } = write(
+			'{ a: patient(id: "1") { __typename id name } b: patient(id: "1") { __typename id born } }',
+			{
+				a: { __typename: 'Patient', id: '1', name: 'Ada' },
+				b: { __typename: 'Patient', id: '1', born: 1815 },
+			},
+		);
+		expect(Object.keys(root.data)).toEqual(['patient({"id":"1"})']);
+		expect(store.peek('Patient:1')).toMatchObject({ name: 'Ada', born: 1815 });
+	});
+
+	test('one field under two aliases merges its sub-selections inside an entity', () => {
+		const { store } = write(
+			'{ patient(id: "1") { __typename id x: doctor { __typename id name } y: doctor { __typename id ward } } }',
+			{
+				patient: {
+					__typename: 'Patient',
+					id: '1',
+					x: { __typename: 'Doctor', id: 'd', name: 'Grey' },
+					y: { __typename: 'Doctor', id: 'd', ward: 'ER' },
+				},
+			},
+		);
+		expect(store.peek('Patient:1')?.['doctor']).toEqual({ __ref: 'Doctor:d' });
+		expect(store.peek('Doctor:d')).toMatchObject({ name: 'Grey', ward: 'ER' });
+	});
+
+	test('items of a list rewritten at the same length keep their own fields', () => {
+		const store = newStore();
+		const source =
+			'{ patients { __typename id ... on Patient { notes { text } } } }';
+		const item = (id: string, text: string) => ({
+			__typename: 'Patient',
+			id,
+			notes: { text },
+		});
+		write(source, { patients: [item('1', 'a'), item('2', 'b')] }, {}, store);
+		write(source, { patients: [item('2', 'c'), item('1', 'd')] }, {}, store);
+		expect(store.peek('Patient:1')?.['notes']).toEqual({ text: 'd' });
+		expect(store.peek('Patient:2')?.['notes']).toEqual({ text: 'c' });
+	});
 });

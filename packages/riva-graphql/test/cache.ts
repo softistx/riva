@@ -1,5 +1,9 @@
-import { createRivaClient } from '@softistx/riva';
-import { type EntityStore, storeOf } from '@softistx/riva/entities';
+import { createRivaClient, type RivaClient } from '@softistx/riva';
+import {
+	type EntityReader,
+	entities,
+	type Fields,
+} from '@softistx/riva/entities';
 import { parse } from 'graphql';
 import {
 	cacheDocumentOf,
@@ -23,11 +27,32 @@ export function walkOf(
 	};
 }
 
+/** The entity store as the specs use it: the reader a codec gets, and what only the core writes with. */
+export type TestStore = Omit<EntityReader, 'identify'> & {
+	identify: (obj: Fields) => string | undefined;
+	readonly client: RivaClient;
+	readonly empty: boolean;
+	merge(ref: string, fields: Record<string, unknown>): void;
+};
+
+/** The entity store of `client`, captured through a codec: the core does not export it. */
+export function storeOfClient(client: RivaClient): TestStore {
+	let captured: unknown;
+	entities(undefined, {
+		normalize: (store) => {
+			captured = store;
+			return { root: undefined, pending: new Map() };
+		},
+		denormalize: () => undefined,
+	}).write(client, {}, undefined, undefined);
+	return captured as TestStore;
+}
+
 /** A fresh client's entity store. */
-export const newStore = (): EntityStore => storeOf(createRivaClient());
+export const newStore = (): TestStore => storeOfClient(createRivaClient());
 
 /** Writes `data` into the store as a query entry would, and returns the entry's root. */
-export function writeInto(store: EntityStore, walk: Walk, data: unknown): Root {
+export function writeInto(store: TestStore, walk: Walk, data: unknown): Root {
 	const { root, pending } = writeResult(walk, store, data);
 	for (const [ref, fields] of pending) store.merge(ref, fields);
 	return root as Root;

@@ -93,3 +93,10 @@ test('a memo per reader: a cut cycle does not flip the identity between readers'
 	dn(store, { __ref: 'B:1' }, m2);
 	expect(dn(store, { __ref: 'A:1' }, m1)).toBe(first);
 });
+
+test('a GraphQL argument field is not part of a plain result', () => {
+	const { store } = make();
+	store.merge('A:1', { n: 1, 'friends({"first":1})': [{ __ref: 'A:2' }] });
+	store.merge('A:2', { n: 2 });
+	expect(dn(store, { __ref: 'A:1' })).toEqual({ n: 1 });
+});

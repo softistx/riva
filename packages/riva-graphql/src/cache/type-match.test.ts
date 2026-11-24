@@ -3,10 +3,11 @@ import { describe, expect, test } from 'bun:test';
 import { typeMatcher } from './type-match';
 
 describe('typeMatcher', () => {
-	test('no condition, or no typename to compare, always matches', () => {
+	test('no condition always matches; no typename is undecided', () => {
 		const matches = typeMatcher();
 		expect(matches(undefined, 'Patient')).toBe(true);
-		expect(matches('Patient', undefined)).toBe(true);
+		// No typename to compare: undecided, never a silent match.
+		expect(matches('Patient', undefined)).toBeUndefined();
 	});
 
 	test('with possibleTypes, an abstract type matches its members, at any depth', () => {

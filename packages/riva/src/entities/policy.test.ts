@@ -360,3 +360,26 @@ describe('entities() as a query cache policy', () => {
 		expect(client.get(plain)).toBe(client.get(plain));
 	});
 });
+
+describe('a custom codec', () => {
+	test('normalizes with the variables of the query and denormalizes through the reader', async () => {
+		const seen: unknown[] = [];
+		const policy = entities(undefined, {
+			normalize: (_store, data, vars) => {
+				seen.push(vars);
+				return { root: data, pending: new Map([['A:1', { n: 1 }]]) };
+			},
+			denormalize: (store) => store.fields('A:1'),
+		});
+		const q = query<{ k: number }, unknown>({
+			id: 'codec',
+			cache: policy,
+			fetch: async () => ({ any: true }),
+		});
+		const client = createRivaClient();
+		await q.ensure(client, { k: 7 });
+		expect(seen).toEqual([{ k: 7 }]);
+		expect(client.get(q, { k: 7 }).data).toEqual({ n: 1 });
+		expect(readEntity(client, 'A:1')).toEqual({ n: 1 });
+	});
+});
