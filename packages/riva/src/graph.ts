@@ -2,6 +2,7 @@ import type { Atom, Listener } from './atom';
 import type { RivaClient } from './client';
 import type { Computed, Readable } from './computed';
 import { RivaError } from './errors';
+import { collect, flush } from './flush';
 import { withClient } from './scope';
 
 type Def = Atom<unknown> | Computed<unknown>;
@@ -128,13 +129,14 @@ function recompute(g: Graph, n: Node): void {
 }
 
 /** Brings a computed up to date, re-evaluating only when a source changed. */
-function refresh(g: Graph, n: Node): void {
+export function refresh(g: Graph, n: Node): void {
 	if (n.def.kind === 'atom' || n.stamp === g.epoch) return;
 	if (n.busy)
 		throw new RivaError(
 			'RIVA_CYCLE',
 			`Cycle detected: computed ${n.def.name ?? '(anonymous)'} reads itself.`,
 		);
+	const epoch = g.epoch;
 	n.busy = true;
 	try {
 		let stale = !n.init;
@@ -147,7 +149,8 @@ function refresh(g: Graph, n: Node): void {
 				}
 			}
 		if (stale) recompute(g, n);
-		n.stamp = g.epoch;
+		// The epoch from before the run: a write the node made itself is rechecked.
+		n.stamp = epoch;
 	} finally {
 		n.busy = false;
 	}
@@ -160,42 +163,7 @@ export function read<T>(g: Graph, def: Readable<T>): T {
 	return n.value as T;
 }
 
-function collect(g: Graph, n: Node): void {
-	if (n.listeners.size > 0) g.pending.add(n);
-	for (const o of n.observers) collect(g, o);
-}
-
-function flush(g: Graph): void {
-	if (g.depth > 0 || g.flushing) return;
-	g.flushing = true;
-	const errors: unknown[] = [];
-	try {
-		while (g.pending.size > 0) {
-			const queue = [...g.pending];
-			g.pending.clear();
-			for (const n of queue) {
-				try {
-					refresh(g, n);
-					if (n.ver === n.seen) continue;
-					n.seen = n.ver;
-					for (const l of [...n.listeners])
-						try {
-							l(n.value);
-						} catch (e) {
-							errors.push(e);
-						}
-				} catch (e) {
-					errors.push(e);
-				}
-			}
-		}
-	} finally {
-		g.flushing = false;
-	}
-	if (errors.length === 1) throw errors[0];
-	if (errors.length > 1)
-		throw new AggregateError(errors, 'Several listeners threw.');
-}
+const settle = (g: Graph): void => flush(g, refresh);
 
 export function write<T>(
 	g: Graph,
@@ -212,7 +180,7 @@ export function write<T>(
 	n.ver++;
 	g.epoch++;
 	collect(g, n);
-	flush(g);
+	settle(g);
 }
 
 export function subscribe<T>(
@@ -227,18 +195,38 @@ export function subscribe<T>(
 	const own: Listener<unknown> = (v) => entry(v);
 	n.listeners.add(own);
 	retain(n);
-	return () => {
+	const off = () => {
 		if (!n.listeners.delete(own)) return;
 		release(n);
 	};
+	// A node that wrote its own source while evaluating is not fresh yet.
+	if (n.def.kind === 'computed' && n.stamp !== g.epoch) {
+		g.pending.add(n);
+		try {
+			settle(g);
+		} catch (e) {
+			off();
+			throw e;
+		}
+	}
+	return off;
 }
 
 export function batch<R>(g: Graph, fn: () => R): R {
 	g.depth++;
+	let result: R;
 	try {
-		return fn();
-	} finally {
+		result = fn();
+	} catch (e) {
 		g.depth--;
-		flush(g);
+		try {
+			settle(g);
+		} catch (flushError) {
+			if (e instanceof Error && e.cause === undefined) e.cause = flushError;
+		}
+		throw e;
 	}
+	g.depth--;
+	settle(g);
+	return result;
 }

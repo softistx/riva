@@ -89,3 +89,34 @@ test('a throwing listener leaves no stuck flush or batch state', () => {
 	expect(g.depth).toBe(0);
 	expect(() => write(g, a, 2)).toThrow('x');
 });
+
+test('batch rethrows the body error after flushing, with a flush error as cause', () => {
+	const a = atom(0);
+	const c = createRivaClient();
+	const seen: number[] = [];
+	c.subscribe(a, (v) => seen.push(v));
+	const body = new Error('body');
+	expect(() =>
+		c.batch(() => {
+			c.set(a, 1);
+			throw body;
+		}),
+	).toThrow(body);
+	expect(seen).toEqual([1]);
+	const boom = new Error('listener');
+	c.subscribe(a, () => {
+		throw boom;
+	});
+	let thrown: unknown;
+	try {
+		c.batch(() => {
+			c.set(a, 2);
+			throw body;
+		});
+	} catch (e) {
+		thrown = e;
+	}
+	expect(thrown).toBe(body);
+	expect((thrown as Error).cause).toBe(boom);
+	expect(c.graph.depth).toBe(0);
+});

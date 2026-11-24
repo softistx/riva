@@ -40,7 +40,7 @@ export class RivaClient {
 			stop();
 			const previous = cleanup;
 			cleanup = undefined;
-			previous?.();
+			if (previous) this.run(previous);
 		};
 	}
 
