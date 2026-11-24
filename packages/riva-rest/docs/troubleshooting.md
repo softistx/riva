@@ -44,7 +44,7 @@ Code: `RIVA_REST_UNWIRED` (`RivaRequestError`, never retried), thrown when the q
 
 **Why:** the transport's `api` is not the client the definition came from: it has no operation at that method and path (two specs, or a client made over another `operations` table).
 
-**Fix:** build the transport over the same client the definitions use.
+**Fix:** build the transport over the same client the definitions use, with the same `decode` setting: the data types follow the definitions' client, while the call runs on the transport's.
 
 ```ts
 export const api = createOpenApiClient(http, operations);

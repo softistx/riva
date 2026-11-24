@@ -9,7 +9,7 @@ bun add @softistx/riva @softistx/riva-rest @softistx/httpyz @softistx/openapi-ht
 bun add -d @softistx/openapi-codegen typescript
 ```
 
-Peers: `@softistx/riva` and `@softistx/httpyz`. `@softistx/openapi-httpyz` and `zod` (which it validates with) are optional: only the OpenAPI mode needs them, and `@softistx/openapi-codegen` writes the operations table at build time. The runtime entries import none of them.
+Peers: `@softistx/riva` and `@softistx/httpyz`. `@softistx/openapi-httpyz` is optional: only the OpenAPI mode needs it. `@softistx/openapi-codegen` writes the operations table at build time, and that generated `operations.ts` imports `zod`. The runtime entries import none of them.
 
 ## Provide the transport
 
