@@ -26,7 +26,7 @@ export const renamePatient = mutation(RENAME_PATIENT_MUTATION, {
 
 // REST (OpenAPI)
 import { rest } from "@softistx/riva-rest";
-export const invoice = rest.query(api.get("/invoices/{id}"));
+export const invoice = rest.query(api, "get /invoices/{id}");
 
 // React Router loader
 export async function loader({ context, params }: Route.LoaderArgs) {

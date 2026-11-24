@@ -64,3 +64,12 @@ test('the riva-graphql row: core + graphql main within 8192 B', () => {
 		'packages/riva-graphql/dist/index.js',
 	]);
 });
+
+test('the riva-rest row: core + rest main within 8192 B', () => {
+	const row = budgets.find((b) => b.name === '@softistx/riva + riva-rest');
+	expect(row?.limit).toBe(8192);
+	expect(row?.entry).toEqual([
+		'packages/riva/dist/index.js',
+		'packages/riva-rest/dist/index.js',
+	]);
+});

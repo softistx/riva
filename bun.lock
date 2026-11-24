@@ -81,6 +81,9 @@
       "name": "@softistx/riva-rest",
       "version": "0.0.0",
       "devDependencies": {
+        "@softistx/httpyz": "^0.6.1",
+        "@softistx/openapi-httpyz": "^0.4.1",
+        "@softistx/riva": "workspace:*",
         "@types/bun": "^1.4.5",
       },
       "peerDependencies": {
@@ -334,6 +337,8 @@
     "@softistx/graphql-client": ["@softistx/graphql-client@0.9.0", "", { "dependencies": { "@graphql-typed-document-node/core": "^3.2.0", "@nxgt/httpyz": "^0.5.0" }, "peerDependencies": { "@types/react": "^19.0.0", "graphql": "^16.11.0 || ^17.0.0", "react": "^19.0.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["@types/react", "react"] }, "sha512-wEOCpgzsfWmH9NU1WSKnx32BtnyBNfmJfRP6SbczJFjKoVvRBjHDCaZvnb0vvYbKprE5ocfIu349lVm8NVAGWg=="],
 
     "@softistx/httpyz": ["@softistx/httpyz@0.6.1", "", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-rGEJ1z5V0rgc7jceZkO3NoGtJdR8+675NhBr7t9WeN4hKPfBtpEJ/fa+gzR1w8knT2DVQ0U5Tfc8UXp/+sg5Aw=="],
+
+    "@softistx/openapi-httpyz": ["@softistx/openapi-httpyz@0.4.1", "", { "peerDependencies": { "@softistx/httpyz": "^0.6.1", "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-MwhOCSPMlyldrZjVGV55+6XOCn3Z4pmKsQBo1KNsmta6nggNRbXUmosXQT3hHUVZP7/2ZGrKiDd3phJ6tuWrvw=="],
 
     "@softistx/riva": ["@softistx/riva@workspace:packages/riva"],
 
