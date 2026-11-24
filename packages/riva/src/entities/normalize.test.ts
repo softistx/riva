@@ -1,11 +1,10 @@
 import { describe, expect, test } from 'bun:test';
 import { createRivaClient } from '../client';
 import { RivaError } from '../errors';
-import { makeIdentify } from './identity';
 import { normalize, normalizeAt } from './normalize';
 import { EntityStore } from './store';
 
-const store = () => new EntityStore(createRivaClient(), makeIdentify());
+const store = () => new EntityStore(createRivaClient());
 const patient = { __typename: 'Patient', id: '1', name: 'Ann' };
 
 describe('normalize', () => {
@@ -78,9 +77,10 @@ describe('normalize', () => {
 	});
 
 	test('a custom identify that throws leaves the walk without a result', () => {
-		const s = new EntityStore(createRivaClient(), () => {
+		const s = store();
+		s.identify = () => {
 			throw new Error('boom');
-		});
+		};
 		expect(() => normalize(s, { a: {} })).toThrow('boom');
 	});
 });

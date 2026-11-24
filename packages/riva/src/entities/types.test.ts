@@ -15,7 +15,7 @@ test('entities() is a cache policy with an identity', () => {
 
 test('CachePolicy methods take the client', () => {
 	expectTypeOf<CachePolicy<number>['write']>().parameters.toEqualTypeOf<
-		[RivaClient, unknown]
+		[RivaClient, unknown, (number | undefined)?]
 	>();
 	expectTypeOf<CachePolicy<number>['write']>().returns.toBeNumber();
 	expectTypeOf<CachePolicy<number>['read']>().parameters.toEqualTypeOf<

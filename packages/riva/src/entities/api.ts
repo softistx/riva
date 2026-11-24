@@ -9,8 +9,10 @@ import { type EntityPolicy, EntityRoot, storeOf } from './policy';
 export const readEntity = <T = Record<string, unknown>>(
 	client: RivaClient,
 	ref: string,
-): T | undefined =>
-	denormalize(storeOf(client), { __ref: ref }) as T | undefined;
+): T | undefined => {
+	const store = storeOf(client);
+	return denormalize(store, { __ref: ref }, store.directLocal) as T | undefined;
+};
 
 /**
  * Merges a patch into an entity (created when missing), or the object a
@@ -30,12 +32,15 @@ export function writeEntity<T extends Fields = Fields>(
 	const pending = normalizeAt(store, ref, next);
 	client.batch(() => {
 		for (const [r, fields] of pending) store.merge(r, fields);
+		store.pins.add(ref);
 	});
 }
 
 /** Removes an entity: queries reading it see the field as missing. `false` when absent. */
 export function evict(client: RivaClient, ref: string): boolean {
-	return storeOf(client).clear(ref);
+	const store = storeOf(client);
+	store.pins.delete(ref);
+	return store.clear(ref);
 }
 
 /** Marks stale every query entry that reaches the entity, and refetches the observed ones. */

@@ -95,7 +95,7 @@ user.ensure(client, { id: String(id) });
 
 Code: `RIVA_CACHE` (`RivaError`).
 
-**When:** a query with `cache: entities()` (or `writeEntity`) receives data holding a function, a symbol, a bigint, a non-finite number, a class instance other than `Date`, a `Map`/`Set` or a circular reference. The fetch rejects with it (the entry shows the error and keeps its previous data); `setData` throws it.
+**When:** a query with `cache: entities()` (or `writeEntity`) receives data holding a function, a symbol, a bigint, a non-finite number, a class instance other than `Date`, a `Map`/`Set` or a circular reference. A fetch rejects with it (the entry shows the error and keeps its previous data). `setData` throws it and leaves the entry untouched.
 
 **Why:** the entity store merges and compares plain JSON data field by field, so it cannot hold anything else. Nothing is written when it throws.
 
@@ -103,6 +103,22 @@ Code: `RIVA_CACHE` (`RivaError`).
 
 ```ts
 fetch: async () => (await res.json()) as Plain, // not a Map, not a model instance
+```
+
+## This client already uses other entity identity rules
+
+Code: `RIVA_CACHE` (`RivaError`).
+
+**When:** two `entities()` policies with different `keys` or `identify` (compared by reference) meet on one client, or a policy with such rules is first used after `readEntity` or `writeEntity` filled the client's store.
+
+**Why:** a client has one entity store with one identity rule, so the same object cannot be two entities.
+
+**Fix:** share one policy, or the same options objects, between the client's queries; create it before any `readEntity`/`writeEntity`.
+
+```ts
+const cache = entities({ keys }); // one, module level
+query({ id: 'a', cache, fetch });
+query({ id: 'b', cache, fetch });
 ```
 
 ## The request was aborted

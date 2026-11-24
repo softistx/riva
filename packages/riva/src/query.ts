@@ -27,7 +27,8 @@ export interface FetchContext {
  * entities. `read` runs in a computed, so what it reads is tracked.
  */
 export interface CachePolicy<Stored = unknown> {
-	write(client: RivaClient, data: unknown): Stored;
+	/** `prev` is what the entry stored before, so a policy can keep identities across writes. */
+	write(client: RivaClient, data: unknown, prev?: Stored): Stored;
 	read(client: RivaClient, stored: Stored): unknown;
 	/** The entry was replaced or collected: drop what `write` retained. */
 	release(client: RivaClient, stored: Stored): void;

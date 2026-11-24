@@ -11,8 +11,9 @@ import {
 	type Entry,
 	entryOf,
 	peek,
-	putData,
+	putStored,
 	stale,
+	toStored,
 	view,
 } from './query-entry';
 import { observe } from './query-observe';
@@ -88,28 +89,28 @@ export function createQueryCache(
 		): void {
 			const e = entryOf(c, def, vars);
 			const f = e.run;
-			let refused: unknown;
 			client.batch(() => {
 				const value =
 					typeof data === 'function'
 						? (data as (prev: D | undefined) => D)(view(c, e).data as D)
 						: data;
+				// A refused value throws here, before anything changed.
+				const stored = toStored(c, e, value);
 				if (f) {
 					e.run = undefined;
 					f.set = { v: value };
 					f.ctl.abort();
 				}
 				e.invalidated = false;
-				refused = putData(c, e, {
+				putStored(c, e, {
 					status: 'success',
-					data: value,
+					data: stored,
 					error: undefined,
 					isFetching: false,
 					updatedAt: sched.now(),
 				});
 			});
 			armGc(c, e);
-			if (refused) throw refused;
 		},
 
 		cancel(def: AnyQuery, vars: unknown): void {

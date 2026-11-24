@@ -1,12 +1,11 @@
 import { describe, expect, test } from 'bun:test';
 import { createRivaClient } from '../client';
 import { computed } from '../computed';
-import { makeIdentify } from './identity';
 import { EntityStore } from './store';
 
 const make = () => {
 	const client = createRivaClient();
-	return { client, store: new EntityStore(client, makeIdentify()) };
+	return { client, store: new EntityStore(client) };
 };
 
 describe('EntityStore (ported from graphql-client store.spec, without selections)', () => {
@@ -50,37 +49,59 @@ describe('EntityStore (ported from graphql-client store.spec, without selections
 		expect(store.clear('Book:1')).toBe(false);
 	});
 
-	test('counts: an entity nobody holds is removed, what it held is released', () => {
+	test('sweep removes what no root or pin reaches, through entity fields', () => {
 		const { store } = make();
 		store.merge('Book:1', { author: { __ref: 'Author:1' } });
 		store.merge('Author:1', { name: 'N' });
-		store.retain('Book:1');
-		expect(store.counts.get('Author:1')).toBe(1);
-		store.release('Book:1');
+		store.merge('Other:1', {});
+		const root = { refs: ['Book:1'] };
+		store.roots.add(root);
+		store.sweep();
+		expect(store.peek('Book:1')).toBeDefined();
+		expect(store.peek('Author:1')).toBeDefined();
+		expect(store.peek('Other:1')).toBeUndefined();
+		store.roots.delete(root);
+		store.sweep();
 		expect(store.peek('Book:1')).toBeUndefined();
 		expect(store.peek('Author:1')).toBeUndefined();
-		expect(store.atoms.has('Book:1')).toBe(false);
+		expect(store.atoms.size).toBe(0);
 	});
 
-	test('replacing a field moves the hold', () => {
+	test('sweep collects entities that point at each other', () => {
 		const { store } = make();
-		store.merge('Author:1', { name: 'A' });
-		store.merge('Author:2', { name: 'B' });
-		store.retain('Author:1');
-		store.merge('Book:1', { author: { __ref: 'Author:1' } });
-		store.retain('Book:1');
-		store.merge('Book:1', { author: { __ref: 'Author:2' } });
-		expect(store.counts.get('Author:1')).toBe(1);
-		expect(store.counts.get('Author:2')).toBe(1);
+		store.merge('A:2', { b: { __ref: 'B:2' } });
+		store.merge('B:2', { a: { __ref: 'A:2' } });
+		const root = { refs: ['A:2'] };
+		store.roots.add(root);
+		store.sweep();
+		expect(store.peek('B:2')).toBeDefined();
+		store.roots.delete(root);
+		store.sweep();
+		expect(store.peek('A:2')).toBeUndefined();
+		expect(store.peek('B:2')).toBeUndefined();
+	});
+
+	test('a pin keeps an entity without a root', () => {
+		const { store } = make();
+		store.merge('A:1', { n: 1 });
+		store.pins.add('A:1');
+		store.sweep();
+		expect(store.peek('A:1')).toBeDefined();
+	});
+
+	test('empty tells whether any entity holds fields', () => {
+		const { store } = make();
+		expect(store.empty).toBe(true);
+		store.merge('A:1', { n: 1 });
+		expect(store.empty).toBe(false);
 	});
 
 	test('an observed atom stays when its entity is removed', () => {
 		const { client, store } = make();
 		store.merge('Book:1', { title: 'A' });
-		store.retain('Book:1');
 		const seen: unknown[] = [];
 		client.subscribe(store.atomOf('Book:1'), (v) => seen.push(v));
-		store.release('Book:1');
+		store.sweep();
 		expect(seen).toEqual([undefined]);
 		expect(store.atoms.has('Book:1')).toBe(true);
 	});

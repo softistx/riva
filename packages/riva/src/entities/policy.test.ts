@@ -4,6 +4,7 @@ import { computed } from '../computed';
 import type { Scheduler } from '../env';
 import { RivaError } from '../errors';
 import { query } from '../query';
+import { readEntity, writeEntity } from './api';
 import { entities, storeOf } from './policy';
 
 function fakeScheduler() {
@@ -162,7 +163,7 @@ describe('entities() as a query cache policy', () => {
 		expect(storeOf(client).peek('Patient:2')).toBeUndefined();
 	});
 
-	test('ref-counted GC: entities leave with the last entry that holds them', async () => {
+	test('GC: entities leave with the last entry that holds them', async () => {
 		reset();
 		const sched = fakeScheduler();
 		const client = createRivaClient({ scheduler: sched });
@@ -173,7 +174,7 @@ describe('entities() as a query cache policy', () => {
 		// both entries are collected: nothing holds any entity
 		expect(store.peek('Patient:1')).toBeUndefined();
 		expect(store.peek('Doctor:d')).toBeUndefined();
-		expect(store.counts.size).toBe(0);
+		expect(store.atoms.size).toBe(0);
 	});
 
 	test('GC keeps an entity another entry still holds', async () => {
@@ -238,6 +239,117 @@ describe('entities() as a query cache policy', () => {
 		expect(() => q.setData(client, undefined, { fn: () => 1 })).toThrow(
 			RivaError,
 		);
+	});
+
+	test('entities that reference each other are collected with their entries', async () => {
+		const sched = fakeScheduler();
+		const client = createRivaClient({ scheduler: sched });
+		const cyc = query<void, unknown>({
+			id: 'cyc',
+			cache,
+			gcTime: 1000,
+			fetch: async () => ({
+				__typename: 'A',
+				id: '2',
+				b: { __typename: 'B', id: '2', a: { __typename: 'A', id: '2' } },
+			}),
+		});
+		await cyc.ensure(client);
+		expect(storeOf(client).atoms.size).toBe(2);
+		sched.advance(1001);
+		expect(storeOf(client).atoms.size).toBe(0);
+	});
+
+	test('a policy with other identity rules than the client already uses is refused', async () => {
+		reset();
+		const client = createRivaClient({ scheduler: fakeScheduler() });
+		await all.ensure(client);
+		const other = query<void, unknown>({
+			id: 'other',
+			// biome-ignore lint/style/useNamingConvention: a type name
+			cache: entities({ keys: { Patient: (p) => p['name'] as string } }),
+			fetch: async () => ({ __typename: 'Patient', id: '1', name: 'Ann' }),
+		});
+		const err = (await other.ensure(client).catch((e) => e)) as RivaError;
+		expect(err).toBeInstanceOf(RivaError);
+		expect(err.code).toBe('RIVA_CACHE');
+		expect(err.message).toContain('other entity identity rules');
+	});
+
+	test('two inline entities() with the same options objects share one client', async () => {
+		// biome-ignore lint/style/useNamingConvention: a type name
+		const keys = { Book: (b: Record<string, unknown>) => b['isbn'] as string };
+		const client = createRivaClient({ scheduler: fakeScheduler() });
+		const mk = (id: string) =>
+			query<void, unknown>({
+				id,
+				cache: entities({ keys }),
+				fetch: async () => ({ __typename: 'Book', isbn: 'x', title: id }),
+			});
+		await mk('a').ensure(client);
+		await mk('b').ensure(client);
+		expect([...storeOf(client).atoms.keys()]).toEqual(['Book:x']);
+	});
+
+	test('a store made by writeEntity binds to a later policy only while empty', async () => {
+		// biome-ignore lint/style/useNamingConvention: a type name
+		const keys = { Book: (b: Record<string, unknown>) => b['isbn'] as string };
+		const book = (c: ReturnType<typeof createRivaClient>) =>
+			query<void, unknown>({
+				id: 'book',
+				cache: entities({ keys }),
+				fetch: async () => ({ __typename: 'Book', isbn: 'x' }),
+			}).ensure(c);
+		const empty = createRivaClient({ scheduler: fakeScheduler() });
+		writeEntity(empty, 'Book:1', { a: 1 });
+		storeOf(empty).clear('Book:1');
+		expect(await book(empty)).toEqual({ __typename: 'Book', isbn: 'x' });
+		const used = createRivaClient({ scheduler: fakeScheduler() });
+		writeEntity(used, 'Book:1', { a: 1 });
+		const err = (await book(used).catch((e) => e)) as RivaError;
+		expect(err.code).toBe('RIVA_CACHE');
+	});
+
+	test('setData with an explicit undefined releases the previous entities', async () => {
+		reset();
+		const client = createRivaClient({ scheduler: fakeScheduler() });
+		await all.ensure(client);
+		all.setData(client, undefined as never, undefined as never);
+		expect(client.get(all).data).toBeUndefined();
+		expect(storeOf(client).atoms.size).toBe(0);
+	});
+
+	test('a root that is an array keeps its identity when a refetch changes nothing', async () => {
+		reset();
+		const client = createRivaClient({ scheduler: fakeScheduler() });
+		const list = query<void, P[]>({
+			id: 'list',
+			cache,
+			fetch: async () => Object.values(structuredClone(db)),
+		});
+		await list.ensure(client);
+		const a = client.get(list).data;
+		list.invalidate(client);
+		await list.ensure(client);
+		expect(client.get(list).data).toBe(a);
+	});
+
+	test('a refused setData throws and leaves the entry untouched', async () => {
+		reset();
+		const client = createRivaClient({ scheduler: fakeScheduler() });
+		await all.ensure(client);
+		const before = client.get(all);
+		expect(() =>
+			all.setData(client, undefined as never, { items: [() => 1] } as never),
+		).toThrow(RivaError);
+		expect(client.get(all)).toBe(before);
+		expect(storeOf(client).atoms.size).toBe(3);
+	});
+
+	test('a missing entity read outside a computed leaves no atom', () => {
+		const client = createRivaClient({ scheduler: fakeScheduler() });
+		expect(readEntity(client, 'Patient:404')).toBeUndefined();
+		expect(storeOf(client).atoms.size).toBe(0);
 	});
 
 	test('without a cache option the state is stored as is, the same object', async () => {

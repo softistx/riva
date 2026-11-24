@@ -66,26 +66,39 @@ export const peek = (c: Ctx, e: Entry): State =>
 export const view = (c: Ctx, e: Entry): State =>
 	c.client.untracked(() => c.client.get(e.out));
 
+/** The data as the entry stores it: through the cache policy, which may refuse it by throwing. */
+export const toStored = (c: Ctx, e: Entry, data: unknown): unknown => {
+	const cache = e.def.options.cache;
+	return cache && data !== undefined
+		? cache.write(c.client, data, peek(c, e).data)
+		: data;
+};
+
+/** Writes a patch whose `data` is already stored, then releases the data it replaced. */
+export function putStored(c: Ctx, e: Entry, patch: Partial<State>): void {
+	const cache = e.def.options.cache;
+	const prev = peek(c, e).data;
+	put(c, e, patch);
+	if (cache && 'data' in patch && prev !== undefined && prev !== patch.data)
+		cache.release(c.client, prev);
+}
+
 /**
- * Writes a patch that may carry new data, through the cache policy: the data
- * is stored before the entry changes, and the replaced data is released. A
- * policy that refuses the data leaves the old data and sets the error state;
- * the error is returned.
+ * Writes a patch that may carry new data, through the cache policy. A policy
+ * that refuses the data leaves the old data and sets the error state; the
+ * error is returned.
  */
 export function putData(c: Ctx, e: Entry, patch: Partial<State>): unknown {
-	const cache = e.def.options.cache;
-	if (!cache || patch.data === undefined) return void put(c, e, patch);
-	const prev = peek(c, e).data;
+	if (!e.def.options.cache || !('data' in patch)) return void put(c, e, patch);
 	let error: unknown;
 	c.client.batch(() => {
 		try {
-			put(c, e, { ...patch, data: cache.write(c.client, patch.data) });
+			putStored(c, e, { ...patch, data: toStored(c, e, patch.data) });
 		} catch (x) {
 			error = x;
-			put(c, e, { ...patch, status: 'error', error: x, data: prev });
-			return;
+			const { data: _, ...rest } = patch;
+			put(c, e, { ...rest, status: 'error', error: x });
 		}
-		if (prev !== undefined) cache.release(c.client, prev);
 	});
 	return error;
 }
