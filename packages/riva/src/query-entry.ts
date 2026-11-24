@@ -79,11 +79,19 @@ export const committed = (c: Ctx, e: Entry): unknown =>
 		return cache && d !== undefined ? cache.read(c.client, d, true) : d;
 	});
 
+/** Data is stored that the cache policy cannot read: an evicted entity, a field the server left out. */
+export const unreadable = (c: Ctx, e: Entry): boolean =>
+	peek(c, e).data !== undefined && committed(c, e) === undefined;
+
+/** The message of the error of a fetch whose data the cache cannot read back. */
+export const INCOMPLETE =
+	"The cache cannot read the query's data after a fetch.";
+
 /** The data as the entry stores it: through the cache policy, which may refuse it by throwing. */
 export const toStored = (c: Ctx, e: Entry, data: unknown): unknown => {
 	const cache = e.def.options.cache;
 	return cache && data !== undefined
-		? cache.write(c.client, data, peek(c, e).data)
+		? cache.write(c.client, data, peek(c, e).data, e.vars)
 		: data;
 };
 
@@ -128,7 +136,8 @@ export const stale = (
 ): boolean =>
 	peek(c, e).status !== 'success' ||
 	e.invalidated ||
-	c.sched.now() - peek(c, e).updatedAt >= staleTime;
+	c.sched.now() - peek(c, e).updatedAt >= staleTime ||
+	unreadable(c, e);
 
 /** Schedules the removal of an unobserved entry after `gcTime` (never on the server by default). */
 export function armGc(c: Ctx, e: Entry): void {

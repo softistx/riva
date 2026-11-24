@@ -27,16 +27,21 @@ export interface FetchContext {
  * entities. `read` runs in a computed, so what it reads is tracked.
  */
 export interface CachePolicy<Stored = unknown> {
-	/** `prev` is what the entry stored before, so a policy can keep identities across writes. */
-	write(client: RivaClient, data: unknown, prev?: Stored): Stored;
+	/** `prev` is what the entry stored before, so a policy can keep identities across writes; `vars` are the entry's variables. */
+	write(
+		client: RivaClient,
+		data: unknown,
+		prev?: Stored,
+		vars?: unknown,
+	): Stored;
 	/** `committed` skips the optimistic layers (the data a write must start from). */
 	read(client: RivaClient, stored: Stored, committed?: boolean): unknown;
 	/** The entry was replaced or collected: drop what `write` retained. */
 	release(client: RivaClient, stored: Stored): void;
 	/** Mutations: shows `data` over the committed data until `drop` (an optimistic layer). */
-	layer?(client: RivaClient, data: unknown): { drop(): void };
+	layer?(client: RivaClient, data: unknown, vars?: unknown): { drop(): void };
 	/** Mutations: merges a server result into the committed data, notifying its readers. */
-	commit?(client: RivaClient, data: unknown): void;
+	commit?(client: RivaClient, data: unknown, vars?: unknown): void;
 }
 
 export interface QueryOptions<Vars, Data> {

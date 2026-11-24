@@ -1,12 +1,17 @@
 import type { Listener, Unsubscribe } from './atom';
+import type { RivaError } from './errors';
 import {
 	type AnyQuery,
 	armGc,
 	type Ctx,
+	committed,
 	type Entry,
 	entryOf,
+	INCOMPLETE,
+	put,
 	type State,
 	stale,
+	unreadable,
 } from './query-entry';
 import { abandon, join, pin } from './query-run';
 import { isBrowser } from './scope';
@@ -32,6 +37,27 @@ function refetch(c: Ctx, flag: 'refetchOnFocus' | 'refetchOnReconnect'): void {
 		if (e.observers && e.def.options[flag] && !e.run && stale(c, e)) pin(c, e);
 }
 
+/**
+ * A fetched, observed entry whose stored data the cache can no longer read
+ * (an entity evicted) is refetched. A fetch that stays unreadable ends in
+ * `error`, which this ignores, so it never loops; once the data reads again
+ * that error is cleared.
+ */
+function complete(c: Ctx, e: Entry, s: State): void {
+	if (e.run) return;
+	if (s.status === 'success') {
+		if (s.data === undefined && unreadable(c, e)) {
+			e.invalidated = true;
+			pin(c, e);
+		}
+	} else if (
+		s.status === 'error' &&
+		(s.error as RivaError | undefined)?.message === INCOMPLETE &&
+		committed(c, e) !== undefined
+	)
+		put(c, e, { status: 'success', error: undefined });
+}
+
 /** Counts an observer, fetches when needed, polls; the returned function undoes it. */
 export function observe(
 	c: Ctx,
@@ -52,7 +78,10 @@ export function observe(
 		};
 	}
 	if (e.observers++ === 0) poll(c, e);
-	const off = c.client.subscribe(e.out, listener);
+	const off = c.client.subscribe(e.out, (s) => {
+		listener(s);
+		complete(c, e, s);
+	});
 	if (stale(c, e, opts?.staleTime)) join(c, e);
 	let done = false;
 	return () => {

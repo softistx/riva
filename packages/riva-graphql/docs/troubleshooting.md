@@ -97,3 +97,72 @@ Related: `the persisted document <hash> must hold exactly one operation.` and `�
 **Why:** a refusal carries `extensions.http.status` below 500, or none (read as 400): it is never retried. A 5xx, 408 or 429 is, like any other transport failure.
 
 **Fix:** have the API send a 4xx `extensions.http.status` for a refusal, or decide yourself: `retry: (failures, error) => …`.
+
+## `The GraphQL cache holds JSON: field X holds Y.`
+
+Code: `RIVA_CACHE` (`RivaError`).
+
+**Why:** `normalized()` stores plain JSON; a `Date`, a class instance, a function or a non-finite number in a result (a custom scalar parsed by the client) cannot be stored.
+
+**Fix:** keep the scalar serialized in the result, or parse it at the point of use.
+
+## `The GraphQL cache stores an operation's data: an object.`
+
+Code: `RIVA_CACHE` (`RivaError`).
+
+**Why:** the transport returned something other than an object for the operation's data.
+
+**Fix:** check the transport; a GraphQL result's `data` is an object.
+
+## `The document has no fragment X` and `The document holds no operation`
+
+Both are `TypeError`s, thrown when `query()` or `mutation()` is called.
+
+**Why:** the document given to `query()` or `mutation()` with a `normalized()` cache spreads a fragment it does not define, or defines no operation.
+
+**Fix:** pass the preset's document, which carries the fragments it uses.
+
+## `riva-graphql: the field "X" selects no __typename, which the cache needs to identify objects: …`
+
+A `TypeError`, thrown when `query()` or `mutation()` is called with a `normalized()` cache.
+
+**Why:** an object with no `__typename` has no identity, so it could not be stored as an entity. The cache refuses the document rather than rewrite it: a persisted id is the hash of the document's text.
+
+**Fix:** add the client preset's `addTypenameSelectionDocumentTransform` to its `documentTransforms` (or select `__typename` yourself in every selection set below the root).
+
+```ts
+// codegen.ts
+import { addTypenameSelectionDocumentTransform } from '@graphql-codegen/client-preset';
+
+generates: {
+	'app/generated/': {
+		preset: 'client',
+		presetConfig: { persistedDocuments: true },
+		documentTransforms: [addTypenameSelectionDocumentTransform], // beside `preset`, not inside presetConfig
+	},
+},
+```
+
+## `The cache cannot read the query's data after a fetch.`
+
+Code: `RIVA_CACHE` (`RivaError`), shown as the query's error status; `ensure` rejects with it.
+
+**When:** a query with a `normalized()` cache fetched, and the result still reads as a miss.
+
+**Why:** the server's answer lacks a selected field (or an object the selection needs), so the whole result reads `undefined`: the cache never serves half a result. A second fetch would give the same answer, so it stops instead of looping. A query already showing data whose entity is later evicted is refetched on its own.
+
+**Fix:** have the API return every selected field (`null` for an empty one), or remove it from the selection. The generic explanation is on the [core page](../../riva/docs/troubleshooting.md).
+
+## `This client already uses other entity identity rules…`
+
+Code: `RIVA_CACHE` (`RivaError`).
+
+**Why:** two `normalized()` (or `entities()`) policies with different `keys` or `identify` were used on one client.
+
+**Fix:** create one `normalized(options)` and pass it to every definition. The core explains it in [its troubleshooting page](../../riva/docs/troubleshooting.md#this-client-already-uses-other-entity-identity-rules).
+
+## A query fetches although another query showed the same entity
+
+**Why:** each query entry has its own root: which fields it selected and with which arguments. A query's first fetch is unconditional, and it reads from the store afterwards. Later, a field or entity its selection needs that no write has stored (an argument set not yet fetched: `friends({"first":2})` is not `friends({"first":1})`) makes its data `undefined`, and an observed query refetches once.
+
+**Fix:** expected: the query fetches, then reads from the store.

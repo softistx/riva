@@ -1,5 +1,5 @@
 import { expect, spyOn, test } from 'bun:test';
-import { query, RivaScopeError } from '@softistx/riva';
+import { atom, type CachePolicy, query, RivaScopeError } from '@softistx/riva';
 import { Component, type ReactNode, Suspense } from 'react';
 import { deferred, flush, h, mount, newClient } from '../test/render';
 import { RivaProvider } from './context';
@@ -226,6 +226,79 @@ test('suspense with data already cached renders at once', async () => {
 	await m.unmount();
 });
 
+test('suspense suspends again while an observed hidden entity is refetched', async () => {
+	const holes = atom(false);
+	const cache: CachePolicy<unknown> = {
+		write: (_c, data) => data,
+		read: (c, stored) => (c.get(holes) ? undefined : stored),
+		release: () => {},
+	};
+	const client = newClient();
+	let calls = 0;
+	const def = query<{ school: string }, string>({
+		id: 'uq/suspense-evict',
+		retry: 0,
+		cache,
+		fetch: async () => {
+			calls++;
+			client.set(holes, false);
+			return `v${calls}`;
+		},
+	});
+	function C() {
+		const q = useQuery(def, { school: 's' }, { suspense: true });
+		return h('p', null, `got:${q.data.toUpperCase()}`);
+	}
+	const m = await mount(
+		h(Suspense, { fallback: h('p', null, 'loading') }, h(C)),
+		client,
+	);
+	await flush();
+	expect(m.text()).toBe('got:V1');
+	await flush(() => client.set(holes, true));
+	await flush();
+	expect(calls).toBe(2);
+	expect(m.text()).toBe('got:V2');
+	await m.unmount();
+});
+
+test('a fresh suspense mount after an eviction never renders undefined data', async () => {
+	const holes = atom(false);
+	const cache: CachePolicy<unknown> = {
+		write: (_c, data) => data,
+		read: (c, stored) => (c.get(holes) ? undefined : stored),
+		release: () => {},
+	};
+	const client = newClient();
+	let calls = 0;
+	const def = query<{ school: string }, string>({
+		id: 'uq/suspense-fresh',
+		retry: 0,
+		cache,
+		fetch: async () => {
+			calls++;
+			client.set(holes, false);
+			return `v${calls}`;
+		},
+	});
+	await def.ensure(client, { school: 's' });
+	client.set(holes, true);
+	const seen: unknown[] = [];
+	function C() {
+		const q = useQuery(def, { school: 's' }, { suspense: true });
+		seen.push(q.data);
+		return h('p', null, `got:${q.data}`);
+	}
+	const m = await mount(
+		h(Suspense, { fallback: h('p', null, 'loading') }, h(C)),
+		client,
+	);
+	await flush();
+	expect(seen).not.toContain(undefined);
+	expect(m.text()).toBe('got:v2');
+	await m.unmount();
+});
+
 test('no provider throws the scope error', async () => {
 	const log = spyOn(console, 'error').mockImplementation(() => {});
 	const def = users('uq/noprov', async () => 'x');
@@ -260,5 +333,35 @@ test('a Suspense mount fetches once at the default staleTime', async () => {
 	await flush();
 	expect(m.text()).toBe('x');
 	expect(calls).toBe(1);
+	await m.unmount();
+});
+
+test('a suspense query that resolves undefined fetches once, with no loop', async () => {
+	const client = newClient();
+	let calls = 0;
+	const def = query<{ school: string }, string | undefined>({
+		id: 'uq/suspense-undefined',
+		retry: 0,
+		fetch: async () => {
+			calls++;
+			return undefined;
+		},
+	});
+	const seen: unknown[] = [];
+	function C() {
+		const q = useQuery(def, { school: 's' }, { suspense: true });
+		seen.push(q.data);
+		return h('p', null, 'done');
+	}
+	const m = await mount(
+		h(Suspense, { fallback: h('p', null, 'loading') }, h(C)),
+		client,
+	);
+	await flush();
+	await flush();
+	await flush();
+	expect(calls).toBe(1);
+	expect(seen).toContain(undefined);
+	expect(m.text()).toBe('done');
 	await m.unmount();
 });

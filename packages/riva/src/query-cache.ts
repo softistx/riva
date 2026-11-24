@@ -17,6 +17,7 @@ import {
 	putStored,
 	stale,
 	toStored,
+	unreadable,
 	view,
 } from './query-entry';
 import { type ObserveOptions, observe } from './query-observe';
@@ -72,6 +73,12 @@ export function createQueryCache(
 		prefetch(def: AnyQuery, vars: unknown): void {
 			const e = entryOf(c, def, vars);
 			if (stale(c, e)) pin(c, e);
+		},
+
+		/** Starts a fetch only when the stored data cannot be read (an evicted entity); @internal */
+		missing(def: AnyQuery, vars: unknown): void {
+			const e = entryOf(c, def, vars);
+			if (unreadable(c, e)) pin(c, e);
 		},
 
 		/** One entry, or every entry of the definition when `vars` is undefined. */

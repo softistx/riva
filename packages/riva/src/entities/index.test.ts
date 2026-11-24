@@ -7,6 +7,8 @@ test('the subpath exports the policy and the entity API', () => {
 		'evict',
 		'identifyOf',
 		'invalidateEntity',
+		'isPlain',
+		'isRef',
 		'readEntity',
 		'writeEntity',
 	]);

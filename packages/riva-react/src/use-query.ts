@@ -54,10 +54,20 @@ export function useQuery(
 		() => ({ ...q.state, refetch: q.refetch }),
 		[q.state, q.refetch],
 	);
-	const { state } = q;
+	let { state } = q;
 	if (enabled && opts?.suspense && state.data === undefined) {
+		if (state.status === 'success' && !state.isFetching) {
+			// Stored data the cache cannot read (evicted): start its fetch now,
+			// not in the mount effect, so the first render never shows undefined.
+			q.client.queries.missing(def, q.vars);
+			state = (q.client.get as (d: AnyQuery, v: unknown) => typeof state)(
+				def,
+				q.vars,
+			);
+		}
 		if (state.status === 'error') throw state.error;
-		if (state.status !== 'success') throw suspend(q.client, def, q.key, q.vars);
+		if (state.status !== 'success' || state.isFetching)
+			throw suspend(q.client, def, q.key, q.vars);
 	}
 	return result;
 }

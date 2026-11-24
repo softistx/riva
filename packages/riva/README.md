@@ -84,10 +84,11 @@ const off = client.subscribe(user, { id: '1' }, (state) => console.log(state.sta
 user.prefetch(client, { id: '2' }); // fire and forget, never rejects
 user.invalidate(client, { id: '1' }); // stale; refetches when observed. No variables: every entry of the definition
 user.setData(client, { id: '1' }, { id: '1', name: 'Ada' }); // success, updatedAt now; a fetch in flight resolves its waiters with it
-user.cancel(client, { id: '1' }); // aborts the fetch, restores the previous state
+user.cancel(client, { id: '1' }); // aborts the fetch, restores the previous state (an observed entry whose data reads undefined is fetched again after a cancel)
 ```
 
 - **Status model**: `idle | pending | success | error`, plus `isFetching`. A background refetch keeps `status: 'success'` and the old data with `isFetching: true`; an error keeps the last data.
+- **Staleness**: besides `staleTime` and `invalidate`, data the cache can no longer read (an evicted entity) counts as stale, so `ensure` fetches it and an observed entry refetches.
 - **Dedupe**: one in-flight fetch per key; concurrent `ensure` and `subscribe` share it.
 - **Subscribe options**: `client.subscribe(def, vars, listener, { staleTime })` overrides the definition's `staleTime` for this observer's first fetch decision only, e.g. to trust data an `ensure` just loaded (riva-react's Suspense uses `{ staleTime: 1000 }`). Later invalidations, polls and refetches keep the definition's own `staleTime`.
 - **Options**: `staleTime` (0), `gcTime` (5 min in a browser, `Infinity` on the server: no timers, a per-request client is just dropped), `retry` (3 in a browser, 0 on the server; a count or `(failures, error) => boolean`), `retryDelay` (default `min(1000 * 2 ** failures, 30_000)`), `refetchOnFocus` / `refetchOnReconnect` (true; observed and stale entries only, browser only), `refetchEvery` (polling while observed; browser only, like focus and reconnect: no timer is armed on the server).
@@ -164,7 +165,7 @@ const renamePatient = mutation<{ id: string; name: string }, Patient>({
 
 ## Normalized cache
 
-`@softistx/riva/entities`: `entities`, `readEntity`, `writeEntity`, `invalidateEntity`, `evict`. By default a query keeps its data as is, keyed by id and variables. Pass `cache: entities()` from the opt-in `@softistx/riva/entities` entry to store each entity (an object with a string `__typename` and an `id` or `_id`) once, shared by every query that returns it. A refetch of one query then updates the others, and a `client.get` inside a computed re-evaluates only when an entity it read changed.
+`@softistx/riva/entities`: `entities`, `readEntity`, `writeEntity`, `invalidateEntity`, `evict`, `identifyOf`, `isPlain`, `isRef` (and the types below). By default a query keeps its data as is, keyed by id and variables. Pass `cache: entities()` from the opt-in `@softistx/riva/entities` entry to store each entity (an object with a string `__typename` and an `id` or `_id`) once, shared by every query that returns it. A refetch of one query then updates the others, and a `client.get` inside a computed re-evaluates only when an entity it read changed.
 
 ```ts
 import { createRivaClient, query } from '@softistx/riva';
@@ -202,13 +203,37 @@ evict(client, 'Patient:1'); // removes it: queries see the field as missing
 - Entities are merged field by field into one store per client (two clients never share). Nested entities, and entities inside arrays, are normalized too; other objects stay inline. An entity unchanged since the last read keeps its identity.
 - A query entry holds the entities it reaches. When the entry is replaced or collected (`gcTime`) they are released, and an entity nobody holds is removed. Collection marks what the live entries (and `writeEntity` writes) reach and drops the rest, so entities that reference each other are collected too; a cycle is cut where it loops back when read.
 - A ref to a missing entity reads as `undefined`, never throws. Data that is not JSON (a function, a class instance other than `Date`, a bigint, a cycle) throws `RIVA_CACHE`; nothing is written.
-- The store follows the identity rules (`keys`, `identify`) of the first policy used on a client. A later policy with other rules, or with rules after `readEntity`/`writeEntity` filled the store, throws `RIVA_CACHE`; share one `entities()` (or the same options objects) between a client's queries. The GraphQL selection-aware walker (fields with arguments, aliases, fragments) comes with `@softistx/riva-graphql`.
+- The store follows the identity rules (`keys`, `identify`) of the first policy used on a client. A later policy with other rules, or with rules after `readEntity`/`writeEntity` filled the store, throws `RIVA_CACHE`; share one `entities()` (or the same options objects) between a client's queries. The plain walker stores every field of an object; a GraphQL selection-aware one (fields with arguments, aliases, fragments) is `normalized()` from `@softistx/riva-graphql/cache`, built on the codec below.
+- A plain read skips fields stored under a key holding `(`, the argument fields a selection-aware codec writes: `readEntity` and a plain `entities()` never show them.
+- **A miss is refetched, or an error.** When an observed entry's stored data stops reading (`read` returns `undefined`, e.g. an evicted entity), the engine refetches it, whenever it happens, and `ensure` fetches too rather than resolve nothing. When a fetch's own result cannot be read back, the entry ends in the error status with `RivaError` code `RIVA_CACHE` ("The cache cannot read the query's data after a fetch."), `ensure` rejects with it, and nothing loops; the error clears once the data reads again. Optimistic layers and `derive` never trigger it.
 - A refused `setData` throws `RIVA_CACHE` and leaves the entry untouched. A refused result of a fetch sets the error status, keeps the previous data and rejects the fetch.
-- `CachePolicy` (`write`, `read`, `release`) is the hook behind it, exported from the main entry for other policies.
+- `CachePolicy` is the hook behind it, exported from the main entry for other policies: `write(client, data, prev, vars)`, `read(client, stored, committed)`, `release(client, stored)`, and for mutations the optional `layer(client, data, vars)` (an optimistic layer, `{ drop() }`) and `commit(client, data, vars)`. `vars` are the variables of the query or mutation that gave `data`.
+
+### A codec of your own
+
+`entities(opts, codec)` takes an `EntityCodec` that decides how data becomes entities and back, for data whose shape a plain walk cannot know:
+
+```ts
+import { entities, type EntityCodec } from '@softistx/riva/entities';
+
+const codec: EntityCodec = {
+	// `reader.identify(obj)` gives `Type:id`; nothing is merged until `pending` is returned whole.
+	normalize: (reader, data, vars) => ({
+		root: { vars, data }, // what the entry keeps
+		pending: new Map([['Patient:1', { name: 'Ada' }]]), // fields to merge, by entity
+	}),
+	// Runs in a computed: read entities through `reader.fields`, so the read is tracked.
+	denormalize: (reader, root) => ({ name: reader.fields('Patient:1')?.['name'] }),
+};
+
+const cache = entities(undefined, codec);
+```
+
+`EntityReader` is what a codec sees of the store: `identify`, `peek` (committed, untracked) and `fields` (tracked, layers applied). Return `undefined` from `denormalize` for a miss: the engine then refetches, as above.
 
 ### Exported types and helpers
 
-`identifyOf(policy, obj)` gives the `Type:id` ref of an object under a policy's identity rule. Types: `EntityPolicy`, `EntitiesOptions`, `Identify`, `Fields`; and `CachePolicy` from the main entry.
+`identifyOf(policy, obj)` gives the `Type:id` ref of an object under a policy's identity rule; `isPlain` and `isRef` test stored values. Types: `EntityPolicy`, `EntitiesOptions`, `Identify`, `Fields`, `EntityCodec`, `EntityReader`, `Normalized`, `Ref`; and `CachePolicy` from the main entry.
 
 ## Infinite lists
 
@@ -258,4 +283,4 @@ s.hasNext; s.hasPrevious; s.isFetchingNext; s.isFetchingPrevious;
 
 ## Size budget
 
-The main entry `@softistx/riva` stays within 6144 B gzipped, the main entry with `entities` or with `infinite` within 8192 B each, the main entry with every subpath within 10240 B, and core + react within 9216 B. `bun run size` checks them.
+The main entry `@softistx/riva` stays within 6144 B gzipped, the main entry with `entities` or with `infinite` within 8192 B each, the main entry with every subpath within 10240 B, and core + react within 9216 B. `@softistx/riva-graphql` with the entities and its `/cache` stays within 11264 B (`bun run size` checks every row).
