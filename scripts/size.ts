@@ -1,11 +1,12 @@
 /**
  * Size budgets (spec section 6): each entry is built minified, gzipped, and
  * must stay within its limit in bytes. Relative imports are bundled (the build
- * splits shared code into chunks), packages stay external. A combined row
- * bundles a virtual entry that imports the main entry and the opt-in
- * subpaths, so what they share is counted once.
- * Grow `@softistx/riva + all subpaths` as subpaths land (hard cap: core + react
- * 9216 B); add riva-react in its slice.
+ * splits shared code into chunks), and so are the workspace's packages;
+ * `react` stays external. A combined row bundles a virtual entry that imports
+ * the main entry and the opt-in subpaths, so what they share is counted once.
+ * The riva-react rows bundle `@softistx/riva` as the real core (resolved to
+ * packages/riva/dist) with `react` left external, so core + react is measured
+ * against its hard cap of 9216 B.
  */
 export interface Budget {
 	name: string;
@@ -41,6 +42,23 @@ export const budgets: Budget[] = [
 		],
 		limit: 10240,
 	},
+	{
+		name: '@softistx/riva + riva-react',
+		entry: ['packages/riva/dist/index.js', 'packages/riva-react/dist/index.js'],
+		limit: 9216,
+	},
+	{
+		name: '@softistx/riva + riva-react, all subpaths',
+		entry: [
+			'packages/riva/dist/index.js',
+			'packages/riva/dist/entities/index.js',
+			'packages/riva/dist/infinite/index.js',
+			'packages/riva-react/dist/index.js',
+			'packages/riva-react/dist/infinite/index.js',
+			'packages/riva-react/dist/entities/index.js',
+		],
+		limit: 12288,
+	},
 ];
 
 export interface Result extends Budget {
@@ -65,7 +83,9 @@ export async function measure(entry: string | string[]): Promise<number> {
 	const out = await Bun.build({
 		entrypoints: virtual ? ['virtual:budget'] : files,
 		minify: true,
-		packages: 'external',
+		// A package's own dependencies are bundled (the workspace's `@softistx/riva`
+		// is the core under test); the host's `react` is not ours to count.
+		external: ['react', 'react-dom', 'react/*', 'react-dom/*'],
 		target: 'browser',
 		plugins: virtual
 			? [

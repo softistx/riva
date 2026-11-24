@@ -41,3 +41,17 @@ test('the infinite and all-subpaths rows: 8192 B and 10240 B', () => {
 	expect(all?.limit).toBe(10240);
 	expect(all?.entry).toHaveLength(3);
 });
+
+test('the riva-react rows: core + react within the 9216 B cap, every entry within 12288 B', () => {
+	const main = budgets.find((b) => b.name === '@softistx/riva + riva-react');
+	expect(main?.limit).toBe(9216);
+	expect(main?.entry).toEqual([
+		'packages/riva/dist/index.js',
+		'packages/riva-react/dist/index.js',
+	]);
+	const all = budgets.find(
+		(b) => b.name === '@softistx/riva + riva-react, all subpaths',
+	);
+	expect(all?.limit).toBe(12288);
+	expect(all?.entry).toHaveLength(6);
+});
