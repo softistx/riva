@@ -8,7 +8,7 @@ import {
 	RivaNetworkError,
 	RivaRequestError,
 } from './errors';
-import { type QueryState, query } from './query';
+import { type CachePolicy, type QueryState, query } from './query';
 
 const g = globalThis as { document?: unknown };
 const savedDocument = g.document;
@@ -818,4 +818,42 @@ test('a refetch after an error clears the error and keeps the data', async () =>
 	});
 	m.calls[2]?.resolve('ok');
 	await r;
+});
+
+test('queries.missing pins a fetch only for stored data the cache cannot read', async () => {
+	const hole = { on: false };
+	const cache: CachePolicy<unknown> = {
+		write: (_c, data) => data,
+		read: (_c, stored) => (hole.on ? undefined : stored),
+		release: () => {},
+	};
+	const client = createRivaClient();
+	let calls = 0;
+	const def = query<{ id: string }, string | undefined>({
+		id: 'qc/missing',
+		retry: 0,
+		cache,
+		staleTime: 60_000,
+		fetch: async ({ id }) => {
+			calls++;
+			return id === 'none' ? undefined : `v${calls}`;
+		},
+	});
+	// A fresh entry whose data is truly undefined: nothing to refetch.
+	client.queries.missing(def, { id: 'none' });
+	await flush();
+	expect(calls).toBe(0);
+	// Stale but readable: left alone.
+	await def.ensure(client, { id: 'a' });
+	def.invalidate(client, { id: 'a' });
+	client.queries.missing(def, { id: 'a' });
+	await flush();
+	expect(calls).toBe(1);
+	// Unreadable: a fetch starts.
+	await def.ensure(client, { id: 'b' });
+	expect(calls).toBe(2);
+	hole.on = true;
+	client.queries.missing(def, { id: 'b' });
+	await flush();
+	expect(calls).toBe(3);
 });
