@@ -19,6 +19,16 @@
 			"import": "./dist/index.js",
 			"default": "./dist/index.js"
 		},
+		"./infinite": {
+			"types": "./dist/infinite/index.d.ts",
+			"import": "./dist/infinite/index.js",
+			"default": "./dist/infinite/index.js"
+		},
+		"./codegen": {
+			"types": "./dist/codegen/index.d.ts",
+			"import": "./dist/codegen/index.js",
+			"default": "./dist/codegen/index.js"
+		},
 		"./package.json": "./package.json"
 	},
 	"keywords": [
@@ -44,10 +54,36 @@
 		"typecheck": "bun check"
 	},
 	"devDependencies": {
-		"@types/bun": "^1.4.5"
+		"@graphql-codegen/plugin-helpers": "^8.0.0",
+		"@graphql-typed-document-node/core": "^3.2.0",
+		"@softistx/graphql-client": "^0.9.0",
+		"@softistx/riva": "workspace:*",
+		"@types/bun": "^1.4.5",
+		"graphql": "^16.11.0"
 	},
 	"peerDependencies": {
 		"@softistx/riva": "^0.0.0",
-		"@softistx/graphql-client": "^0.9.0"
+		"@softistx/graphql-client": "^0.9.0",
+		"@graphql-codegen/plugin-helpers": "^8.0.0",
+		"@graphql-typed-document-node/core": "^3.2.0",
+		"graphql": "^16.11.0 || ^17.0.0"
+	},
+	"peerDependenciesMeta": {
+		"@graphql-codegen/plugin-helpers": {
+			"optional": true
+		},
+		"@graphql-typed-document-node/core": {
+			"optional": true
+		},
+		"graphql": {
+			"optional": true
+		}
+	},
+	"nxgt": {
+		"entrypoints": [
+			"src/index.ts",
+			"src/infinite/index.ts",
+			"src/codegen/index.ts"
+		]
 	}
 }

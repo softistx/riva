@@ -6,7 +6,8 @@
  * the main entry and the opt-in subpaths, so what they share is counted once.
  * The riva-react rows bundle `@softistx/riva` as the real core (resolved to
  * packages/riva/dist) with `react` left external, so core + react is measured
- * against its hard cap of 9216 B.
+ * against its hard cap of 9216 B. The riva-graphql row leaves
+ * `@softistx/graphql-client` and `graphql` external.
  */
 export interface Budget {
 	name: string;
@@ -59,6 +60,14 @@ export const budgets: Budget[] = [
 		],
 		limit: 12288,
 	},
+	{
+		name: '@softistx/riva + riva-graphql',
+		entry: [
+			'packages/riva/dist/index.js',
+			'packages/riva-graphql/dist/index.js',
+		],
+		limit: 8192,
+	},
 ];
 
 export interface Result extends Budget {
@@ -84,8 +93,16 @@ export async function measure(entry: string | string[]): Promise<number> {
 		entrypoints: virtual ? ['virtual:budget'] : files,
 		minify: true,
 		// A package's own dependencies are bundled (the workspace's `@softistx/riva`
-		// is the core under test); the host's `react` is not ours to count.
-		external: ['react', 'react-dom', 'react/*', 'react-dom/*'],
+		// is the core under test); the host's `react` and the peers an adapter
+		// wraps (`@softistx/graphql-client`, `graphql`) are not ours to count.
+		external: [
+			'react',
+			'react-dom',
+			'react/*',
+			'react-dom/*',
+			'@softistx/graphql-client',
+			'graphql',
+		],
 		target: 'browser',
 		plugins: virtual
 			? [
