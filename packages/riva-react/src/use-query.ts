@@ -1,4 +1,4 @@
-import type { Query, QueryState, RivaClient } from '@softistx/riva';
+import type { Query, QueryState } from '@softistx/riva';
 import { useMemo } from 'react';
 import { type AnyQuery, useQueryState } from './query-state';
 import { suspend } from './suspend';
@@ -59,7 +59,11 @@ export function useQuery(
 		if (state.status === 'success' && !state.isFetching) {
 			// Stored data the cache cannot read (evicted): start its fetch now,
 			// not in the mount effect, so the first render never shows undefined.
-			(def.prefetch as (c: RivaClient, v: unknown) => void)(q.client, q.vars);
+			(
+				q.client.queries as unknown as {
+					missing(d: AnyQuery, v: unknown): void;
+				}
+			).missing(def, q.vars);
 			state = (q.client.get as (d: AnyQuery, v: unknown) => typeof state)(
 				def,
 				q.vars,

@@ -335,3 +335,33 @@ test('a Suspense mount fetches once at the default staleTime', async () => {
 	expect(calls).toBe(1);
 	await m.unmount();
 });
+
+test('a suspense query that resolves undefined fetches once, with no loop', async () => {
+	const client = newClient();
+	let calls = 0;
+	const def = query<{ school: string }, string | undefined>({
+		id: 'uq/suspense-undefined',
+		retry: 0,
+		fetch: async () => {
+			calls++;
+			return undefined;
+		},
+	});
+	const seen: unknown[] = [];
+	function C() {
+		const q = useQuery(def, { school: 's' }, { suspense: true });
+		seen.push(q.data);
+		return h('p', null, 'done');
+	}
+	const m = await mount(
+		h(Suspense, { fallback: h('p', null, 'loading') }, h(C)),
+		client,
+	);
+	await flush();
+	await flush();
+	await flush();
+	expect(calls).toBe(1);
+	expect(seen).toContain(undefined);
+	expect(m.text()).toBe('done');
+	await m.unmount();
+});
