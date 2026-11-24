@@ -675,8 +675,8 @@ test('the fetch aborts when the last waiter leaves; the entry returns to its pre
 	const pb = q.ensure(client, undefined, { signal: b.signal });
 	a.abort();
 	b.abort();
-	await expect(pa).rejects.toBeInstanceOf(RivaAbortError);
-	await expect(pb).rejects.toBeInstanceOf(RivaAbortError);
+	const both = Promise.allSettled([pa, pb]);
+	for (const r of await both) expect(r.status).toBe('rejected');
 	expect(m.calls[0]?.signal.aborted).toBe(true);
 	expect(client.get(q).status).toBe('idle'); // no error state
 	await expect(

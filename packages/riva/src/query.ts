@@ -87,36 +87,31 @@ export interface Query<Vars, Data> {
 	cancel(client: RivaClient, ...args: VarsArgs<Vars>): void;
 }
 
+const ms = (d: Duration | undefined, fallback?: number) =>
+	d === undefined ? fallback : toMs(d);
+
 export function query<Vars = void, Data = unknown>(
 	opts: QueryOptions<Vars, Data>,
 ): Query<Vars, Data> {
-	const def = Object.freeze({
+	const def = {
 		kind: 'query',
 		id: opts.id,
 		options: Object.freeze({
-			fetch: opts.fetch,
-			staleTime: opts.staleTime === undefined ? 0 : toMs(opts.staleTime),
-			gcTime: opts.gcTime === undefined ? undefined : toMs(opts.gcTime),
-			retry: opts.retry,
-			retryDelay: opts.retryDelay,
+			...opts,
+			staleTime: ms(opts.staleTime, 0),
+			gcTime: ms(opts.gcTime),
 			refetchOnFocus: opts.refetchOnFocus ?? true,
 			refetchOnReconnect: opts.refetchOnReconnect ?? true,
-			refetchEvery:
-				opts.refetchEvery === undefined ? undefined : toMs(opts.refetchEvery),
+			refetchEvery: ms(opts.refetchEvery),
 		}),
-		ensure: (client: RivaClient, vars?: Vars, o?: EnsureOptions) =>
-			client.queries.ensure(def, vars as Vars, o),
-		prefetch: (client: RivaClient, vars?: Vars) =>
-			client.queries.prefetch(def, vars as Vars),
-		invalidate: (client: RivaClient, vars?: Vars) =>
-			client.queries.invalidate(def, vars),
-		setData: (
-			client: RivaClient,
-			vars: Vars,
-			data: Data | ((prev: Data | undefined) => Data),
-		) => client.queries.setData(def, vars, data),
-		cancel: (client: RivaClient, vars?: Vars) =>
-			client.queries.cancel(def, vars as Vars),
-	}) as Query<Vars, Data>;
-	return def;
+	} as Record<string, unknown>;
+	for (const m of ['ensure', 'prefetch', 'invalidate', 'setData', 'cancel'])
+		def[m] = (client: RivaClient, ...args: unknown[]) =>
+			(
+				client.queries as unknown as Record<
+					string,
+					(...a: unknown[]) => unknown
+				>
+			)[m]?.(def, ...args);
+	return Object.freeze(def) as unknown as Query<Vars, Data>;
 }

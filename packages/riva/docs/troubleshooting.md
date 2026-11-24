@@ -67,7 +67,7 @@ client.effect(() => {
 
 Code: `RIVA_DURATION` (`RivaError`).
 
-**When:** an option such as `staleTime`, `gcTime` or `refetchEvery` got a value `toMs` cannot read, at the `query({...})` call.
+**When:** an option such as `staleTime`, `gcTime` or `refetchEvery` got a value it cannot read, at the `query({...})` call.
 
 **Why:** a duration is a non-negative number of milliseconds (or `Infinity`), or a string of digits and one unit: `ms`, `s`, `m`, `h`.
 

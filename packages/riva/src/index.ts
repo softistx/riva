@@ -16,7 +16,7 @@ export {
 	type Getter,
 	type Readable,
 } from './computed';
-export { type Duration, toMs } from './duration';
+export type { Duration } from './duration';
 export { effect } from './effect';
 export type { ClientEvents, Scheduler } from './env';
 export {

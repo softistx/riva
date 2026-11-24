@@ -14,42 +14,38 @@ export interface ClientEvents {
 }
 
 export const defaultScheduler: Scheduler = {
-	now: () => Date.now(),
-	setTimeout: (fn, ms) => globalThis.setTimeout(fn, ms),
-	clearTimeout: (h) => globalThis.clearTimeout(h as number),
+	now: Date.now,
+	setTimeout: (fn, ms) => setTimeout(fn, ms),
+	clearTimeout: (h) => clearTimeout(h as number),
 };
 
 // The slice of the DOM the defaults use, typed locally: the core has no DOM lib.
 interface Target {
-	addEventListener(type: string, cb: () => void): void;
-	removeEventListener(type: string, cb: () => void): void;
-}
-interface Host extends Target {
-	document?: Target & { visibilityState?: string };
+	addEventListener?(type: string, cb: () => void): void;
+	removeEventListener?(type: string, cb: () => void): void;
+	visibilityState?: string;
 }
 
-const noop = () => {};
+/** Listens on `target`; a no-op unsubscribe on the server. */
+const on = (target: () => Target | undefined, type: string, cb: () => void) => {
+	const t = isBrowser() ? target() : undefined;
+	t?.addEventListener?.(type, cb);
+	return () => t?.removeEventListener?.(type, cb);
+};
+const host = () => globalThis as Target;
+const doc = () => (globalThis as { document?: Target }).document;
 
 /** Browser listeners (visibilitychange when visible, focus, online); nothing on the server. */
 export const defaultEvents: ClientEvents = {
 	onFocus(cb) {
-		if (!isBrowser()) return noop;
-		const host = globalThis as unknown as Host;
-		const doc = host.document;
-		const onVisible = () => {
-			if (doc?.visibilityState === 'visible') cb();
-		};
-		doc?.addEventListener?.('visibilitychange', onVisible);
-		host.addEventListener?.('focus', cb);
+		const a = on(doc, 'visibilitychange', () => {
+			if (doc()?.visibilityState === 'visible') cb();
+		});
+		const b = on(host, 'focus', cb);
 		return () => {
-			doc?.removeEventListener?.('visibilitychange', onVisible);
-			host.removeEventListener?.('focus', cb);
+			a();
+			b();
 		};
 	},
-	onReconnect(cb) {
-		if (!isBrowser()) return noop;
-		const host = globalThis as unknown as Host;
-		host.addEventListener?.('online', cb);
-		return () => host.removeEventListener?.('online', cb);
-	},
+	onReconnect: (cb) => on(host, 'online', cb),
 };

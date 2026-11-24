@@ -25,7 +25,7 @@ export class RivaRequestError extends RivaError {
 		message: string,
 		options: { retryable: boolean; status?: number; cause?: unknown },
 	) {
-		super(code, message, { cause: options.cause });
+		super(code, message, options);
 		this.name = 'RivaRequestError';
 		this.status = options.status;
 		this.retryable = options.retryable;
@@ -34,11 +34,15 @@ export class RivaRequestError extends RivaError {
 
 /** An HTTP error status. Retryable for 5xx, 408 and 429. */
 export class RivaHttpError extends RivaRequestError {
-	constructor(status: number, message?: string, options?: { cause?: unknown }) {
-		super(`HTTP_${status}`, message ?? `HTTP ${status}`, {
+	constructor(
+		status: number,
+		message = `HTTP ${status}`,
+		cause?: { cause?: unknown },
+	) {
+		super(`HTTP_${status}`, message, {
 			status,
 			retryable: status >= 500 || status === 408 || status === 429,
-			cause: options?.cause,
+			...cause,
 		});
 		this.name = 'RivaHttpError';
 	}
@@ -46,8 +50,8 @@ export class RivaHttpError extends RivaRequestError {
 
 /** The network failed before any response. Always retryable. */
 export class RivaNetworkError extends RivaRequestError {
-	constructor(message = 'Network error', options?: { cause?: unknown }) {
-		super('RIVA_NETWORK', message, { retryable: true, cause: options?.cause });
+	constructor(message = 'Network error', cause?: { cause?: unknown }) {
+		super('RIVA_NETWORK', message, { retryable: true, ...cause });
 		this.name = 'RivaNetworkError';
 	}
 }

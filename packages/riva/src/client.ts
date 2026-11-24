@@ -8,7 +8,7 @@ import {
 } from './env';
 import * as graph from './graph';
 import type { Query, QueryState, VarsArgs } from './query';
-import { QueryCache } from './query-cache';
+import { createQueryCache, type QueryCache } from './query-cache';
 import { withClient } from './scope';
 
 // biome-ignore lint/suspicious/noConfusingVoidType: an effect may return nothing or a cleanup
@@ -25,22 +25,15 @@ export interface ClientOptions {
 export class RivaClient {
 	/** @internal */
 	readonly graph: graph.Graph = graph.createGraph(this);
-	readonly #options: ClientOptions;
-	#queries: QueryCache | undefined;
+	/** @internal */
+	readonly queries: QueryCache;
 
 	constructor(options: ClientOptions = {}) {
-		this.#options = options;
-	}
-
-	/** @internal */
-	get queries(): QueryCache {
-		if (!this.#queries)
-			this.#queries = new QueryCache(
-				this,
-				this.#options.scheduler ?? defaultScheduler,
-				this.#options.events ?? defaultEvents,
-			);
-		return this.#queries;
+		this.queries = createQueryCache(
+			this,
+			options.scheduler ?? defaultScheduler,
+			options.events ?? defaultEvents,
+		);
 	}
 
 	/** A query's state: a pure read, tracked in a computed or effect, never fetches. */

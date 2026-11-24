@@ -11,6 +11,8 @@
 		"typecheck:scripts": "bun check -p scripts/tsconfig.json",
 		"test": "bun run --filter './packages/*' test && bun test ./scripts/",
 		"fix": "biome check",
+		"size": "bun run scripts/size.ts",
+		"verify": "bun run fix && bun run typecheck && bun run build && bun run test && bun run size",
 		"format": "biome format",
 		"lint": "biome lint",
 		"changeset": "changeset",

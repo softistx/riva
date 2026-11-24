@@ -3,44 +3,28 @@ import { RivaError } from './errors';
 const bad = (what: string): never => {
 	throw new RivaError(
 		'RIVA_KEY',
-		`Cannot derive a cache key: variables hold ${what}. Variables must be JSON-like (objects, arrays, strings, numbers, booleans, null, Date).`,
+		`Cannot derive a cache key: variables hold ${what}. Use JSON-like values.`,
 	);
 };
 
 function ser(v: unknown, path: unknown[]): string | undefined {
-	switch (typeof v) {
-		case 'undefined':
-			return undefined;
-		case 'string':
-		case 'boolean':
-			return JSON.stringify(v);
-		case 'number':
-			return Number.isFinite(v) ? JSON.stringify(v) : bad(`the number ${v}`);
-		case 'function':
-			return bad('a function');
-		case 'symbol':
-			return bad('a symbol');
-		case 'bigint':
-			return bad('a bigint');
-	}
-	if (v === null) return 'null';
+	if (v === undefined) return;
 	if (v instanceof Date)
-		return Number.isNaN(v.getTime())
-			? bad('an invalid Date')
-			: JSON.stringify(v.toISOString());
-	if (path.includes(v)) return bad('a circular reference');
+		v = Number.isNaN(+v) ? bad('an invalid Date') : v.toISOString();
+	if (typeof v === 'function' || typeof v === 'symbol' || typeof v === 'bigint')
+		bad(`a ${typeof v}`);
+	if (typeof v === 'number' && !Number.isFinite(v)) bad(`the number ${v}`);
+	if (!v || typeof v !== 'object') return JSON.stringify(v);
+	if (path.includes(v)) bad('a circular reference');
 	path.push(v);
-	let out: string;
-	if (Array.isArray(v))
-		out = `[${v.map((x) => ser(x, path) ?? 'null').join(',')}]`;
-	else {
-		const parts: string[] = [];
-		for (const k of Object.keys(v as object).sort()) {
-			const s = ser((v as Record<string, unknown>)[k], path);
-			if (s !== undefined) parts.push(`${JSON.stringify(k)}:${s}`);
-		}
-		out = `{${parts.join(',')}}`;
-	}
+	const out = Array.isArray(v)
+		? `[${v.map((x) => ser(x, path) ?? 'null')}]`
+		: `{${Object.keys(v)
+				.sort()
+				.flatMap((k) => {
+					const s = ser((v as Record<string, unknown>)[k], path);
+					return s === undefined ? [] : `${JSON.stringify(k)}:${s}`;
+				})}}`;
 	path.pop();
 	return out;
 }

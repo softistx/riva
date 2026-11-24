@@ -23,24 +23,6 @@ export const retryDelay = (
 	failures: number,
 ): number => (fn ? fn(failures) : Math.min(1000 * 2 ** failures, 30_000));
 
-/** Waits `ms`, or until `signal` aborts (whichever comes first). */
-export function sleep(
-	sched: Scheduler,
-	ms: number,
-	signal: AbortSignal,
-): Promise<void> {
-	return new Promise((resolve) => {
-		if (signal.aborted) return resolve();
-		const done = () => {
-			sched.clearTimeout(handle);
-			signal.removeEventListener('abort', done);
-			resolve();
-		};
-		const handle = sched.setTimeout(done, ms);
-		signal.addEventListener('abort', done, { once: true });
-	});
-}
-
 /** Settles with `p`, or as soon as `signal` aborts (rejecting with `RivaAbortError`), even if `p` never settles. */
 export function raceAbort<T>(p: Promise<T>, signal: AbortSignal): Promise<T> {
 	return new Promise<T>((resolve, reject) => {
@@ -51,4 +33,20 @@ export function raceAbort<T>(p: Promise<T>, signal: AbortSignal): Promise<T> {
 			signal.removeEventListener('abort', onAbort),
 		);
 	});
+}
+
+/** Waits `ms`, or until `signal` aborts (whichever comes first). */
+export function sleep(
+	sched: Scheduler,
+	ms: number,
+	signal: AbortSignal,
+): Promise<void> {
+	let h: unknown;
+	if (signal.aborted) return Promise.resolve();
+	return raceAbort(
+		new Promise<void>((r) => (h = sched.setTimeout(r, ms))),
+		signal,
+	)
+		.catch(() => {})
+		.finally(() => sched.clearTimeout(h));
 }
