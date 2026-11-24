@@ -77,7 +77,7 @@ const state = client.get(patients, { school: 'north' }); // state.data is the do
 patients.invalidate(client, { school: 'north' });
 ```
 
-A document with no variables takes none: `viewer.ensure(client)`. The options are the core's (`staleTime`, `gcTime`, `retry`, `refetchEvery`, …) minus `fetch`. The definition's `id` is the document's persisted id, else its operation name; pass `id` to define one document twice with different options. **Ids must be unique**: two definitions with the same `id` (an override reused by mistake, or two documents sharing an operation name) collide on one cache entry.
+A document with no variables takes none: `viewer.ensure(client)` (`viewer` being a definition of `query(VIEWER_QUERY)`, an illustrative `query Viewer { viewer { id } }`). The options are the core's (`staleTime`, `gcTime`, `retry`, `refetchEvery`, …) minus `fetch`. The definition's `id` is the document's persisted id, else its operation name; pass `id` to define one document twice with different options. **Ids must be unique**: two definitions with the same `id` (an override reused by mistake, or two documents sharing an operation name) collide on one cache entry.
 
 A document that is not exactly one named query or mutation is refused when the definition is created, with a `TypeError` that says why: no operation, several operations, no name, a subscription, or the wrong helper (`query()` on a mutation).
 
@@ -115,6 +115,7 @@ data?.nodes; // the flattened nodes, typed from the document
 The document declares the cursor variables (`$after`, `$before`); name them with `cursor` when they are called otherwise:
 
 ```ts
+// PATIENTS_BY_CURSOR_QUERY is illustrative: a Patients document declaring `$afterCursor`
 export const feed = infinite(PATIENTS_BY_CURSOR_QUERY, {
 	connection: (data) => data.patients,
 	cursor: { after: 'afterCursor' }, // query Patients($afterCursor: String) { … }
@@ -208,4 +209,4 @@ const manifest = buildAllowlist({
 
 Exported types: `GraphQLTransport`, `Operation`, `OperationKind`, `VarsOf` and `GraphQLQueryOptions`, `GraphQLMutationOptions` (main entry); `GraphQLInfiniteOptions` (`/infinite`); `AllowlistConfig`, `AllowlistEntry`, `AllowlistManifest` (`/codegen`).
 
-The core plus the main entry stays under 8 kB gzipped, `@softistx/graphql-client` and `graphql` not counted.
+riva + riva-graphql stays under 8 kB gzipped (checked by the repo's size budget), `@softistx/graphql-client` and `graphql` not counted.

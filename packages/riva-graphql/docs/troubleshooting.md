@@ -18,7 +18,7 @@ import { createRivaClient } from '@softistx/riva';
 import { graphqlClientTransport, provideGraphQL } from '@softistx/riva-graphql';
 
 const client = createRivaClient();
-provideGraphQL(client, graphqlClientTransport(createGraphQLClient({ url })));
+provideGraphQL(client, graphqlClientTransport(createGraphQLClient({ url: 'https://api.example.com/graphql' })));
 ```
 
 ## `riva-graphql: the operation has no name; name it (query Patients { ... }) so it has an id.`
@@ -71,6 +71,14 @@ Related: `the persisted document <hash> must hold exactly one operation.` and `â
 **Why:** the runtime id is the document's `__meta__.hash` (the client preset's `persistedDocuments`), else its operation name. The manifest keeps the keys of the preset's `persisted-documents.json` as they are, so they match, unless the manifest is stale (codegen ran without the `afterAllFileWrite` step), or documents carry no hash while the manifest is keyed by hash.
 
 **Fix:** run `writeAllowlist` from `hooks.afterAllFileWrite` (see "Allowlist codegen" in the [README](../README.md#allowlist-codegen)) so it follows each codegen run. With no `persistedDocuments`, use `ids: 'name'`.
+
+## `ENOENT` or a `SyntaxError` from `writeAllowlist` reading `persisted-documents.json`
+
+**When:** `writeAllowlist` (or the `afterAllFileWrite` hook running it) fails with a missing file, or invalid JSON.
+
+**Why:** the client preset writes `persisted-documents.json` only with `persistedDocuments: true`, and `writeAllowlist` reads it. The hook runs after all files are written, so a failed or partial codegen run, a wrong path or a preset without the option leaves nothing valid to read.
+
+**Fix:** set `presetConfig: { persistedDocuments: true }` on the preset, check that the path passed to `writeAllowlist` is the preset's output folder plus `persisted-documents.json`, and fix the codegen error that came first.
 
 ## Two definitions share one cache entry
 
