@@ -168,20 +168,33 @@ function collect(g: Graph, n: Node): void {
 function flush(g: Graph): void {
 	if (g.depth > 0 || g.flushing) return;
 	g.flushing = true;
+	const errors: unknown[] = [];
 	try {
 		while (g.pending.size > 0) {
 			const queue = [...g.pending];
 			g.pending.clear();
 			for (const n of queue) {
-				refresh(g, n);
-				if (n.ver === n.seen) continue;
-				n.seen = n.ver;
-				for (const l of [...n.listeners]) l(n.value);
+				try {
+					refresh(g, n);
+					if (n.ver === n.seen) continue;
+					n.seen = n.ver;
+					for (const l of [...n.listeners])
+						try {
+							l(n.value);
+						} catch (e) {
+							errors.push(e);
+						}
+				} catch (e) {
+					errors.push(e);
+				}
 			}
 		}
 	} finally {
 		g.flushing = false;
 	}
+	if (errors.length === 1) throw errors[0];
+	if (errors.length > 1)
+		throw new AggregateError(errors, 'Several listeners threw.');
 }
 
 export function write<T>(
