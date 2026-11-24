@@ -8,8 +8,10 @@ import {
 	type AnyQuery,
 	armGc,
 	type Ctx,
+	committed,
 	type Entry,
 	entryOf,
+	type Lay,
 	peek,
 	putStored,
 	stale,
@@ -41,6 +43,13 @@ export function createQueryCache(
 		detach: undefined,
 	};
 	return {
+		sched,
+		/** An optimistic layer over an entry; returns its drop. @internal */
+		lay(def: AnyQuery, vars: unknown, l: Lay): () => void {
+			const e = entryOf(c, def, vars);
+			client.set(e.lay, (ls) => [...ls, l]);
+			return () => client.set(e.lay, (ls) => ls.filter((x) => x !== l));
+		},
 		/** A pure, tracked read: creates an idle entry, never fetches. */
 		// biome-ignore lint/suspicious/noExplicitAny: variables are typed by the caller
 		state: <D>(def: Query<any, D>, vars: unknown): QueryState<D> =>
@@ -92,7 +101,7 @@ export function createQueryCache(
 			client.batch(() => {
 				const value =
 					typeof data === 'function'
-						? (data as (prev: D | undefined) => D)(view(c, e).data as D)
+						? (data as (prev: D | undefined) => D)(committed(c, e) as D)
 						: data;
 				// A refused value throws here, before anything changed.
 				const stored = toStored(c, e, value);

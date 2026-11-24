@@ -25,11 +25,17 @@ interface Ctx {
 
 function fieldsOf(store: EntityStore, ref: string) {
 	const a = store.atoms.get(ref);
-	if (a) return store.client.get(a);
 	// A missing entity is only given an atom when the read is tracked.
-	return store.client.graph.track
-		? store.client.get(store.atomOf(ref))
-		: undefined;
+	let fields = a
+		? store.client.get(a)
+		: store.client.graph.track
+			? store.client.get(store.atomOf(ref))
+			: undefined;
+	for (const layer of store.skip ? [] : store.client.get(store.ov)) {
+		const patch = layer.get(ref);
+		if (patch) fields = { ...fields, ...patch };
+	}
+	return fields;
 }
 
 function walk(store: EntityStore, v: unknown, c: Ctx): unknown {

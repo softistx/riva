@@ -107,6 +107,60 @@ Defined once here so adapters throw them and `instanceof` holds.
 - Never retried either: a `RivaRequestError` with `retryable: false`. Any other error is retried per `retry`.
 - `RIVA_DURATION`: an invalid duration string. `RIVA_KEY`: variables the key cannot serialize (function, symbol, bigint, cycle). `RIVA_CACHE`: data the entity cache cannot store (see below).
 
+## Mutations
+
+`mutation({ id, run, optimistic?, updates?, invalidates?, cache?, retry?, retryDelay? })` sends a change and shows its expected result at once. The definition is stateless; `run(client, vars, { signal? })` resolves with the server data, or rejects with the error after the rollback. `retry` is a count or a decision (default 0); `retryDelay(failures)` defaults to `min(1000 * 2 ** failures, 30000)` ms.
+
+```ts
+import { at, createRivaClient, mutation, query } from '@softistx/riva';
+
+const todos = query({ id: 'todos', fetch: async () => (await fetch('/api/todos')).json() as Promise<string[]> });
+
+const addTodo = mutation<string, string>({
+	id: 'addTodo',
+	run: async (title, { signal }) =>
+		(await fetch('/api/todos', { method: 'POST', body: title, signal })).text(),
+	// shown at once, over the committed data; the updater gets the value below
+	optimistic: (title, tx) => tx.set(todos, undefined, (prev) => [...(prev ?? []), title]),
+	// on success: write the server result into the committed data...
+	updates: (tx, saved) => tx.set(todos, undefined, (prev) => [...(prev ?? []), saved]),
+	// ...and/or mark queries stale (observed ones refetch)
+	invalidates: [todos], // or [at(todos, vars)] for one entry, or (data, vars) => [...]
+});
+
+const client = createRivaClient();
+await addTodo.run(client, 'Buy milk'); // rejects, with the layer dropped, on failure
+```
+
+`tx.set(query, vars, dataOrUpdater)` writes one entry. In `optimistic` it adds a layer over the query's data, dropped when the mutation settles (the updater gets the value below). In `updates` it writes the committed data (the updater gets the committed value). `at(query, vars)` names one entry for `invalidates`, with `vars` checked against the query.
+
+With `cache: entities()`, the data `optimistic` returns is normalized into a layer over the entities, and the server result is committed to the entity store:
+
+```ts
+import { entities } from '@softistx/riva/entities';
+
+type Patient = { __typename: 'Patient'; id: string; name: string };
+
+const renamePatient = mutation<{ id: string; name: string }, Patient>({
+	id: 'renamePatient',
+	cache: entities(),
+	run: async (v) => (await fetch(`/api/patients/${v.id}`, { method: 'PATCH', body: JSON.stringify(v) })).json(),
+	optimistic: (v) => ({ __typename: 'Patient', id: v.id, name: v.name }), // every query reading Patient:<id> shows it
+});
+```
+
+- **The layer.** While a mutation is in flight its optimistic writes sit above the committed cache. `client.get`, `subscribe` and computeds see the committed data with the layers applied in start order; the committed data is never mutated. A keyed layer never changes `status` or `isFetching`. A refetch that lands meanwhile updates the committed value and the layer stays on top. Any entity layer change re-evaluates every entity read (a known v1 cost); results keep their identity when unchanged.
+- **Rollback.** On failure (after the retries, on an abort, or when the commit is refused with `RIVA_CACHE`) the layers are dropped and readers go back to the value below. Nothing else runs: no `updates`, no `invalidates`. A throwing `invalidates` function counts as a failure.
+- **Success.** In one batch (readers see one transition): the result is committed through `cache`, the layers are dropped, `updates` writes the committed data, then `invalidates` runs. If `updates` throws, the server result stays committed, the layers are dropped, the invalidations still run, and `run` rejects with the thrown error; only your helper's own writes may be partial.
+- **Order.** Mutations on one client resolve in start order. If B (started after A) succeeds first, its layer stays visible and its commit waits until A settles; A's commit then runs, then B's. If A fails, A's layer is dropped at once and B's still applies on top of the committed data. Clients never share the order.
+- **Retry and abort.** `signal` aborts with `RivaAbortError` and rolls back, also while the mutation waits for an earlier one (it never commits afterwards).
+- **Server.** `run` works in a React Router action: layers are applied there too but nobody observes them, and no timer is armed (the default is no retry).
+- **Traps.** `optimistic` returning data only reaches the entities when `cache` has a `layer` method (`entities()` does); without `cache` write with `tx.set`. `tx.set` targets one entry, so use the variables the reader uses. A data value that is itself a function is taken as an updater. After success the layer is dropped: without `updates` or `cache`, nothing replaces it, so add `updates` or `invalidates` (only observed queries refetch at once). A mutation that succeeded waits for earlier ones: an earlier `run` that never resolves holds it back, so pass a `signal` and abort it.
+
+### Exported types and helpers
+
+`mutation`, `at`; types `Mutation`, `MutationOptions`, `RunOptions`, `Tx`, `Invalidation` and `Target`. `CachePolicy` gained optional `layer(client, data) -> { drop() }` and `commit(client, data)`, which `entities()` implements, and a `committed` flag on `read`.
+
 ## Normalized cache
 
 `@softistx/riva/entities`: `entities`, `readEntity`, `writeEntity`, `invalidateEntity`, `evict`. By default a query keeps its data as is, keyed by id and variables. Pass `cache: entities()` from the opt-in `@softistx/riva/entities` entry to store each entity (an object with a string `__typename` and an `id` or `_id`) once, shared by every query that returns it. A refetch of one query then updates the others, and a `client.get` inside a computed re-evaluates only when an entity it read changed.

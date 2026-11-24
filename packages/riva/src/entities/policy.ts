@@ -87,14 +87,36 @@ export function entities(opts?: EntitiesOptions): EntityPolicy {
 				return stored;
 			});
 		},
-		read(client, stored) {
+		read(client, stored, committed) {
 			const store = bound(client, opts, identify);
-			const seen = share(
-				stored.seen,
-				denormalize(store, stored.value, stored.memo),
-			);
-			stored.seen = seen;
-			return seen;
+			store.skip = !!committed;
+			try {
+				const seen = share(
+					stored.seen,
+					denormalize(store, stored.value, stored.memo),
+				);
+				if (!committed) stored.seen = seen;
+				return seen;
+			} finally {
+				store.skip = false;
+			}
+		},
+		layer(client, data) {
+			const { pending } = normalize(bound(client, opts, identify), data);
+			client.set(storeOf(client).ov, (ls) => [...ls, pending]);
+			return {
+				drop: () =>
+					client.set(storeOf(client).ov, (ls) =>
+						ls.filter((l) => l !== pending),
+					),
+			};
+		},
+		commit(client, data) {
+			const store = bound(client, opts, identify);
+			const { pending } = normalize(store, data);
+			client.batch(() => {
+				for (const [ref, fields] of pending) store.merge(ref, fields);
+			});
 		},
 		release(client, stored) {
 			const store = bound(client, opts, identify);
