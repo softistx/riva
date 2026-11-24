@@ -1,15 +1,17 @@
 import type { Listener, Unsubscribe } from './atom';
-import { RivaError } from './errors';
+import type { RivaError } from './errors';
 import {
 	type AnyQuery,
 	armGc,
 	type Ctx,
+	committed,
 	type Entry,
 	entryOf,
-	peek,
+	INCOMPLETE,
 	put,
 	type State,
 	stale,
+	unreadable,
 } from './query-entry';
 import { abandon, join, pin } from './query-run';
 import { isBrowser } from './scope';
@@ -36,32 +38,24 @@ function refetch(c: Ctx, flag: 'refetchOnFocus' | 'refetchOnReconnect'): void {
 }
 
 /**
- * A fetched, observed entry whose stored data the policy cannot read (an
- * entity evicted, a selected field the server left out) is refetched once; a
- * second miss right after is an error, so it never loops.
+ * A fetched, observed entry whose stored data the cache can no longer read
+ * (an entity evicted) is refetched. A fetch that stays unreadable ends in
+ * `error`, which this ignores, so it never loops; once the data reads again
+ * that error is cleared.
  */
 function complete(c: Ctx, e: Entry, s: State): void {
-	if (s.data !== undefined) e.missed = false;
-	else if (
-		e.def.options.cache &&
-		!e.run &&
-		s.status === 'success' &&
-		peek(c, e).data !== undefined
-	) {
-		if (e.missed)
-			put(c, e, {
-				status: 'error',
-				error: new RivaError(
-					'RIVA_CACHE',
-					"The query's result is incomplete in the cache: the server did not return every selected field.",
-				),
-			});
-		else {
-			e.missed = true;
+	if (e.run) return;
+	if (s.status === 'success') {
+		if (unreadable(c, e)) {
 			e.invalidated = true;
 			pin(c, e);
 		}
-	}
+	} else if (
+		s.status === 'error' &&
+		(s.error as RivaError | undefined)?.message === INCOMPLETE &&
+		committed(c, e) !== undefined
+	)
+		put(c, e, { status: 'success', error: undefined });
 }
 
 /** Counts an observer, fetches when needed, polls; the returned function undoes it. */

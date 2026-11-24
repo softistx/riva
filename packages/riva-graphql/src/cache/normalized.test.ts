@@ -233,7 +233,7 @@ describe('policy behaviours', () => {
 		await patient.ensure(client, { id: '1' }).catch(() => {});
 		await new Promise((r) => setTimeout(r, 50));
 		const state = client.get(patient, { id: '1' });
-		expect(transport.calls.length).toBe(2);
+		expect(transport.calls.length).toBe(1);
 		expect(state.status).toBe('error');
 		expect((state.error as RivaError).code).toBe('RIVA_CACHE');
 		off();

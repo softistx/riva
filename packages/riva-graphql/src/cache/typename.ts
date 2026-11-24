@@ -10,7 +10,8 @@ const missing = (field: string) =>
 /**
  * Throws a `TypeError` when an object of the document cannot be identified:
  * a selection set below the operation's own that selects no `__typename`,
- * directly or through an inline fragment or a fragment spread. The document
+ * directly or through an inline fragment with no type condition (a type
+ * condition or a fragment spread covers one branch only). The document
  * is never rewritten, since a persisted id is the hash of its text.
  */
 export function assertTypename(node: DocumentNode): void {
@@ -18,20 +19,21 @@ export function assertTypename(node: DocumentNode): void {
 	for (const d of node.definitions)
 		if (d.kind === 'FragmentDefinition') fragments.set(d.name.value, d);
 
-	const has = (set: SelectionSetNode, seen: Set<string>): boolean =>
-		set.selections.some((s) => {
-			if (s.kind === 'Field') return s.name.value === '__typename';
-			if (s.kind === 'InlineFragment') return has(s.selectionSet, seen);
-			const f = fragments.get(s.name.value);
-			if (!f || seen.has(f.name.value)) return false;
-			seen.add(f.name.value);
-			return has(f.selectionSet, seen);
-		});
+	// Selected directly, or in an inline fragment with no type condition: a
+	// branch of a union or a named fragment selecting it covers only its type.
+	const has = (set: SelectionSetNode): boolean =>
+		set.selections.some((s) =>
+			s.kind === 'Field'
+				? s.name.value === '__typename'
+				: s.kind === 'InlineFragment' &&
+					!s.typeCondition &&
+					has(s.selectionSet),
+		);
 
 	const check = (set: SelectionSetNode, seen: Set<string>): void => {
 		for (const s of set.selections) {
 			if (s.kind === 'Field') {
-				if (s.selectionSet && !has(s.selectionSet, new Set()))
+				if (s.selectionSet && !has(s.selectionSet))
 					throw new TypeError(missing(s.name.value));
 				if (s.selectionSet) check(s.selectionSet, seen);
 			} else if (s.kind === 'InlineFragment') check(s.selectionSet, seen);

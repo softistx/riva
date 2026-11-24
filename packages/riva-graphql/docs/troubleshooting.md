@@ -137,15 +137,15 @@ import { addTypenameSelectionDocumentTransform } from '@graphql-codegen/client-p
 presetConfig: { persistedDocuments: true, documentTransforms: [addTypenameSelectionDocumentTransform] }
 ```
 
-## `The query's result is incomplete in the cache: the server did not return every selected field.`
+## `The cache cannot read the query's data after a fetch.`
 
-Code: `RIVA_CACHE` (`RivaError`), shown as the query's error status.
+Code: `RIVA_CACHE` (`RivaError`), shown as the query's error status; `ensure` rejects with it.
 
-**When:** an observed query with a `normalized()` cache fetched twice and still reads as a miss.
+**When:** a query with a `normalized()` cache fetched, and the result still reads as a miss.
 
-**Why:** a missing field or entity makes the whole result `undefined`; the engine refetches once, and if the server's answer still lacks a selected field it stops instead of looping.
+**Why:** the server's answer lacks a selected field (or an object the selection needs), so the whole result reads `undefined`: the cache never serves half a result. A second fetch would give the same answer, so it stops instead of looping. A query already showing data whose entity is later evicted is refetched on its own.
 
-**Fix:** have the API return every selected field (`null` for an empty one), or remove it from the selection. See the [core page](../../riva/docs/troubleshooting.md).
+**Fix:** have the API return every selected field (`null` for an empty one), or remove it from the selection. The generic explanation is on the [core page](../../riva/docs/troubleshooting.md).
 
 ## `This client already uses other entity identity rules…`
 

@@ -91,7 +91,7 @@ Code: `RIVA_KEY` (`RivaError`).
 user.ensure(client, { id: String(id) });
 ```
 
-## Cannot cache the data
+## `Cannot cache the data: it holds <what>. Use JSON-like values (a Date is allowed).`
 
 Code: `RIVA_CACHE` (`RivaError`).
 
@@ -121,15 +121,15 @@ query({ id: 'a', cache, fetch });
 query({ id: 'b', cache, fetch });
 ```
 
-## The query's result is incomplete in the cache: the server did not return every selected field.
+## `The cache cannot read the query's data after a fetch.`
 
 Code: `RIVA_CACHE` (`RivaError`).
 
-**When:** an observed query with a cache whose `read` returns `undefined` (a selection-aware cache such as `normalized()`), even right after a fetch: the entry shows the error status.
+**When:** a fetch succeeded but the query's cache policy cannot read the data it just stored back (`read` returns `undefined`): the entry shows the error status and `ensure` rejects with it. Only a cache that reads selectively can do it, such as the GraphQL `normalized()` one.
 
-**Why:** a miss (an evicted entity, a field the data never held) makes the engine invalidate and refetch the entry once. If the fresh result still reads as a miss, the server answered without a selected field, and a second refetch would give the same, so it stops.
+**Why:** the answer lacks something the cache needs (a selected field the server left out, an entity it did not identify), so the data would be served half-empty. A second fetch would give the same answer, so none is started. Separately, an observed query whose stored data stops reading later (an entity evicted) is refetched; the error clears once the data reads again.
 
-**Fix:** have the API return every selected field (a nullable field must come back as `null`, not be left out), or remove the field from the selection.
+**Fix:** have the source return everything the cache reads (a nullable GraphQL field must come back as `null`, not be left out), or stop reading the missing part. See the GraphQL cause in the [riva-graphql page](../../riva-graphql/docs/troubleshooting.md).
 
 ## The request was aborted
 

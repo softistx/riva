@@ -30,18 +30,27 @@ describe('assertTypename', () => {
 		expect(check('mutation { ping }')).not.toThrow();
 	});
 
-	test('accepts a typename given by an inline fragment', () => {
-		expect(
-			check('{ patient { ... on Patient { __typename id } } }'),
-		).not.toThrow();
+	test('accepts a typename given by an inline fragment with no type condition', () => {
+		expect(check('{ patient { ... { __typename id } } }')).not.toThrow();
 	});
 
-	test('accepts a typename given by a fragment spread', () => {
+	test('refuses a typename given only by one branch of a union', () => {
+		expect(
+			check(
+				'{ search { ... on Patient { __typename id } ... on Doctor { id } } }',
+			),
+		).toThrow(/"search"/);
+		expect(check('{ patient { ... on Patient { __typename id } } }')).toThrow(
+			TypeError,
+		);
+	});
+
+	test('refuses a typename given only by a fragment spread', () => {
 		expect(
 			check(
 				'query { patient { ...P } } fragment P on Patient { __typename id }',
 			),
-		).not.toThrow();
+		).toThrow(/"patient"/);
 	});
 
 	test('checks the fragment definitions where they are spread', () => {

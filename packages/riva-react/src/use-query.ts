@@ -57,7 +57,8 @@ export function useQuery(
 	const { state } = q;
 	if (enabled && opts?.suspense && state.data === undefined) {
 		if (state.status === 'error') throw state.error;
-		if (state.status !== 'success') throw suspend(q.client, def, q.key, q.vars);
+		if (state.status !== 'success' || state.isFetching)
+			throw suspend(q.client, def, q.key, q.vars);
 	}
 	return result;
 }

@@ -80,7 +80,19 @@ function writeObject(
 			? existing
 			: undefined;
 	const entries = writeFields(writer, data, fields, previous);
-	return previous ? { ...previous, ...entries } : entries;
+	if (previous && agrees(previous, entries)) return { ...previous, ...entries };
+	return previous ? writeFields(writer, data, fields, undefined) : entries;
+}
+
+const isNested = (v: unknown): boolean => typeof v === 'object' && v !== null;
+
+/** Two writes of one embedded object describe the same object when their shared scalars are equal. */
+function agrees(a: Stored, b: Stored): boolean {
+	return Object.keys(b).every((k) => {
+		const x = a[k];
+		const y = b[k];
+		return !Object.hasOwn(a, k) || isNested(x) || isNested(y) || x === y;
+	});
 }
 
 function writeFields(

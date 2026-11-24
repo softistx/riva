@@ -276,4 +276,31 @@ describe('writeResult', () => {
 		expect(store.peek('Patient:1')?.['notes']).toEqual({ text: 'd' });
 		expect(store.peek('Patient:2')?.['notes']).toEqual({ text: 'c' });
 	});
+	test('a reordered embedded list is not merged item by item with what another selection stored', () => {
+		const store = newStore();
+		const tag = (label: string, extra: Record<string, unknown>) => ({
+			__typename: 'Tag',
+			label,
+			...extra,
+		});
+		const patient = (tags: unknown[]) => ({
+			patient: { __typename: 'Patient', id: '1', tags },
+		});
+		write(
+			'{ patient { __typename id tags { __typename label size } } }',
+			patient([tag('x', { size: 1 }), tag('y', { size: 2 })]),
+			{},
+			store,
+		);
+		write(
+			'{ patient { __typename id tags { __typename label color } } }',
+			patient([tag('y', { color: 'red' }), tag('x', { color: 'blue' })]),
+			{},
+			store,
+		);
+		expect(store.peek('Patient:1')?.['tags']).toEqual([
+			{ __typename: 'Tag', label: 'y', color: 'red' },
+			{ __typename: 'Tag', label: 'x', color: 'blue' },
+		]);
+	});
 });

@@ -1,13 +1,15 @@
-import { RivaAbortError } from './errors';
+import { RivaAbortError, RivaError } from './errors';
 import {
 	armGc,
 	type Ctx,
 	type Entry,
+	INCOMPLETE,
 	type Inflight,
 	peek,
 	put,
 	putData,
 	type State,
+	unreadable,
 	view,
 } from './query-entry';
 import { raceAbort, retryDelay, shouldRetry, sleep } from './retry';
@@ -69,11 +71,20 @@ function start(c: Ctx, e: Entry): Inflight {
 	};
 	f.promise = loop(c, e, f).then(
 		(data) => {
-			const refused = done({
-				status: 'success',
-				data,
-				error: undefined,
-				updatedAt: c.sched.now(),
+			// One change for readers: the data and, when the cache cannot read it, the error.
+			let refused: unknown;
+			c.client.batch(() => {
+				const mine = e.run === f;
+				refused = done({
+					status: 'success',
+					data,
+					error: undefined,
+					updatedAt: c.sched.now(),
+				});
+				if (!refused && mine && data !== undefined && unreadable(c, e)) {
+					refused = new RivaError('RIVA_CACHE', INCOMPLETE);
+					put(c, e, { status: 'error', error: refused });
+				}
 			});
 			if (refused) throw refused;
 			return e.def.options.cache ? (view(c, e).data ?? data) : data;

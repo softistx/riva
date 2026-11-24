@@ -21,7 +21,7 @@ import { graphql } from '../generated/gql';
 export const PATIENTS_QUERY = graphql(`
 	query Patients($school: ID!, $first: Int, $after: String) {
 		patients(school: $school, first: $first, after: $after) {
-			edges { node { id name } cursor }
+			edges { node { __typename id name } cursor }
 			pageInfo { hasNextPage endCursor }
 		}
 	}
@@ -35,12 +35,12 @@ export const PATIENT_QUERY = graphql(`
 
 export const RENAME_PATIENT_MUTATION = graphql(`
 	mutation RenamePatient($id: ID!, $name: String!) {
-		renamePatient(id: $id, name: $name) { id name }
+		renamePatient(id: $id, name: $name) { __typename id name }
 	}
 `);
 ```
 
-The examples below use these constants (`PATIENTS_QUERY` and `PATIENT_QUERY`, which the cache section selects `__typename` in), an `url` such as `https://api.example.com/graphql`, and a `client` made as shown next.
+The examples below use these constants (each selects `__typename`, as the normalized cache needs; the client preset's `addTypenameSelectionDocumentTransform` adds it for you), an `url` such as `https://api.example.com/graphql`, and a `client` made as shown next.
 
 ## Provide the transport
 
@@ -156,8 +156,8 @@ export const rename = mutation(RENAME_PATIENT_MUTATION, {
 - **Field arguments** get one stored field per argument set, variables resolved. They are not shown by `readEntity` or a plain `entities()` read, which skip those keys; read them through the query.
 - **Fragments** (inline and named) and type conditions work. `possibleTypes` maps each interface or union to the names of its member types (`{ Person: ['Patient', 'Doctor'] }`, as codegen's `fragment-matcher` writes it), and may nest abstract types. Without it, a fragment on an abstract type is applied only to the objects whose `__typename` equals its condition; for an object with no `__typename` the cache cannot tell and reads the fragment's fields too, so a miss stays visible.
 - **Identity** options are the core's (`keys`, `identify`). Share one `normalized()` between a client's definitions: a second one with other identity rules is refused by the core ([the core page](../riva/docs/troubleshooting.md#this-client-already-uses-other-entity-identity-rules)).
-- **Selections must include `__typename`** below the operation's root, which the client preset's `addTypenameSelectionDocumentTransform` adds. A document that does not is refused when `query()` or `mutation()` is called, with a `TypeError`; the document is never rewritten, since a persisted id is the hash of its text.
-- **A miss is a miss**: if a selected field or entity is missing from the store, the query's data is `undefined`, never half-served. An observed query then refetches once; if the server still leaves a selected field out, the query ends in the error status with code `RIVA_CACHE`.
+- **Selections must include `__typename`** below the operation's root, selected directly (or in an inline fragment with no type condition: one branch of a union or a named fragment covers only its own type), which the client preset's `addTypenameSelectionDocumentTransform` adds. A document that does not is refused when `query()` or `mutation()` is called, with a `TypeError`; the document is never rewritten, since a persisted id is the hash of its text.
+- **A miss is a miss**: if a selected field or entity is missing from the store, the query's data is `undefined`, never half-served. An observed query then refetches; if a fetch's result is itself missing a selected field, the query ends in the error status with code `RIVA_CACHE` (`ensure` rejects with it) instead of looping.
 - The cache holds JSON: a `Date`, a function or a `NaN` in a result throws a `RivaError` with code `RIVA_CACHE`.
 
 ## Errors

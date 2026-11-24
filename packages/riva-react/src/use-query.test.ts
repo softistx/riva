@@ -1,5 +1,5 @@
 import { expect, spyOn, test } from 'bun:test';
-import { query, RivaScopeError } from '@softistx/riva';
+import { atom, type CachePolicy, query, RivaScopeError } from '@softistx/riva';
 import { Component, type ReactNode, Suspense } from 'react';
 import { deferred, flush, h, mount, newClient } from '../test/render';
 import { RivaProvider } from './context';
@@ -223,6 +223,42 @@ test('suspense with data already cached renders at once', async () => {
 		client,
 	);
 	expect(m.text()).toBe('hot');
+	await m.unmount();
+});
+
+test('suspense suspends again while a hidden entity is refetched, never yielding undefined data', async () => {
+	const holes = atom(false);
+	const cache: CachePolicy<unknown> = {
+		write: (_c, data) => data,
+		read: (c, stored) => (c.get(holes) ? undefined : stored),
+		release: () => {},
+	};
+	const client = newClient();
+	let calls = 0;
+	const def = query<{ school: string }, string>({
+		id: 'uq/suspense-evict',
+		retry: 0,
+		cache,
+		fetch: async () => {
+			calls++;
+			client.set(holes, false);
+			return `v${calls}`;
+		},
+	});
+	function C() {
+		const q = useQuery(def, { school: 's' }, { suspense: true });
+		return h('p', null, `got:${q.data.toUpperCase()}`);
+	}
+	const m = await mount(
+		h(Suspense, { fallback: h('p', null, 'loading') }, h(C)),
+		client,
+	);
+	await flush();
+	expect(m.text()).toBe('got:V1');
+	await flush(() => client.set(holes, true));
+	await flush();
+	expect(calls).toBe(2);
+	expect(m.text()).toBe('got:V2');
 	await m.unmount();
 });
 
