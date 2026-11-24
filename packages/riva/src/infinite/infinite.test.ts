@@ -322,6 +322,29 @@ describe('lifecycle', () => {
 		expect(c.get(f).status).toBe('idle');
 	});
 
+	test('flags never outlive a fetch, gc included', async () => {
+		const s = server(7);
+		const f = feedOf(s, { gcTime: 1 });
+		const c = createRivaClient();
+		await f.ensure(c);
+		await f.fetchNext(c);
+		await new Promise((r) => setTimeout(r, 20));
+		expect(c.get(f).isFetchingNext).toBe(false);
+		await f.ensure(c);
+		const p = f.fetchNext(c);
+		expect(c.get(f).isFetchingNext).toBe(true);
+		await p;
+		expect(c.get(f).isFetchingNext).toBe(false);
+	});
+
+	test('a caller value for a cursor variable is stripped', async () => {
+		const s = server(7);
+		const f = feedOf(s);
+		const c = createRivaClient();
+		await f.ensure(c, { after: '4' } as never);
+		expect(s.calls[0]).toEqual({});
+	});
+
 	test('two clients do not share pages or in-flight fetches', async () => {
 		const s = server(7);
 		const f = feedOf(s);

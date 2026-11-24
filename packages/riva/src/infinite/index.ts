@@ -1,7 +1,7 @@
 export { infinite } from './infinite';
 export type {
 	Connection,
-	CursorNames,
+	Cursors,
 	Edge,
 	FeedVars,
 	Infinite,

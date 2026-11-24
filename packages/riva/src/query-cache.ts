@@ -123,6 +123,10 @@ export function createQueryCache(
 			armGc(c, e);
 		},
 
+		/** Whether the entry was invalidated and not refetched since. @internal */
+		invalid: (def: AnyQuery, vars: unknown): boolean =>
+			c.entries.get(stableKey(def.id, vars))?.invalidated ?? false,
+
 		/** Sets an error on an entry and keeps its data (a failed side fetch). @internal */
 		fail(def: AnyQuery, vars: unknown, error: unknown): void {
 			put(c, entryOf(c, def, vars), { status: 'error', error });

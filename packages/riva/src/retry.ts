@@ -50,3 +50,24 @@ export function sleep(
 		.catch(() => {})
 		.finally(() => sched.clearTimeout(h));
 }
+
+/** Runs `fn` until it succeeds, retrying as `shouldRetry` decides, with backoff; stops with `RivaAbortError` once `signal` aborts. */
+export async function withRetry<T>(
+	sched: Scheduler,
+	opts: {
+		retry: number | ((failures: number, error: unknown) => boolean) | undefined;
+		retryDelay: ((failures: number) => number) | undefined;
+	},
+	signal: AbortSignal,
+	fn: () => Promise<T>,
+): Promise<T> {
+	for (let failures = 0; ; ) {
+		try {
+			return await raceAbort(fn(), signal);
+		} catch (x) {
+			if (!shouldRetry(opts.retry, failures, x)) throw x;
+			await sleep(sched, retryDelay(opts.retryDelay, failures++), signal);
+			if (signal.aborted) throw new RivaAbortError();
+		}
+	}
+}

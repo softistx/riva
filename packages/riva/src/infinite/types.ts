@@ -51,31 +51,38 @@ export interface InfiniteState<Page, Node>
 	isFetchingPrevious: boolean;
 }
 
-/** The variable names the cursors travel under. Defaults `after` and `before`. */
-export interface CursorNames<Vars> {
-	after?: keyof Vars & string;
-	before?: keyof Vars & string;
-}
-
-/** The variables a caller passes: those of `fetch` without the default cursors, `void` when none are left. */
-export type FeedVars<V> = [keyof Omit<V, 'after' | 'before'>] extends [never]
+/** The variables a caller passes: those of `fetch` without the cursor variables `K`, `void` when none are left. */
+export type FeedVars<V, K extends string = 'after' | 'before'> = [
+	keyof Omit<V, K>,
+] extends [never]
 	? // biome-ignore lint/suspicious/noConfusingVoidType: no variables is `void`, as for a query
 		void
-	: Omit<V, 'after' | 'before'>;
+	: Omit<V, K>;
 
-export interface InfiniteOptions<V, Page, Node>
-	extends Omit<
-		QueryOptions<FeedVars<V>, InfiniteData<Page>>,
+/** The optional cursor variables `fetch` receives. */
+export type Cursors<A extends string, B extends string> = {
+	[K in A]?: string;
+} & { [K in B]?: string };
+
+export interface InfiniteOptions<
+	V,
+	Page,
+	Node,
+	A extends string = 'after',
+	B extends string = 'before',
+> extends Omit<
+		QueryOptions<FeedVars<V, A | B>, InfiniteData<Page>>,
 		'fetch' | 'derive'
 	> {
 	/** Fetches one page; the cursor is merged into the variables. */
 	fetch: (
-		vars: V & { after?: string; before?: string },
+		vars: V & Cursors<NoInfer<A>, NoInfer<B>>,
 		ctx: FetchContext,
 	) => Promise<Page>;
 	/** Reads the connection out of a page. */
 	connection: (page: Page) => Connection<Node>;
-	cursor?: CursorNames<V>;
+	/** The variables the cursors travel under. Defaults `after` and `before`. */
+	cursor?: { after?: A; before?: B };
 }
 
 /** A stateless infinite list definition: a query over `{ pages, params }`. */

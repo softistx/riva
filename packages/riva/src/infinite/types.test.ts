@@ -74,3 +74,23 @@ test('the subscribe listener gets the feed state', () => {
 		expectTypeOf(s.isFetchingNext).toBeBoolean();
 	});
 });
+
+test('custom cursor names leave the caller variables', () => {
+	const custom = infinite({
+		id: 'custom',
+		cursor: { after: 'afterId', before: 'beforeId' },
+		fetch: async (v: { search: string; afterId?: string; beforeId?: string }) =>
+			({
+				edges: [],
+				pageInfo: { hasNextPage: false, hasPreviousPage: false },
+			}) as {
+				edges: never[];
+				pageInfo: { hasNextPage: boolean; hasPreviousPage: boolean };
+			} & { v?: typeof v },
+		connection: (p) => p,
+	});
+	const c = createRivaClient();
+	void custom.ensure(c, { search: 'a' });
+	// @ts-expect-error a cursor variable is not the caller's
+	void custom.ensure(c, { search: 'a', afterId: 'x' });
+});
