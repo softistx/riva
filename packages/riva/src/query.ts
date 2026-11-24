@@ -21,6 +21,18 @@ export interface FetchContext {
 	client: RivaClient;
 }
 
+/**
+ * How a query entry stores its data. The default keeps it as is; a policy such
+ * as `entities()` from `@softistx/riva/entities` normalizes it into shared
+ * entities. `read` runs in a computed, so what it reads is tracked.
+ */
+export interface CachePolicy<Stored = unknown> {
+	write(client: RivaClient, data: unknown): Stored;
+	read(client: RivaClient, stored: Stored): unknown;
+	/** The entry was replaced or collected: drop what `write` retained. */
+	release(client: RivaClient, stored: Stored): void;
+}
+
 export interface QueryOptions<Vars, Data> {
 	/** Identifies the definition; the cache key is the id plus the stable-serialized variables. */
 	id: string;
@@ -39,6 +51,8 @@ export interface QueryOptions<Vars, Data> {
 	refetchOnReconnect?: boolean;
 	/** Polls while the entry is observed. */
 	refetchEvery?: Duration;
+	/** How the data is stored. Default: as is (a keyed cache). */
+	cache?: CachePolicy;
 }
 
 export interface EnsureOptions {
@@ -67,6 +81,7 @@ export interface Query<Vars, Data> {
 		readonly refetchOnFocus: boolean;
 		readonly refetchOnReconnect: boolean;
 		readonly refetchEvery: number | undefined;
+		readonly cache: CachePolicy | undefined;
 	};
 	/** Fetches when missing or stale and awaits; resolves the cache when fresh. */
 	ensure(

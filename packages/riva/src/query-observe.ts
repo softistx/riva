@@ -46,7 +46,7 @@ export function observe(
 		};
 	}
 	if (e.observers++ === 0) poll(c, e);
-	const off = c.client.subscribe(e.atom, listener);
+	const off = c.client.subscribe(e.out, listener);
 	if (stale(c, e)) join(c, e);
 	let done = false;
 	return () => {

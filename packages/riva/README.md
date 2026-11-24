@@ -105,5 +105,50 @@ Defined once here so adapters throw them and `instanceof` holds.
 - `RivaRequestError` (`status?`, `retryable`, `cause`): a failed request. `RivaHttpError(status)` has code `HTTP_<status>` and is retryable for 5xx, 408 and 429; `RivaNetworkError` (`RIVA_NETWORK`) is retryable.
 - `RivaAbortError` (`RIVA_ABORT`): never retried.
 - Never retried either: a `RivaRequestError` with `retryable: false`. Any other error is retried per `retry`.
-- `RIVA_DURATION`: an invalid duration string. `RIVA_KEY`: variables the key cannot serialize (function, symbol, bigint, cycle).
+- `RIVA_DURATION`: an invalid duration string. `RIVA_KEY`: variables the key cannot serialize (function, symbol, bigint, cycle). `RIVA_CACHE`: data the entity cache cannot store (see below).
 
+
+## Normalized cache
+
+By default a query keeps its data as is, keyed by id and variables. Pass `cache: entities()` from the opt-in `@softistx/riva/entities` entry to store each entity (an object with a string `__typename` and an `id` or `_id`) once, shared by every query that returns it. A refetch of one query then updates the others, and a `client.get` inside a computed re-evaluates only when an entity it read changed.
+
+```ts
+import { createRivaClient, query } from '@softistx/riva';
+import { entities, evict, invalidateEntity, readEntity, writeEntity } from '@softistx/riva/entities';
+
+const cache = entities({
+	keys: { Book: (b) => b['isbn'] as string }, // identity of a type (default: id, then _id)
+	// identify: (obj) => 'Type:id' | undefined,    // or replace the identity rule
+});
+
+const patients = query({
+	id: 'patients',
+	cache,
+	fetch: async () => (await fetch('/api/patients')).json() as Promise<{ items: Patient[] }>,
+});
+const patient = query({
+	id: 'patient',
+	cache,
+	fetch: async (v: { id: string }) => (await fetch(`/api/patients/${v.id}`)).json() as Promise<Patient>,
+});
+
+const client = createRivaClient();
+await patients.ensure(client);
+await patient.ensure(client, { id: '1' });
+
+writeEntity(client, 'Patient:1', { name: 'Ann' }); // merged; both queries see it
+writeEntity(client, 'Patient:1', (prev) => ({ visits: (prev?.['visits'] as number) + 1 }));
+readEntity(client, 'Patient:1'); // tracked inside a computed; undefined when missing
+invalidateEntity(client, 'Patient:1'); // marks stale every query reaching it, refetches observed ones
+evict(client, 'Patient:1'); // removes it: queries see the field as missing
+```
+
+- Entities are merged field by field into one store per client (two clients never share). Nested entities, and entities inside arrays, are normalized too; other objects stay inline. An entity unchanged since the last read keeps its identity.
+- A query entry holds the entities it reaches. When the entry is replaced or collected (`gcTime`) they are released, and an entity nobody holds is removed. A reference cycle between entities is cut where it loops back when read, and is not collected.
+- A ref to a missing entity reads as `undefined`, never throws. Data that is not JSON (a function, a class instance other than `Date`, a bigint, a cycle) throws `RIVA_CACHE`; nothing is written.
+- The store follows the identity rules of the first policy used on a client; use one `entities()` per client. The GraphQL selection-aware walker (fields with arguments, aliases, fragments) comes with `@softistx/riva-graphql`.
+- `CachePolicy` (`write`, `read`, `release`) is the hook behind it, exported from the main entry for other policies.
+
+### Size budget
+
+The main entry `@softistx/riva` stays within 6144 B gzipped, and the main entry with `entities` within 8192 B (the row grows as subpaths land; core + react stays within 9216 B). `bun run size` checks both. These limits are an assumed, reversible choice.

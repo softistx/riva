@@ -8,14 +8,22 @@ import {
 	type AnyQuery,
 	armGc,
 	type Ctx,
+	type Entry,
 	entryOf,
 	peek,
-	put,
+	putData,
 	stale,
+	view,
 } from './query-entry';
 import { observe } from './query-observe';
 import { abandon, cancel, join, pin, restart } from './query-run';
 import { raceAbort } from './retry';
+
+function mark(c: Ctx, e: Entry): void {
+	e.invalidated = true;
+	if (e.run) restart(e.run);
+	else if (e.observers) join(c, e);
+}
 
 /** The query entries of one client: the operations the definitions and the client call. */
 export function createQueryCache(
@@ -35,13 +43,13 @@ export function createQueryCache(
 		/** A pure, tracked read: creates an idle entry, never fetches. */
 		// biome-ignore lint/suspicious/noExplicitAny: variables are typed by the caller
 		state: <D>(def: Query<any, D>, vars: unknown): QueryState<D> =>
-			client.get(entryOf(c, def, vars).atom) as QueryState<D>,
+			client.get(entryOf(c, def, vars).out) as QueryState<D>,
 
 		ensure<V, D>(def: Query<V, D>, vars: V, opts?: EnsureOptions): Promise<D> {
 			const signal = opts?.signal;
 			if (signal?.aborted) return Promise.reject(new RivaAbortError());
 			const e = entryOf(c, def, vars);
-			if (!stale(c, e)) return Promise.resolve(peek(c, e).data as D);
+			if (!stale(c, e)) return Promise.resolve(view(c, e).data as D);
 			const f = join(c, e);
 			f.waiters++;
 			return (signal ? raceAbort(f.promise, signal) : f.promise).finally(() => {
@@ -58,12 +66,17 @@ export function createQueryCache(
 		/** One entry, or every entry of the definition when `vars` is undefined. */
 		invalidate(def: AnyQuery, vars?: unknown): void {
 			const key = vars === undefined ? undefined : stableKey(def.id, vars);
+			for (const e of [...c.entries.values()])
+				if (e.def.id === def.id && (key === undefined || e.key === key))
+					mark(c, e);
+		},
+
+		/** Invalidates every entry whose stored data the cache policy's test matches. @internal */
+		invalidateBy(test: (stored: unknown) => boolean): void {
 			for (const e of [...c.entries.values()]) {
-				if (e.def.id !== def.id || (key !== undefined && e.key !== key))
-					continue;
-				e.invalidated = true;
-				if (e.run) restart(e.run);
-				else if (e.observers) join(c, e);
+				const stored = peek(c, e).data;
+				if (stored !== undefined && e.def.options.cache && test(stored))
+					mark(c, e);
 			}
 		},
 
@@ -75,10 +88,11 @@ export function createQueryCache(
 		): void {
 			const e = entryOf(c, def, vars);
 			const f = e.run;
+			let refused: unknown;
 			client.batch(() => {
 				const value =
 					typeof data === 'function'
-						? (data as (prev: D | undefined) => D)(peek(c, e).data as D)
+						? (data as (prev: D | undefined) => D)(view(c, e).data as D)
 						: data;
 				if (f) {
 					e.run = undefined;
@@ -86,7 +100,7 @@ export function createQueryCache(
 					f.ctl.abort();
 				}
 				e.invalidated = false;
-				put(c, e, {
+				refused = putData(c, e, {
 					status: 'success',
 					data: value,
 					error: undefined,
@@ -95,6 +109,7 @@ export function createQueryCache(
 				});
 			});
 			armGc(c, e);
+			if (refused) throw refused;
 		},
 
 		cancel(def: AnyQuery, vars: unknown): void {

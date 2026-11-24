@@ -91,6 +91,20 @@ Code: `RIVA_KEY` (`RivaError`).
 user.ensure(client, { id: String(id) });
 ```
 
+## Cannot cache the data
+
+Code: `RIVA_CACHE` (`RivaError`).
+
+**When:** a query with `cache: entities()` (or `writeEntity`) receives data holding a function, a symbol, a bigint, a non-finite number, a class instance other than `Date`, a `Map`/`Set` or a circular reference. The fetch rejects with it (the entry shows the error and keeps its previous data); `setData` throws it.
+
+**Why:** the entity store merges and compares plain JSON data field by field, so it cannot hold anything else. Nothing is written when it throws.
+
+**Fix:** return plain data from `fetch` (convert class instances with `toJSON()` or a mapper), or keep that query on the default keyed cache.
+
+```ts
+fetch: async () => (await res.json()) as Plain, // not a Map, not a model instance
+```
+
 ## The request was aborted
 
 Code: `RIVA_ABORT` (`RivaAbortError`).
