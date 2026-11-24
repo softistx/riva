@@ -24,6 +24,11 @@
 			"import": "./dist/infinite/index.js",
 			"default": "./dist/infinite/index.js"
 		},
+		"./cache": {
+			"types": "./dist/cache/index.d.ts",
+			"import": "./dist/cache/index.js",
+			"default": "./dist/cache/index.js"
+		},
 		"./codegen": {
 			"types": "./dist/codegen/index.d.ts",
 			"import": "./dist/codegen/index.js",
@@ -80,6 +85,7 @@
 		"entrypoints": [
 			"src/index.ts",
 			"src/infinite/index.ts",
+			"src/cache/index.ts",
 			"src/codegen/index.ts"
 		]
 	}

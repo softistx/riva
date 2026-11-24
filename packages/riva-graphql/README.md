@@ -124,6 +124,29 @@ export const feed = infinite(PATIENTS_BY_CURSOR_QUERY, {
 
 The caller's variables leave the cursors out. The list's id is the query's id plus `#infinite`, so `query(PATIENTS_QUERY)` and `infinite(PATIENTS_QUERY, …)` never share a cache entry.
 
+## Normalized cache
+
+```ts
+import { query, mutation } from '@softistx/riva-graphql';
+import { normalized } from '@softistx/riva-graphql/cache';
+
+const cache = normalized({ possibleTypes: { Person: ['Patient', 'Doctor'] } });
+
+export const patient = query(PATIENT_QUERY, { cache });
+export const patients = query(PATIENTS_QUERY, { cache });
+export const rename = mutation(RENAME_PATIENT_MUTATION, { cache });
+```
+
+`normalized()` walks the operation's selection set and stores each object that has a `__typename` and an `id` once, as an entity, so two queries that show the same patient update each other, and a mutation's result updates every query showing it. It is built on the core entity store (`@softistx/riva/entities`): `readEntity`, `writeEntity`, `useFragment` and a mutation's optimistic layer, commit and rollback work as with `entities()`.
+
+- **Aliases** are stored under the field's name and read back under the response key.
+- **Field arguments** get one stored field per argument set, variables resolved: `friends({"first":1})`. `readEntity` shows these field keys.
+- **Fragments** (inline and named) and type conditions work. Pass `possibleTypes` for fragments on interfaces and unions.
+- **Identity** options are the core's (`keys`, `identify`). Share one `normalized()` between a client's definitions: a second one with other identity rules is refused by the core.
+- **Selections must include `__typename`**, which the client preset's `addTypenameSelectionDocumentTransform` adds. Without it an object is stored embedded in its parent, not as an entity.
+- **A miss is a miss**: if a selected field or entity is missing from the store, the query's data is `undefined` and the query is fetched, never half-served.
+- The cache holds JSON: a `Date`, a function or a `NaN` in a result throws a `RivaError` with code `RIVA_CACHE`.
+
 ## Errors
 
 The transport maps `@softistx/graphql-client`'s errors to riva's, so `instanceof` holds and the core's retry policy applies (never retried: a refusal, 4xx; retried: 5xx, 408, 429, the network). An `ApiError` that carries no status is read as 400, so it is not retried:
@@ -205,8 +228,9 @@ const manifest = buildAllowlist({
 |---|---|---|
 | `@softistx/riva-graphql` | `query`, `mutation`, `provideGraphQL`, `graphqlClientTransport`, `toRivaError`, `operationOf`, `VERSION` | Imports `@softistx/riva` only; no optional peer. |
 | `@softistx/riva-graphql/infinite` | `infinite` | Imports `@softistx/riva/infinite`. |
+| `@softistx/riva-graphql/cache` | `normalized`, `fieldKey`, `fieldNameOf`, `stableJson` | Imports `@softistx/riva/entities`; no `graphql` value import. |
 | `@softistx/riva-graphql/codegen` | `buildAllowlist`, `writeAllowlist` | Node and codegen only; needs `graphql`. |
 
-Exported types: `GraphQLTransport`, `Operation`, `OperationKind`, `VarsOf` and `GraphQLQueryOptions`, `GraphQLMutationOptions` (main entry); `GraphQLInfiniteOptions` (`/infinite`); `AllowlistConfig`, `AllowlistEntry`, `AllowlistManifest` (`/codegen`).
+Exported types: `GraphQLTransport`, `Operation`, `OperationKind`, `VarsOf` and `GraphQLQueryOptions`, `GraphQLMutationOptions`, `OperationCache` (main entry); `NormalizedOptions`, `PossibleTypes` (`/cache`); `GraphQLInfiniteOptions` (`/infinite`); `AllowlistConfig`, `AllowlistEntry`, `AllowlistManifest` (`/codegen`).
 
-riva + riva-graphql stays under 8 kB gzipped (checked by the repo's size budget), `@softistx/graphql-client` and `graphql` not counted.
+riva + riva-graphql stays under 8 kB gzipped, and with the entities and the cache under 11 kB (checked by the repo's size budget), `@softistx/graphql-client` and `graphql` not counted.

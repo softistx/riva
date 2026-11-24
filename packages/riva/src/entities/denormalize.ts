@@ -23,7 +23,8 @@ interface Ctx {
 	local: Map<string, unknown>;
 }
 
-function fieldsOf(store: EntityStore, ref: string) {
+/** The fields of an entity as a reader sees them: tracked, with the optimistic layers over them. */
+export function fieldsOf(store: EntityStore, ref: string) {
 	const a = store.atoms.get(ref);
 	// A missing entity is only given an atom when the read is tracked.
 	let fields = a

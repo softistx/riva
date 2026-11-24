@@ -68,6 +68,16 @@ export const budgets: Budget[] = [
 		],
 		limit: 8192,
 	},
+	{
+		name: '@softistx/riva + riva-graphql + cache',
+		entry: [
+			'packages/riva/dist/index.js',
+			'packages/riva/dist/entities/index.js',
+			'packages/riva-graphql/dist/index.js',
+			'packages/riva-graphql/dist/cache/index.js',
+		],
+		limit: 11264,
+	},
 ];
 
 export interface Result extends Budget {

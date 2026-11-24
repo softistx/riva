@@ -83,7 +83,7 @@ export const committed = (c: Ctx, e: Entry): unknown =>
 export const toStored = (c: Ctx, e: Entry, data: unknown): unknown => {
 	const cache = e.def.options.cache;
 	return cache && data !== undefined
-		? cache.write(c.client, data, peek(c, e).data)
+		? cache.write(c.client, data, peek(c, e).data, e.vars)
 		: data;
 };
 

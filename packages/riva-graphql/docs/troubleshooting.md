@@ -97,3 +97,39 @@ Related: `the persisted document <hash> must hold exactly one operation.` and `�
 **Why:** a refusal carries `extensions.http.status` below 500, or none (read as 400): it is never retried. A 5xx, 408 or 429 is, like any other transport failure.
 
 **Fix:** have the API send a 4xx `extensions.http.status` for a refusal, or decide yourself: `retry: (failures, error) => …`.
+
+## `The GraphQL cache holds JSON: field X holds Y.`
+
+**Why:** `normalized()` stores plain JSON; a `Date`, a class instance, a function or a non-finite number in a result (a custom scalar parsed by the client) cannot be stored.
+
+**Fix:** keep the scalar serialized in the result, or parse it at the point of use.
+
+## `The GraphQL cache stores an operation's data: an object.`
+
+**Why:** the transport returned something other than an object for the operation's data.
+
+**Fix:** check the transport; a GraphQL result's `data` is an object.
+
+## `The document has no fragment X` and `The document holds no operation`
+
+**Why:** the document given to `query()` or `mutation()` with a `normalized()` cache spreads a fragment it does not define, or defines no operation.
+
+**Fix:** pass the preset's document, which carries the fragments it uses.
+
+## Objects are stored inside their parent, not as entities
+
+**Why:** the selection has no `__typename`, so no object has an identity.
+
+**Fix:** use the client preset's `addTypenameSelectionDocumentTransform`, or select `__typename` yourself.
+
+## `This client already uses other entity identity rules…`
+
+**Why:** two `normalized()` (or `entities()`) policies with different `keys` or `identify` were used on one client.
+
+**Fix:** create one `normalized(options)` and pass it to every definition.
+
+## A query refetches although another query showed its data
+
+**Why:** a missing field or entity makes the whole result `undefined`: the new query selects a field no earlier query fetched, or an argument set not yet stored (`friends({"first":2})` is not `friends({"first":1})`).
+
+**Fix:** expected; the query fetches once and then reads from the store.

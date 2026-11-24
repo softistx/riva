@@ -41,7 +41,7 @@ export async function execute<Vars, Data>(
 					),
 			});
 			if (out !== undefined && o.cache?.layer)
-				drops.push(o.cache.layer(client, out).drop);
+				drops.push(o.cache.layer(client, out, vars).drop);
 		});
 		const data = await withRetry(
 			client.queries.sched,
@@ -58,7 +58,7 @@ export async function execute<Vars, Data>(
 		if (signal.aborted) throw new RivaAbortError();
 		let bad: { e: unknown } | undefined;
 		client.batch(() => {
-			o.cache?.commit?.(client, data);
+			o.cache?.commit?.(client, data, vars);
 			drop();
 			// The server committed: a throwing helper keeps it and still invalidates.
 			try {

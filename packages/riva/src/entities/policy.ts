@@ -4,7 +4,7 @@ import type { CachePolicy } from '../query';
 import { denormalize } from './denormalize';
 import { type EntitiesOptions, type Fields, makeIdentify } from './identity';
 import { refsIn, share } from './json';
-import { normalize } from './normalize';
+import { type Normalized, normalize } from './normalize';
 import { EntityStore } from './store';
 
 /** What an entry stores: the normalized data and the entities it holds. */
@@ -22,6 +22,23 @@ export class EntityRoot {
 export interface EntityPolicy extends CachePolicy<EntityRoot> {
 	identify(obj: Fields): string | undefined;
 }
+
+/**
+ * How data becomes entities and back, for a policy that knows the shape of the
+ * data (a GraphQL selection). `denormalize` runs in a computed: read each
+ * entity through `fieldsOf`, so what it reads is tracked.
+ */
+export interface EntityCodec {
+	/** `vars` are the variables of the query or mutation that gave `data`. */
+	normalize(store: EntityStore, data: unknown, vars: unknown): Normalized;
+	denormalize(
+		store: EntityStore,
+		root: unknown,
+		local: Map<string, unknown>,
+	): unknown;
+}
+
+const plain: EntityCodec = { normalize, denormalize };
 
 const KEY = {};
 
@@ -69,14 +86,17 @@ function bound(
 }
 
 /** Stores query data as shared entities: `query({ cache: entities(), … })`. */
-export function entities(opts?: EntitiesOptions): EntityPolicy {
+export function entities(
+	opts?: EntitiesOptions,
+	codec: EntityCodec = plain,
+): EntityPolicy {
 	const identify = makeIdentify(opts);
 	return {
 		identify,
-		write(client, data, prev) {
+		write(client, data, prev, vars) {
 			const store = bound(client, opts, identify);
 			return client.batch(() => {
-				const { root, pending } = normalize(store, data);
+				const { root, pending } = codec.normalize(store, data, vars);
 				for (const [ref, fields] of pending) store.merge(ref, fields);
 				const stored = new EntityRoot(root, refsIn(root));
 				if (prev) {
@@ -93,7 +113,7 @@ export function entities(opts?: EntitiesOptions): EntityPolicy {
 			try {
 				const seen = share(
 					stored.seen,
-					denormalize(store, stored.value, stored.memo),
+					codec.denormalize(store, stored.value, stored.memo),
 				);
 				if (!committed) stored.seen = seen;
 				return seen;
@@ -101,8 +121,12 @@ export function entities(opts?: EntitiesOptions): EntityPolicy {
 				store.skip = false;
 			}
 		},
-		layer(client, data) {
-			const { pending } = normalize(bound(client, opts, identify), data);
+		layer(client, data, vars) {
+			const { pending } = codec.normalize(
+				bound(client, opts, identify),
+				data,
+				vars,
+			);
 			client.set(storeOf(client).ov, (ls) => [...ls, pending]);
 			return {
 				drop: () =>
@@ -111,9 +135,9 @@ export function entities(opts?: EntitiesOptions): EntityPolicy {
 					),
 			};
 		},
-		commit(client, data) {
+		commit(client, data, vars) {
 			const store = bound(client, opts, identify);
-			const { pending } = normalize(store, data);
+			const { pending } = codec.normalize(store, data, vars);
 			client.batch(() => {
 				for (const [ref, fields] of pending) store.merge(ref, fields);
 			});
