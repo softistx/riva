@@ -1,5 +1,6 @@
 import type { Atom, Listener, Unsubscribe } from './atom';
 import { computed, type Readable } from './computed';
+import { type Duration, toMs } from './duration';
 import {
 	type ClientEvents,
 	defaultEvents,
@@ -13,6 +14,14 @@ import { withClient } from './scope';
 
 // biome-ignore lint/suspicious/noConfusingVoidType: an effect may return nothing or a cleanup
 export type EffectFn = () => void | (() => void);
+
+export interface SubscribeOptions {
+	/**
+	 * Replaces the definition's `staleTime` when this observer decides whether
+	 * to fetch on subscribing. Later invalidations and polls are unaffected.
+	 */
+	staleTime?: Duration;
+}
 
 export interface ClientOptions {
 	/** Timers and clock; defaults to the host's. Inject a fake in tests. */
@@ -63,6 +72,7 @@ export class RivaClient {
 		def: Query<Vars, Data, S>,
 		vars: Vars,
 		listener: Listener<S>,
+		opts?: SubscribeOptions,
 	): Unsubscribe;
 	subscribe<Data, S extends QueryState<unknown>>(
 		def: Query<void, Data, S>,
@@ -74,12 +84,20 @@ export class RivaClient {
 		def: Readable<unknown> | Query<any, any, any>,
 		a: unknown,
 		b?: unknown,
+		o?: SubscribeOptions,
 	): Unsubscribe {
 		if (def.kind !== 'query')
 			return graph.subscribe(this.graph, def, a as Listener<unknown>);
 		return typeof a === 'function'
 			? this.queries.observe(def, undefined, a as Listener<QueryState<unknown>>)
-			: this.queries.observe(def, a, b as Listener<QueryState<unknown>>);
+			: this.queries.observe(
+					def,
+					a,
+					b as Listener<QueryState<unknown>>,
+					o?.staleTime === undefined
+						? undefined
+						: { staleTime: toMs(o.staleTime) },
+				);
 	}
 
 	/** Re-runs `fn` when what it read changes; the returned cleanup runs before each re-run and on dispose. */

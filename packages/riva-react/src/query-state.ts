@@ -12,6 +12,9 @@ export type AnyQuery = Query<any, any, any>;
 
 const NOOP = () => {};
 
+/** How long (ms) a mount trusts what a Suspense render fetched. */
+const SUSPENSE_FRESH = 1000;
+
 /** What a disabled query reads: idle, with no entry created. */
 const DISABLED: QueryState<never> = Object.freeze({
 	status: 'idle',
@@ -46,13 +49,22 @@ export function useQueryState<S extends QueryState<unknown>>(
 	def: AnyQuery,
 	vars: unknown,
 	enabled: boolean,
+	suspense = false,
 ): QueryBinding<S> {
 	const client = useClient();
 	const stable = useStableVars(def.id, vars);
 	const subscribe = useCallback(
 		(notify: () => void) =>
-			enabled ? client.subscribe(def, stable.vars, notify) : NOOP,
-		[client, def, stable, enabled],
+			enabled
+				? client.subscribe(
+						def,
+						stable.vars,
+						notify,
+						// What a Suspense render just fetched is not fetched again on mount.
+						suspense ? { staleTime: SUSPENSE_FRESH } : undefined,
+					)
+				: NOOP,
+		[client, def, stable, enabled, suspense],
 	);
 	const read = () => (enabled ? client.get(def, stable.vars) : DISABLED) as S;
 	const state = useSyncExternalStore(subscribe, read, read);

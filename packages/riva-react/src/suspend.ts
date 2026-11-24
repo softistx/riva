@@ -1,7 +1,7 @@
 import type { Query, RivaClient } from '@softistx/riva';
 
-// Per client, so a request's pending fetches die with its client.
-const pending = new WeakMap<RivaClient, Map<string, Promise<void>>>();
+// Held on the client's slots: a request's pending fetches die with its client.
+const SLOT = {};
 
 /**
  * The one promise React waits on for a query entry: the core's `ensure`, held
@@ -15,8 +15,11 @@ export function suspend(
 	key: string,
 	vars: unknown,
 ): Promise<void> {
-	const map = pending.get(client) ?? new Map<string, Promise<void>>();
-	pending.set(client, map);
+	let map = client.slots.get(SLOT) as Map<string, Promise<void>> | undefined;
+	if (!map) {
+		map = new Map();
+		client.slots.set(SLOT, map);
+	}
 	let promise = map.get(key);
 	if (!promise) {
 		const entries = map;

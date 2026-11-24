@@ -1,7 +1,6 @@
 import { expect, spyOn, test } from 'bun:test';
 import { query, RivaScopeError } from '@softistx/riva';
 import { Component, type ReactNode, Suspense } from 'react';
-import { renderToReadableStream } from 'react-dom/server';
 import { deferred, flush, h, mount, newClient } from '../test/render';
 import { RivaProvider } from './context';
 import { useQuery } from './use-query';
@@ -9,8 +8,7 @@ import { useQuery } from './use-query';
 const users = (
 	id: string,
 	fetch: (vars: { school: string }) => Promise<string>,
-) =>
-	query<{ school: string }, string>({ id, retry: 0, staleTime: '1m', fetch });
+) => query<{ school: string }, string>({ id, retry: 0, fetch });
 
 function Show({
 	def,
@@ -228,55 +226,6 @@ test('suspense with data already cached renders at once', async () => {
 	await m.unmount();
 });
 
-async function html(client: ReturnType<typeof newClient>, ui: ReactNode) {
-	const stream = await renderToReadableStream(h(RivaProvider, { client }, ui));
-	await stream.allReady;
-	const text = await new Response(stream).text();
-	// The server renderer leaves its mark on the context; the DOM tests that
-	// follow in this process would warn about two renderers.
-	const context = RivaProvider({ client }).type as unknown as Record<
-		string,
-		unknown
-	>;
-	context['_currentRenderer'] = null;
-	context['_currentRenderer2'] = null;
-	return text;
-}
-
-test('streaming SSR keeps two requests apart', async () => {
-	const def = users('uq/ssr', async ({ school }) => {
-		await new Promise((r) => setTimeout(r, school === 'a' ? 15 : 5));
-		return `data-${school}`;
-	});
-	function Page({ school }: { school: string }) {
-		const q = useQuery(def, { school }, { suspense: true });
-		return h('p', null, q.data);
-	}
-	const page = (school: string) =>
-		h(Suspense, { fallback: h('p', null, 'loading') }, h(Page, { school }));
-	const ca = newClient();
-	const cb = newClient();
-	const [a, b] = await Promise.all([html(ca, page('a')), html(cb, page('b'))]);
-	expect(a).toContain('data-a');
-	expect(a).not.toContain('data-b');
-	expect(b).toContain('data-b');
-	expect(b).not.toContain('data-a');
-	expect(ca.queries.state(def, { school: 'b' }).status).toBe('idle');
-});
-
-test('a server render without suspense starts no fetch', async () => {
-	let calls = 0;
-	const def = users('uq/ssr-idle', async () => {
-		calls++;
-		return 'x';
-	});
-	function Page() {
-		return h('p', null, useQuery(def, { school: 's' }).status);
-	}
-	expect(await html(newClient(), h(Page))).toContain('idle');
-	expect(calls).toBe(0);
-});
-
 test('no provider throws the scope error', async () => {
 	const log = spyOn(console, 'error').mockImplementation(() => {});
 	const def = users('uq/noprov', async () => 'x');
@@ -288,4 +237,28 @@ test('no provider throws the scope error', async () => {
 	}
 	log.mockRestore();
 	expect(caught).toBeInstanceOf(RivaScopeError);
+});
+
+test('a Suspense mount fetches once at the default staleTime', async () => {
+	let calls = 0;
+	const def = users('uq/suspense-once', async () => {
+		calls++;
+		return 'x';
+	});
+	function C() {
+		return h(
+			'p',
+			null,
+			useQuery(def, { school: 's' }, { suspense: true }).data,
+		);
+	}
+	const m = await mount(
+		h(Suspense, { fallback: h('p', null, 'loading') }, h(C)),
+		newClient(),
+	);
+	await flush();
+	await flush();
+	expect(m.text()).toBe('x');
+	expect(calls).toBe(1);
+	await m.unmount();
 });

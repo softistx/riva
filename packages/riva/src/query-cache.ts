@@ -19,7 +19,7 @@ import {
 	toStored,
 	view,
 } from './query-entry';
-import { observe } from './query-observe';
+import { type ObserveOptions, observe } from './query-observe';
 import { abandon, cancel, join, pin, restart } from './query-run';
 import { raceAbort } from './retry';
 
@@ -142,7 +142,8 @@ export function createQueryCache(
 			def: Query<any, D>,
 			vars: unknown,
 			listener: Listener<QueryState<D>>,
-		) => observe(c, def, vars, listener as Listener<QueryState<unknown>>),
+			opts?: ObserveOptions,
+		) => observe(c, def, vars, listener as Listener<QueryState<unknown>>, opts),
 	};
 }
 

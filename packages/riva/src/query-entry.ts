@@ -121,10 +121,14 @@ export const put = (c: Ctx, e: Entry, patch: Partial<State>): void =>
 	c.client.set(e.atom, { ...peek(c, e), ...patch });
 
 /** Whether the entry must be fetched: not a success, invalidated, or older than `staleTime`. */
-export const stale = (c: Ctx, e: Entry): boolean =>
+export const stale = (
+	c: Ctx,
+	e: Entry,
+	staleTime: number = e.def.options.staleTime,
+): boolean =>
 	peek(c, e).status !== 'success' ||
 	e.invalidated ||
-	c.sched.now() - peek(c, e).updatedAt >= e.def.options.staleTime;
+	c.sched.now() - peek(c, e).updatedAt >= staleTime;
 
 /** Schedules the removal of an unobserved entry after `gcTime` (never on the server by default). */
 export function armGc(c: Ctx, e: Entry): void {

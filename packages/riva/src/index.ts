@@ -8,7 +8,12 @@ export {
 	type Unsubscribe,
 } from './atom';
 export { batch, untracked } from './batch';
-export { type ClientOptions, createRivaClient, RivaClient } from './client';
+export {
+	type ClientOptions,
+	createRivaClient,
+	RivaClient,
+	type SubscribeOptions,
+} from './client';
 export {
 	type Computed,
 	type ComputedOptions,

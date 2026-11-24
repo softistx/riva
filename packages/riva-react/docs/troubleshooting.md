@@ -2,9 +2,11 @@
 
 Each entry is headed by the message you will see.
 
-## No RivaClient in scope: wrap the tree in <RivaProvider client={client}>
+## `No RivaClient in scope: wrap the tree in <RivaProvider client={client}>`
 
 Code: `RIVA_SCOPE` (`RivaScopeError`).
+
+The full message: `No RivaClient in scope: wrap the tree in <RivaProvider client={client}>. On the server, create one client per request.`
 
 **When:** a hook (`useAtom`, `useValue`, `useQuery`, `useMutation`, `useInfiniteQuery`, `useFragment` or `useClient`) rendered with no `RivaProvider` above it.
 
@@ -13,19 +15,25 @@ Code: `RIVA_SCOPE` (`RivaScopeError`).
 **Fix:** wrap the tree in a provider. On the server, create the client per request.
 
 ```tsx
-const client = createRivaClient(); // inside the request handler on the server
-<RivaProvider client={client}>
-	<App />
-</RivaProvider>;
+import { createRivaClient } from '@softistx/riva';
+import { RivaProvider } from '@softistx/riva-react';
+
+export const Root = () => (
+	<RivaProvider client={createRivaClient() /* inside the request handler on the server */}>
+		<App />
+	</RivaProvider>
+);
 ```
 
-## A Suspense query fetches twice
+This is not the core's "No RivaClient in scope: read through client.get(def)…" error, which `atom.get()` and the like throw outside React: see the [core troubleshooting](https://github.com/softistx/riva/blob/develop/packages/riva/docs/troubleshooting.md#no-rivaclient-in-scope).
 
-**When:** a component using `useQuery(def, vars, { suspense: true })` suspends, renders, and the network shows a second request right after.
+## A query fetches twice around Suspense
 
-**Why:** `staleTime` defaults to `0`: the data the Suspense render just fetched is already stale when the component mounts and subscribes, so the engine fetches it again.
+**When:** you mount the same query once with `suspense: true` and once without (or under `Suspense` with `enabled` toggled), and the network shows a second request.
 
-**Fix:** give the query a `staleTime`.
+**Why:** a `suspense: true` mount trusts what a Suspense render just fetched for one second, whatever the query's `staleTime`. A mount without it follows the query's own `staleTime`, `0` by default, so it fetches stale data again.
+
+**Fix:** give the query a `staleTime`, or use `suspense: true` on every reader of that query.
 
 ```ts
 const patients = query({ id: 'patients', staleTime: '30s', fetch });
@@ -40,15 +48,28 @@ const patients = query({ id: 'patients', staleTime: '30s', fetch });
 **Fix:** start the fetch again before resetting the boundary. The component then suspends and renders the new result.
 
 ```tsx
-<ErrorBoundary
-	onReset={() => patients.prefetch(client, { school })}
-	fallbackRender={({ resetErrorBoundary }) => <button onClick={resetErrorBoundary}>Retry</button>}
->
-	<Suspense fallback={<Spinner />}>
-		<PatientList school={school} />
-	</Suspense>
-</ErrorBoundary>
+import { Suspense } from 'react';
+import { ErrorBoundary } from 'react-error-boundary';
+import { useClient } from '@softistx/riva-react';
+
+export function Page({ school }: { school: string }) {
+	const client = useClient();
+	return (
+		<ErrorBoundary
+			onReset={() => patients.prefetch(client, { school })}
+			fallbackRender={({ resetErrorBoundary }) => (
+				<button onClick={resetErrorBoundary}>Retry</button>
+			)}
+		>
+			<Suspense fallback={<p>Loading…</p>}>
+				<PatientList school={school} />
+			</Suspense>
+		</ErrorBoundary>
+	);
+}
 ```
+
+`ErrorBoundary` is the one of [react-error-boundary](https://www.npmjs.com/package/react-error-boundary).
 
 ## Unhandled rejection from `run`
 
@@ -59,6 +80,8 @@ const patients = query({ id: 'patients', staleTime: '30s', fetch });
 **Fix:** catch it where you call it, or read `error` and ignore the rejection.
 
 ```tsx
-const { run, error } = useMutation(rename);
-<button onClick={() => run({ id, name }).catch(() => {})}>Rename</button>;
+function Rename({ id, name }: { id: string; name: string }) {
+	const { run, error } = useMutation(rename);
+	return <button onClick={() => run({ id, name }).catch(() => {})}>Rename</button>;
+}
 ```

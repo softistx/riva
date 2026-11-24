@@ -44,7 +44,12 @@ export function useQuery(
 	opts?: UseQueryOptions,
 ): QueryResult<QueryState<unknown>> {
 	const enabled = opts?.enabled !== false;
-	const q = useQueryState<QueryState<unknown>>(def, vars, enabled);
+	const q = useQueryState<QueryState<unknown>>(
+		def,
+		vars,
+		enabled,
+		opts?.suspense === true,
+	);
 	const result = useMemo(
 		() => ({ ...q.state, refetch: q.refetch }),
 		[q.state, q.refetch],

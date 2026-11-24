@@ -1,6 +1,6 @@
 # @softistx/riva-react
 
-React bindings for [riva](../riva/README.md): a provider, hooks over atoms, queries, mutations, infinite lists and entities, and Suspense. Typed end to end: variables and data come from the definition, never from an annotation.
+React bindings for [riva](https://github.com/softistx/riva/blob/develop/packages/riva/README.md): a provider, hooks over atoms, queries, mutations, infinite lists and entities, and Suspense. Typed end to end: variables and data are inferred from the definition, never annotated at the call site.
 
 Errors and fixes: [docs](./docs/README.md). Work in progress, see the [spec](https://github.com/softistx/riva/blob/develop/docs/spec.md).
 
@@ -9,6 +9,8 @@ bun add @softistx/riva @softistx/riva-react react
 ```
 
 Peers: `react` ^19 and `@softistx/riva`. Every hook binds through `useSyncExternalStore`, so it is concurrent-safe and renders on the server.
+
+The examples are schematic: `Patient`, `fetchPatients`, `sendRename` and `fetchPatientPage` stand for your own types and transport functions.
 
 ## Provider
 
@@ -47,16 +49,16 @@ function Search() {
 
 ## Queries
 
-`useQuery(def, vars?, opts?)` returns the query state (`status`, `data`, `error`, `isFetching`, `updatedAt`) plus `refetch`. It fetches while the component is mounted, when the data is missing or stale.
+`useQuery(def, vars?, opts?)` returns the query state (`status`, `data`, `error`, `isFetching`, `updatedAt`) plus `refetch`. It fetches while the component is mounted, when the data is missing or stale. Variables and data are inferred from `fetch`.
 
 ```tsx
 import { query } from '@softistx/riva';
 import { useQuery } from '@softistx/riva-react';
 
-const patients = query<{ school: string }, Patient[]>({
+const patients = query({
 	id: 'patients',
 	staleTime: '30s',
-	fetch: ({ school }, { signal }) => fetchPatients(school, signal),
+	fetch: ({ school }: { school: string }, { signal }) => fetchPatients(school, signal), // Promise<Patient[]>
 });
 
 function PatientList({ school }: { school: string }) {
@@ -66,30 +68,41 @@ function PatientList({ school }: { school: string }) {
 }
 ```
 
+Options (`opts`):
+
+| Option | Default | Effect |
+| --- | --- | --- |
+| `enabled` | `true` | `false` observes nothing, creates no entry and reads `idle`. |
+| `suspense` | `false` | See below. |
+
 - Variables are compared by value (`stableKey`), so an inline `{ school }` never resubscribes.
-- `{ enabled: false }` observes nothing and reads `idle`.
 - `refetch()` marks the entry stale and fetches it. It never rejects: the error is in the state.
 
 ## Suspense
 
-With `suspense: true`, the component suspends while there is no data, and `data` is no longer optional in its type. A failure with no data is thrown to the nearest error boundary.
+With `suspense: true`, the component suspends while there is no data, and `data` is no longer optional in its type. A failure with no data is thrown to the nearest error boundary. With `enabled: false` it never suspends: the query reads `idle`.
+
+What a Suspense render fetched is not fetched again when the component mounts, whatever the query's `staleTime`.
 
 ```tsx
+import { Suspense } from 'react';
+import { ErrorBoundary } from 'react-error-boundary';
+
 function PatientList({ school }: { school: string }) {
 	const { data } = useQuery(patients, { school }, { suspense: true });
 	return <ul>{data.map((p) => <li key={p.id}>{p.name}</li>)}</ul>; // data: Patient[]
 }
 
-<ErrorBoundary fallback={<Failed />}>
-	<Suspense fallback={<Spinner />}>
-		<PatientList school="a" />
-	</Suspense>
-</ErrorBoundary>;
+export const Page = ({ school }: { school: string }) => (
+	<ErrorBoundary fallback={<p>Failed</p>}>
+		<Suspense fallback={<p>Loading…</p>}>
+			<PatientList school={school} />
+		</Suspense>
+	</ErrorBoundary>
+);
 ```
 
-Give the query a `staleTime`: with the default `0`, the data a Suspense render just fetched is stale at once and is fetched again when the component mounts.
-
-To retry after an error boundary, start the fetch again before resetting it: `patients.prefetch(client, { school })`, then reset the boundary.
+`ErrorBoundary` here is the one of [react-error-boundary](https://www.npmjs.com/package/react-error-boundary); any error boundary works. To retry after an error, start the fetch again before resetting the boundary (`onReset={() => patients.prefetch(client, { school })}`, see [troubleshooting](./docs/troubleshooting.md)).
 
 ## Mutations
 
@@ -99,9 +112,9 @@ To retry after an error boundary, start the fetch again before resetting it: `pa
 import { mutation } from '@softistx/riva';
 import { useMutation } from '@softistx/riva-react';
 
-const rename = mutation<{ id: string; name: string }, Patient>({
+const rename = mutation({
 	id: 'renamePatient',
-	run: (vars, { signal }) => sendRename(vars, signal),
+	run: (vars: { id: string; name: string }, { signal }) => sendRename(vars, signal), // Promise<Patient>
 	invalidates: [patients],
 });
 
@@ -117,10 +130,19 @@ function Rename({ id }: { id: string }) {
 
 ## Infinite lists
 
-`@softistx/riva-react/infinite` binds a list built with `infinite()` from `@softistx/riva/infinite`.
+`@softistx/riva-react/infinite` binds a list built with `infinite()` from `@softistx/riva/infinite` (see the core README). `connection` reads the Relay shape `{ edges: [{ node, cursor }], pageInfo }` out of a page, and `data.nodes` is every loaded page's nodes, flattened.
 
 ```tsx
+import { infinite } from '@softistx/riva/infinite';
 import { useInfiniteQuery } from '@softistx/riva-react/infinite';
+
+const patientsFeed = infinite({
+	id: 'patientsFeed',
+	// `after` is the cursor the engine fills in; the caller passes `school` only.
+	fetch: ({ school, after }: { school: string; after?: string }) => fetchPatientPage(school, after),
+	// A page: { patients: { edges: [{ node: Patient, cursor }], pageInfo: { hasNextPage, endCursor, … } } }
+	connection: (page) => page.patients,
+});
 
 function Feed({ school }: { school: string }) {
 	const { data, hasNext, isFetchingNext, fetchNext } = useInfiniteQuery(patientsFeed, { school });
@@ -133,11 +155,11 @@ function Feed({ school }: { school: string }) {
 }
 ```
 
-It also returns `fetchPrevious`, `hasPrevious`, `isFetchingPrevious` and `refetch` (every loaded page).
+It also returns `fetchPrevious`, `hasPrevious`, `isFetchingPrevious` and `refetch` (every loaded page). Its option `enabled` defaults to `true`.
 
 ## Entities
 
-`@softistx/riva-react/entities` reads one entity of the normalized cache (`@softistx/riva/entities`) by its ref. The component re-renders when that entity's fields change, and only then.
+`@softistx/riva-react/entities` reads one entity of the normalized cache (`@softistx/riva/entities`) by its ref (`Type:id`). The component re-renders when that entity's fields change, and only then. `useFragment<T>(ref)` takes the entity's type as its parameter (default `Record<string, unknown>`), and accepts `null` or `undefined` as a ref: it then reads `undefined`, as it does for a missing entity.
 
 ```tsx
 import { useFragment } from '@softistx/riva-react/entities';
@@ -152,9 +174,26 @@ function PatientName({ id }: { id: string }) {
 
 Render each request under its own `RivaProvider` with its own client; no hook holds module-level state, so nothing leaks between requests.
 
+```tsx
+import { createRivaClient } from '@softistx/riva';
+import { RivaProvider } from '@softistx/riva-react';
+import { renderToReadableStream } from 'react-dom/server';
+
+export async function handle(school: string): Promise<Response> {
+	const client = createRivaClient(); // one per request
+	await patients.ensure(client, { school }); // so the first render has data
+	const stream = await renderToReadableStream(
+		<RivaProvider client={client}>
+			<PatientList school={school} />
+		</RivaProvider>,
+	);
+	return new Response(stream, { headers: { 'content-type': 'text/html' } });
+}
+```
+
 - A hook never starts a fetch during a server render, except through `suspense: true`, which waits for it and streams the result (`renderToReadableStream` and `renderToPipeableStream`).
-- Without Suspense, prefetch in the route loader (`def.ensure(client, vars)`) so the first render already has data.
 - Effects and subscriptions run in the browser only.
+- Handing the server's cache to the browser (dehydrate and hydrate) comes with `@softistx/riva-react-router`; until then the browser fetches what it does not have.
 
 ## Entry points
 
