@@ -1,6 +1,6 @@
 import type { RivaClient } from './client';
 import { RivaAbortError } from './errors';
-import type { MutationOptions, RunOptions, Tx } from './mutation';
+import type { MutationOptions, RunOptions } from './mutation';
 import type { Lay } from './query-entry';
 import { raceAbort, retryDelay, shouldRetry, sleep } from './retry';
 
@@ -55,22 +55,28 @@ export async function execute<Vars, Data>(
 				if (signal.aborted) throw new RivaAbortError();
 			}
 		}
-		await before;
+		// A throw here rolls back like a failed run.
+		const inv =
+			typeof o.invalidates === 'function'
+				? o.invalidates(data, vars)
+				: (o.invalidates ?? []);
+		await raceAbort(before, signal);
+		if (signal.aborted) throw new RivaAbortError();
+		let bad: { e: unknown } | undefined;
 		client.batch(() => {
 			o.cache?.commit?.(client, data);
 			drop();
-			const tx: Tx = {
-				set: (q, v, d) => q.setData(client, v, d),
-			};
-			o.updates?.(tx, data, vars);
-			const inv =
-				typeof o.invalidates === 'function'
-					? o.invalidates(data, vars)
-					: (o.invalidates ?? []);
+			// The server committed: a throwing helper keeps it and still invalidates.
+			try {
+				o.updates?.({ set: (q, v, d) => q.setData(client, v, d) }, data, vars);
+			} catch (e) {
+				bad = { e };
+			}
 			for (const t of inv)
-				if (Array.isArray(t)) t[0].invalidate(client, t[1]);
-				else (t as { invalidate(c: RivaClient): void }).invalidate(client);
+				if ('query' in t) t.query.invalidate(client, t.vars);
+				else t.invalidate(client);
 		});
+		if (bad) throw bad.e;
 		return data;
 	} catch (x) {
 		drop();

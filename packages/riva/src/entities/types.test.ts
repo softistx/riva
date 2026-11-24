@@ -19,7 +19,7 @@ test('CachePolicy methods take the client', () => {
 	>();
 	expectTypeOf<CachePolicy<number>['write']>().returns.toBeNumber();
 	expectTypeOf<CachePolicy<number>['read']>().parameters.toEqualTypeOf<
-		[RivaClient, number]
+		[RivaClient, number, (boolean | undefined)?]
 	>();
 	expectTypeOf<CachePolicy<number>['release']>().returns.toBeVoid();
 });

@@ -87,14 +87,19 @@ export function entities(opts?: EntitiesOptions): EntityPolicy {
 				return stored;
 			});
 		},
-		read(client, stored) {
+		read(client, stored, committed) {
 			const store = bound(client, opts, identify);
-			const seen = share(
-				stored.seen,
-				denormalize(store, stored.value, stored.memo),
-			);
-			stored.seen = seen;
-			return seen;
+			store.skip = !!committed;
+			try {
+				const seen = share(
+					stored.seen,
+					denormalize(store, stored.value, stored.memo),
+				);
+				if (!committed) stored.seen = seen;
+				return seen;
+			} finally {
+				store.skip = false;
+			}
 		},
 		layer(client, data) {
 			const { pending } = normalize(bound(client, opts, identify), data);

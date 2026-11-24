@@ -7,7 +7,7 @@ import {
 	RivaHttpError,
 	RivaNetworkError,
 } from './errors';
-import { mutation } from './mutation';
+import { at, mutation } from './mutation';
 import { type CachePolicy, type QueryState, query } from './query';
 
 function fakeScheduler() {
@@ -235,10 +235,7 @@ describe('settle', () => {
 		await mutation<void, string>({
 			id: 'm',
 			run: async () => 'ok',
-			invalidates: (data) => [
-				[list, undefined],
-				[byId, { id: data }],
-			],
+			invalidates: (data) => [list, at(byId, { id: data })],
 		}).run(client);
 		await tick();
 		expect(client.get(list).data).toEqual(['c']);
@@ -449,5 +446,69 @@ describe('clients and the server', () => {
 			.catch(() => {});
 		expect(sched.count()).toBe(0);
 		expect(client.get(list).data).toEqual(['a']);
+	});
+});
+
+describe('review fixes', () => {
+	test('an abort while held behind an earlier mutation drops the layer and never commits', async () => {
+		const { client } = await seeded();
+		const da = deferred<string>();
+		const order: string[] = [];
+		const a = add({ run: () => da.promise }).run(client, 'A');
+		const ctl = new AbortController();
+		const db = deferred<string>();
+		const b = mutation<string, string>({
+			id: 'B',
+			run: () => db.promise,
+			optimistic: (v, tx) => tx.set(list, undefined, (p) => [...(p ?? []), v]),
+			updates: () => void order.push('B'),
+		}).run(client, 'B', { signal: ctl.signal });
+		db.resolve('B');
+		await tick();
+		expect(client.get(list).data).toEqual(['a', 'A', 'B']);
+		ctl.abort();
+		await expect(b).rejects.toBeInstanceOf(RivaAbortError);
+		expect(client.get(list).data).toEqual(['a', 'A']);
+		da.resolve('A');
+		await a;
+		await tick();
+		expect(order).toEqual([]);
+		// later mutations are not blocked by the aborted one
+		expect(await add({}).run(client, 'C')).toBe('C');
+	});
+
+	test('a throwing invalidates function rolls back and rejects', async () => {
+		const { client } = await seeded();
+		const m = mutation<string, string>({
+			id: 'm',
+			run: async (v) => v,
+			optimistic: (v, tx) => tx.set(list, undefined, (p) => [...(p ?? []), v]),
+			invalidates: () => {
+				throw new Error('inv');
+			},
+		});
+		await expect(m.run(client, 'b')).rejects.toThrow('inv');
+		expect(client.get(list).data).toEqual(['a']);
+	});
+
+	test('a throwing updates keeps the server commit, drops the layers, invalidates, then rejects', async () => {
+		const { client } = await seeded();
+		const off = client.subscribe(list, () => {});
+		const before = fetches;
+		server = ['a', 'srv'];
+		const m = mutation<string, string>({
+			id: 'm',
+			run: async (v) => v,
+			optimistic: (v, tx) => tx.set(list, undefined, (p) => [...(p ?? []), v]),
+			updates: () => {
+				throw new Error('upd');
+			},
+			invalidates: [list],
+		});
+		await expect(m.run(client, 'b')).rejects.toThrow('upd');
+		await tick();
+		expect(fetches).toBe(before + 1);
+		expect(client.get(list).data).toEqual(['a', 'srv']);
+		off();
 	});
 });

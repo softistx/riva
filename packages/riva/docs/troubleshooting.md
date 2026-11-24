@@ -95,7 +95,7 @@ user.ensure(client, { id: String(id) });
 
 Code: `RIVA_CACHE` (`RivaError`).
 
-**When:** a query with `cache: entities()` (or `writeEntity`) receives data holding a function, a symbol, a bigint, a non-finite number, a class instance other than `Date`, a `Map`/`Set` or a circular reference. A fetch rejects with it (the entry shows the error and keeps its previous data). `setData` throws it and leaves the entry untouched.
+**When:** a query with `cache: entities()` (or `writeEntity`) receives data holding a function, a symbol, a bigint, a non-finite number, a class instance other than `Date`, a `Map`/`Set` or a circular reference. A fetch rejects with it (the entry shows the error and keeps its previous data). `setData` throws it and leaves the entry untouched. A mutation with `cache: entities()` hits it too: data returned by `optimistic` makes `run` reject before anything is shown, and a server result refused at commit rolls the layers back; in both cases `updates` and `invalidates` do not run and `run` rejects with the error.
 
 **Why:** the entity store merges and compares plain JSON data field by field, so it cannot hold anything else. Nothing is written when it throws.
 
@@ -125,7 +125,7 @@ query({ id: 'b', cache, fetch });
 
 Code: `RIVA_ABORT` (`RivaAbortError`).
 
-**When:** `ensure` rejects with it after the `signal` you passed aborted, or after `cancel` aborted the fetch you were waiting on.
+**When:** `ensure` rejects with it after the `signal` you passed aborted, or after `cancel` aborted the fetch you were waiting on. A mutation's `run(client, vars, { signal })` rejects with it too, and rolls back its optimistic layers, including while it waits for an earlier mutation to settle (it never commits afterwards).
 
 **Why:** abort is a decision, not a failure: it is never retried and never stored as the query's error; the entry returns to its previous state.
 

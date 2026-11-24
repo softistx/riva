@@ -25,6 +25,8 @@ export class EntityStore {
 	readonly directLocal = new Map<string, unknown>();
 	/** The optimistic layers of mutations: field patches by entity, oldest first. */
 	readonly ov = atom<Map<string, Stored>[]>([]);
+	/** Set while a committed read runs: the layers are skipped. */
+	skip = false;
 	identify: Identify = makeIdentify();
 	/** Set by the first policy that uses the store. */
 	rules: Rules | undefined;

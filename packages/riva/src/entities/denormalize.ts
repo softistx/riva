@@ -31,7 +31,7 @@ function fieldsOf(store: EntityStore, ref: string) {
 		: store.client.graph.track
 			? store.client.get(store.atomOf(ref))
 			: undefined;
-	for (const layer of store.client.get(store.ov)) {
+	for (const layer of store.skip ? [] : store.client.get(store.ov)) {
 		const patch = layer.get(ref);
 		if (patch) fields = { ...fields, ...patch };
 	}

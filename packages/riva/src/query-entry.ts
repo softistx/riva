@@ -76,7 +76,7 @@ export const committed = (c: Ctx, e: Entry): unknown =>
 	c.client.untracked(() => {
 		const d = peek(c, e).data;
 		const cache = e.def.options.cache;
-		return cache && d !== undefined ? cache.read(c.client, d) : d;
+		return cache && d !== undefined ? cache.read(c.client, d, true) : d;
 	});
 
 /** The data as the entry stores it: through the cache policy, which may refuse it by throwing. */

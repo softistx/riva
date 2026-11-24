@@ -1,6 +1,6 @@
 import { expect, expectTypeOf, test } from 'bun:test';
 import { createRivaClient } from './client';
-import { type Mutation, mutation } from './mutation';
+import { at, type Mutation, mutation } from './mutation';
 import { query } from './query';
 
 test('a definition is frozen and stateless', () => {
@@ -51,10 +51,14 @@ test('Vars and Data are typed through run, optimistic, updates and invalidates',
 		},
 		invalidates: (data, vars) => {
 			expectTypeOf(data.ok).toEqualTypeOf<boolean>();
-			return [list, [list, { s: vars.name }]];
+			return [list, at(list, { s: vars.name })];
 		},
 	});
 	expectTypeOf(m).toEqualTypeOf<Mutation<{ name: string }, { ok: boolean }>>();
+	// @ts-expect-error wrong variables for the query
+	at(list, { t: 'x' });
+	// @ts-expect-error wrong variables inside invalidates
+	mutation({ id: 'w', run: async () => 1, invalidates: [at(one, 3)] });
 	// Never called: only the types are checked.
 	const _calls = () => {
 		const c = createRivaClient();

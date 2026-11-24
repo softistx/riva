@@ -17,8 +17,21 @@ export interface Tx {
 	): void;
 }
 
-/** A query to invalidate, or a query and the variables of its one entry. */
-export type Invalidation = AnyQuery | readonly [query: AnyQuery, vars: unknown];
+/** One entry of a query, built by `at`. */
+export interface Target {
+	readonly query: AnyQuery;
+	readonly vars: unknown;
+}
+
+/** A query to invalidate (every entry), or `at(query, vars)` (one entry). */
+export type Invalidation = AnyQuery | Target;
+
+/** The entry of `query` with these variables, checked against the query's `Vars`. */
+// biome-ignore lint/suspicious/noExplicitAny: any data type
+export const at = <V>(query: Query<V, any>, vars: V): Target => ({
+	query: query as AnyQuery,
+	vars,
+});
 
 export interface MutationOptions<Vars, Data> {
 	/** Identifies the definition. */

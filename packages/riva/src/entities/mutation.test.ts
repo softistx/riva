@@ -183,3 +183,22 @@ describe('mutations over entities()', () => {
 		await p.catch(() => {});
 	});
 });
+
+test('setData during a live layer starts from the committed data and keeps no optimistic field', async () => {
+	type Q = P & { n?: number };
+	const q = query<{ id: string }, Q>({
+		id: 'q',
+		cache,
+		staleTime,
+		fetch: async (v) => ({ __typename: 'Patient', id: v.id, name: 'a' }),
+	});
+	const client = createRivaClient();
+	await q.ensure(client, { id: '1' });
+	const d = deferred<P>();
+	const p = rename(() => d.promise).run(client, { id: '1', name: 'OPT' });
+	expect(client.get(q, { id: '1' }).data?.name).toBe('OPT');
+	q.setData(client, { id: '1' }, (prev) => ({ ...(prev as Q), n: 5 }));
+	d.reject(new Error('x'));
+	await p.catch(() => {});
+	expect(client.get(q, { id: '1' }).data).toMatchObject({ name: 'a', n: 5 });
+});
