@@ -54,6 +54,7 @@ test('an unbounded effect throws RIVA_LOOP and leaves no stuck state', () => {
 		thrown = e;
 	}
 	expect((thrown as RivaError).code).toBe('RIVA_LOOP');
+	expect((thrown as RivaError).message).toContain('name it with { name }');
 	expect(c.graph.flushing).toBe(false);
 	expect(c.graph.depth).toBe(0);
 	const seen: number[] = [];
@@ -91,4 +92,22 @@ test('stacked diamonds notify once and collect each node once', () => {
 	const an = nodeOf(c.graph, a);
 	collect(c.graph, an);
 	expect(c.graph.pending.size).toBe(1);
+});
+
+test('a named looping node is named in the message, without the hint', () => {
+	const on = atom(false);
+	const x = atom(0, { name: 'counter' });
+	const c = createRivaClient();
+	const d = computed((get) => get(x), { name: 'counter-view' });
+	c.subscribe(d, () => c.set(x, c.get(x) + 1));
+	let thrown: unknown;
+	try {
+		c.set(x, 1);
+	} catch (e) {
+		thrown = e;
+	}
+	expect((thrown as RivaError).code).toBe('RIVA_LOOP');
+	expect((thrown as RivaError).message).toContain('counter-view');
+	expect((thrown as RivaError).message).not.toContain('name it');
+	expect(on.kind).toBe('atom');
 });

@@ -222,7 +222,17 @@ export function batch<R>(g: Graph, fn: () => R): R {
 		try {
 			settle(g);
 		} catch (flushError) {
-			if (e instanceof Error && e.cause === undefined) e.cause = flushError;
+			if (
+				typeof e === 'object' &&
+				e !== null &&
+				Object.isExtensible(e) &&
+				!('cause' in e)
+			)
+				Object.defineProperty(e, 'cause', {
+					value: flushError,
+					configurable: true,
+					writable: true,
+				});
 		}
 		throw e;
 	}

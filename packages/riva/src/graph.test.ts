@@ -120,3 +120,31 @@ test('batch rethrows the body error after flushing, with a flush error as cause'
 	expect((thrown as Error).cause).toBe(boom);
 	expect(c.graph.depth).toBe(0);
 });
+
+test('batch keeps a frozen or primitive body error and does not throw from the attach', () => {
+	const a = atom(0);
+	const c = createRivaClient();
+	c.subscribe(a, () => {
+		throw new Error('listener');
+	});
+	const frozen = Object.freeze(new Error('frozen'));
+	let thrown: unknown;
+	try {
+		c.batch(() => {
+			c.set(a, 1);
+			throw frozen;
+		});
+	} catch (e) {
+		thrown = e;
+	}
+	expect(thrown).toBe(frozen);
+	try {
+		c.batch(() => {
+			c.set(a, 2);
+			throw 'text';
+		});
+	} catch (e) {
+		thrown = e;
+	}
+	expect(thrown).toBe('text');
+});

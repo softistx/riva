@@ -108,6 +108,9 @@ test('several errors become an AggregateError, and a throwing effect is isolated
 		thrown = e;
 	}
 	expect(thrown).toBeInstanceOf(AggregateError);
+	expect((thrown as Error).message).toBe(
+		'Several listeners or computeds threw.',
+	);
 	expect(
 		(thrown as AggregateError).errors.map((e: Error) => e.message),
 	).toEqual(['one', 'two']);

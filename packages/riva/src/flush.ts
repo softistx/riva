@@ -40,7 +40,9 @@ export function flush(g: Graph, refresh: (g: Graph, n: Node) => void): void {
 					errors.push(
 						new RivaError(
 							'RIVA_LOOP',
-							`Loop detected: ${n.def.name ?? 'a node'} re-ran more than ${MAX_RUNS} times in one flush.`,
+							n.def.name
+								? `Loop detected: ${n.def.name} re-ran more than ${MAX_RUNS} times in one flush.`
+								: `Loop detected: a node re-ran more than ${MAX_RUNS} times in one flush; name it with { name } to find it.`,
 						),
 					);
 					continue;
@@ -68,5 +70,5 @@ export function flush(g: Graph, refresh: (g: Graph, n: Node) => void): void {
 	}
 	if (errors.length === 1) throw errors[0];
 	if (errors.length > 1)
-		throw new AggregateError(errors, 'Several listeners threw.');
+		throw new AggregateError(errors, 'Several listeners or computeds threw.');
 }
