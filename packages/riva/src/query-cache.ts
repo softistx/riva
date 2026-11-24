@@ -6,6 +6,7 @@ import { stableKey } from './key';
 import type { EnsureOptions, Query, QueryState } from './query';
 import {
 	type AnyQuery,
+	armGc,
 	type Ctx,
 	entryOf,
 	peek,
@@ -13,7 +14,7 @@ import {
 	stale,
 } from './query-entry';
 import { observe } from './query-observe';
-import { abandon, cancel, join, restart } from './query-run';
+import { abandon, cancel, join, pin, restart } from './query-run';
 import { raceAbort } from './retry';
 
 /** The query entries of one client: the operations the definitions and the client call. */
@@ -51,7 +52,7 @@ export function createQueryCache(
 
 		prefetch(def: AnyQuery, vars: unknown): void {
 			const e = entryOf(c, def, vars);
-			if (stale(c, e)) join(c, e);
+			if (stale(c, e)) pin(c, e);
 		},
 
 		/** One entry, or every entry of the definition when `vars` is undefined. */
@@ -61,7 +62,8 @@ export function createQueryCache(
 				if (e.def.id !== def.id || (key !== undefined && e.key !== key))
 					continue;
 				e.invalidated = true;
-				if (e.observers) e.run ? restart(e.run) : join(c, e);
+				if (e.run) restart(e.run);
+				else if (e.observers) join(c, e);
 			}
 		},
 
@@ -72,18 +74,27 @@ export function createQueryCache(
 			data: D | ((prev: D | undefined) => D),
 		): void {
 			const e = entryOf(c, def, vars);
-			cancel(c, e);
-			e.invalidated = false;
-			put(c, e, {
-				status: 'success',
-				data:
+			const f = e.run;
+			client.batch(() => {
+				const value =
 					typeof data === 'function'
 						? (data as (prev: D | undefined) => D)(peek(c, e).data as D)
-						: data,
-				error: undefined,
-				isFetching: false,
-				updatedAt: sched.now(),
+						: data;
+				if (f) {
+					e.run = undefined;
+					f.set = { v: value };
+					f.ctl.abort();
+				}
+				e.invalidated = false;
+				put(c, e, {
+					status: 'success',
+					data: value,
+					error: undefined,
+					isFetching: false,
+					updatedAt: sched.now(),
+				});
 			});
+			armGc(c, e);
 		},
 
 		cancel(def: AnyQuery, vars: unknown): void {

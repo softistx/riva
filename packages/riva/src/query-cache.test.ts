@@ -530,6 +530,7 @@ test('a refetch on focus skips an entry already fetching', async () => {
 test('polling runs while observed and stops with the last observer', async () => {
 	const { client, scheduler } = setup();
 	let n = 0;
+	g.document = {};
 	const q = query({ id: 'q', refetchEvery: '30s', fetch: async () => ++n });
 	const off = client.subscribe(q, () => {});
 	await flush();
@@ -735,4 +736,86 @@ test('subscribe with no variables, listener called on changes only', async () =>
 	await flush();
 	off();
 	expect(states.map((s) => s.status)).toEqual(['pending', 'success']);
+});
+
+test('invalidate restarts an unobserved in-flight fetch: waiters get fresh data', async () => {
+	const { client } = setup();
+	const m = manual<void, string>();
+	const q = query({ id: 'q', fetch: m.fetch });
+	const p = q.ensure(client);
+	q.invalidate(client);
+	await flush();
+	expect(m.calls[0]?.signal.aborted).toBe(true);
+	expect(m.calls.length).toBe(2);
+	m.calls[1]?.resolve('fresh');
+	expect(await p).toBe('fresh');
+	expect(client.get(q).data).toBe('fresh');
+});
+
+test('a caller abort does not cancel a prefetch it joined', async () => {
+	const { client } = setup();
+	const m = manual<void, string>();
+	const q = query({ id: 'q', fetch: m.fetch });
+	q.prefetch(client);
+	const a = new AbortController();
+	const p = q.ensure(client, undefined, { signal: a.signal });
+	a.abort();
+	await expect(p).rejects.toBeInstanceOf(RivaAbortError);
+	expect(m.calls[0]?.signal.aborted).toBe(false);
+	m.calls[0]?.resolve('x');
+	await flush();
+	expect(client.get(q).data).toBe('x');
+});
+
+test('polling arms no timer on the server', () => {
+	delete g.document;
+	const { client, scheduler } = setup();
+	const q = query({ id: 'q', refetchEvery: '30s', fetch: async () => 1 });
+	const off = client.subscribe(q, () => {});
+	expect(scheduler.pending).toBe(0);
+	off();
+});
+
+test('setData over an in-flight fetch notifies once and resolves its waiters with the data', async () => {
+	const { client } = setup();
+	const m = manual<void, string>();
+	const q = query({ id: 'q', fetch: m.fetch });
+	const p = q.ensure(client);
+	const seen: string[] = [];
+	const off = client.subscribe(q, (s) => seen.push(s.status));
+	const before = seen.length;
+	q.setData(client, undefined, 'set');
+	expect(seen.length - before).toBe(1);
+	expect(await p).toBe('set');
+	expect(client.get(q)).toMatchObject({
+		status: 'success',
+		data: 'set',
+		isFetching: false,
+	});
+	off();
+});
+
+test('a refetch after an error clears the error and keeps the data', async () => {
+	const { client } = setup();
+	const m = manual<void, string>();
+	const q = query({ id: 'q', retry: 0, fetch: m.fetch });
+	const p = q.ensure(client);
+	m.calls[0]?.reject(new Error('boom'));
+	await expect(p).rejects.toThrow('boom');
+	q.setData(client, undefined, 'old');
+	client.get(q);
+	const err = client.get(q);
+	expect(err.error).toBeUndefined();
+	const q2 = query({ id: 'q2', retry: 0, fetch: m.fetch });
+	const p2 = q2.ensure(client);
+	m.calls[1]?.reject(new Error('bad'));
+	await expect(p2).rejects.toThrow('bad');
+	const r = q2.ensure(client).catch(() => {});
+	expect(client.get(q2)).toMatchObject({
+		status: 'pending',
+		isFetching: true,
+		error: undefined,
+	});
+	m.calls[2]?.resolve('ok');
+	await r;
 });

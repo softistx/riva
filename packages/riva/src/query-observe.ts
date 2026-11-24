@@ -8,22 +8,23 @@ import {
 	type State,
 	stale,
 } from './query-entry';
-import { abandon, join } from './query-run';
+import { abandon, join, pin } from './query-run';
+import { isBrowser } from './scope';
 
 function poll(c: Ctx, e: Entry): void {
 	const ms = e.def.options.refetchEvery;
-	if (ms !== undefined && ms > 0 && ms < Infinity)
+	if (isBrowser() && ms !== undefined && ms > 0 && ms < Infinity)
 		e.poll = c.sched.setTimeout(() => {
 			if (!e.observers) return;
 			poll(c, e);
-			join(c, e);
+			pin(c, e);
 		}, ms);
 }
 
 /** Refetches the observed, stale, idle entries that did not opt out. */
 function refetch(c: Ctx, flag: 'refetchOnFocus' | 'refetchOnReconnect'): void {
 	for (const e of c.entries.values())
-		if (e.observers && e.def.options[flag] && !e.run && stale(c, e)) join(c, e);
+		if (e.observers && e.def.options[flag] && !e.run && stale(c, e)) pin(c, e);
 }
 
 /** Counts an observer, fetches when needed, polls; the returned function undoes it. */

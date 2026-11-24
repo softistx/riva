@@ -59,25 +59,31 @@ test('unsubscribe is idempotent', () => {
 });
 
 test('polling runs while observed and stops with the last observer', async () => {
-	const { client, timers } = env();
-	let calls = 0;
-	const q = query<void, number>({
-		id: 'q',
-		fetch: async () => ++calls,
-		refetchEvery: 10,
-		staleTime: 0,
-	});
-	const off = client.subscribe(q, () => {});
-	await flush();
-	expect(timers.size).toBeGreaterThan(0);
-	for (const [h, fn] of [...timers]) {
-		timers.delete(h);
-		fn();
+	(globalThis as { document?: unknown }).document = {};
+	try {
+		const { client, timers } = env();
+		let calls = 0;
+		const q = query<void, number>({
+			id: 'q',
+			fetch: async () => ++calls,
+			refetchEvery: 10,
+			gcTime: Infinity,
+			staleTime: 0,
+		});
+		const off = client.subscribe(q, () => {});
+		await flush();
+		expect(timers.size).toBeGreaterThan(0);
+		for (const [h, fn] of [...timers]) {
+			timers.delete(h);
+			fn();
+		}
+		await flush();
+		expect(calls).toBe(2);
+		off();
+		expect(timers.size).toBe(0);
+	} finally {
+		delete (globalThis as { document?: unknown }).document;
 	}
-	await flush();
-	expect(calls).toBe(2);
-	off();
-	expect(timers.size).toBe(0);
 });
 
 test('focus refetches a stale observed entry, unless it opted out', async () => {

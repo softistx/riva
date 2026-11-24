@@ -15,6 +15,10 @@ export interface Inflight {
 	/** Replaced on a restart (invalidate while in flight); aborted and kept on a cancel. */
 	ctl: AbortController;
 	waiters: number;
+	/** Started by a prefetch, a poll or a refetch: a caller abort never cancels it. */
+	pinned: boolean;
+	/** Set by `setData`: the waiters resolve with it instead of rejecting. */
+	set: { v: unknown } | undefined;
 	/** The state to restore on cancel. */
 	prev: State;
 }

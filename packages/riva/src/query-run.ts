@@ -46,11 +46,14 @@ function start(c: Ctx, e: Entry): Inflight {
 		promise: undefined as unknown as Promise<unknown>,
 		ctl: new AbortController(),
 		waiters: 0,
+		pinned: false,
+		set: undefined,
 		prev: peek(c, e),
 	};
 	e.run = f;
 	put(c, e, {
 		status: f.prev.status === 'success' ? 'success' : 'pending',
+		error: undefined,
 		isFetching: true,
 	});
 	// A cancelled fetch (no longer `e.run`) writes nothing.
@@ -72,6 +75,7 @@ function start(c: Ctx, e: Entry): Inflight {
 			return data;
 		},
 		(error) => {
+			if (f.set) return f.set.v;
 			done({ status: 'error', error });
 			throw error;
 		},
@@ -82,6 +86,11 @@ function start(c: Ctx, e: Entry): Inflight {
 
 /** The fetch in flight, or a new one. Callers that do not await it ignore its rejection. */
 export const join = (c: Ctx, e: Entry): Inflight => e.run ?? start(c, e);
+
+/** `join` for a fetch nobody awaits (prefetch, poll, refetch): pinned, so a caller's abort leaves it running. */
+export const pin = (c: Ctx, e: Entry): void => {
+	join(c, e).pinned = true;
+};
 
 /** Aborts the fetch, rejects its waiters and restores the previous state. */
 export function cancel(c: Ctx, e: Entry): void {
@@ -102,5 +111,5 @@ export function restart(f: Inflight): void {
 
 /** Cancels a fetch nobody waits for or observes any more. */
 export function abandon(c: Ctx, e: Entry, f: Inflight | undefined): void {
-	if (f && e.run === f && !f.waiters && !e.observers) cancel(c, e);
+	if (f && e.run === f && !f.waiters && !f.pinned && !e.observers) cancel(c, e);
 }

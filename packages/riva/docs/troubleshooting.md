@@ -69,7 +69,7 @@ Code: `RIVA_DURATION` (`RivaError`).
 
 **When:** an option such as `staleTime`, `gcTime` or `refetchEvery` got a value it cannot read, at the `query({...})` call.
 
-**Why:** a duration is a non-negative number of milliseconds (or `Infinity`), or a string of digits and one unit: `ms`, `s`, `m`, `h`.
+**Why:** a duration is a non-negative number of milliseconds (or `Infinity`), or a string of a number (decimals allowed, e.g. `"1.5s"`) and exactly one unit: `ms`, `s`, `m`, `h`.
 
 **Fix:**
 
@@ -108,3 +108,23 @@ try {
 	if (!(e instanceof RivaAbortError)) throw e;
 }
 ```
+
+## HTTP <status>
+
+Code: `HTTP_<status>` (`RivaHttpError`, a `RivaRequestError`).
+
+**When:** a fetcher threw `new RivaHttpError(status)` without a message, so the message is `HTTP 503`, `HTTP 404`...
+
+**Why:** the server answered with an error status. It is retried for 5xx, 408 and 429 (per `retry`) and never for other statuses.
+
+**Fix:** read `error.status` and `error.cause`; fix the request for a 4xx, or raise `retry` / wait for the server for a 5xx. Pass your own message as the second argument for a clearer text.
+
+## Network error
+
+Code: `RIVA_NETWORK` (`RivaNetworkError`, a `RivaRequestError`).
+
+**When:** a fetcher threw `new RivaNetworkError()` without a message: the request never got a response (offline, DNS, CORS, connection reset).
+
+**Why:** it is always retryable, so the engine retries it per `retry` before settling the error state.
+
+**Fix:** check connectivity and the URL; look at `error.cause` for the underlying failure. On the server `retry` defaults to 0, so set it to retry there.
