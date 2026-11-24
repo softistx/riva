@@ -5,14 +5,23 @@ REST for [riva](https://github.com/softistx/riva/blob/develop/packages/riva/READ
 Errors and fixes: [docs](./docs/README.md). Work in progress, see the [spec](https://github.com/softistx/riva/blob/develop/docs/spec.md).
 
 ```sh
-bun add @softistx/riva @softistx/riva-rest @softistx/httpyz @softistx/openapi-httpyz
+bun add @softistx/riva @softistx/riva-rest @softistx/httpyz @softistx/openapi-httpyz zod
+bun add -d @softistx/openapi-codegen typescript
 ```
 
-Peers: `@softistx/riva` and `@softistx/httpyz`. `@softistx/openapi-httpyz` is optional: only the OpenAPI mode needs it. The runtime entries import none of them.
+Peers: `@softistx/riva` and `@softistx/httpyz`. `@softistx/openapi-httpyz` and `zod` (which it validates with) are optional: only the OpenAPI mode needs them, and `@softistx/openapi-codegen` writes the operations table at build time. The runtime entries import none of them.
 
 ## Provide the transport
 
 Definitions are stateless; the transport lives on the `RivaClient` that runs them. Give each client one when you create it (on the server, one per request).
+
+The OpenAPI mode reads the operations the spec describes, which `@softistx/openapi-codegen` generates:
+
+```sh
+bunx nxgt-openapi generate -i openapi.yaml   # writes generated/openapi
+```
+
+Then, in `api.ts`:
 
 ```ts
 import { createHttpClient } from '@softistx/httpyz';
@@ -49,8 +58,10 @@ client.get(invoices); // an operation whose input is all optional takes no varia
 
 - **The id is the route** (`get /invoices/{id}`), the cache key is the id plus the stable-serialized input: never hand-written. Pass `id` in the options to define one route twice.
 - **Any core option** works: `staleTime`, `gcTime`, `retry`, `refetchEvery`, `cache`, and for a mutation `optimistic`, `updates`, `invalidates`.
-- **The data is typed as the default client decodes it** (`decode: true`). For a client made with `decode: false` annotate the data yourself with the free-fetcher mode.
-- A query may be a `POST` that only reads (a search); a mutation is never a `GET`, `HEAD` or `OPTIONS`, a query never a `PUT`, `PATCH` or `DELETE`.
+- **The data is typed as the client returns it**: decoded for `decode: true` (the default), as JSON carries it for `decode: false`. It is read off the client you pass, so there is nothing to annotate.
+- **The routes are narrowed by kind**: `query()` takes every route but `put`, `patch` and `delete` (`QueryRoute`), `mutation()` every one but `get`, `head` and `options` (`MutationRoute`); the wrong one is a compile error and a `TypeError` at definition time. A `POST` that only reads (a search) is a query.
+- **Defaults** (`staleTime`, `gcTime`, `retry`: 3 in a browser, 0 on the server) are the core's: see the [options in the core README](https://github.com/softistx/riva/blob/develop/packages/riva/README.md).
+- `rest.query` and `rest.mutation` are the same functions, for the `rest.query(api, 'get /invoices/{id}')` spelling.
 - Cancel with `ensure(client, vars, { signal })`: the signal reaches the request, and an abort is a `RivaAbortError`.
 
 ## Free fetcher
@@ -93,6 +104,9 @@ The transport and the free fetcher throw riva's errors, defined once in the core
 | `ValidationError` on the request | `RivaRequestError` `RIVA_VALIDATION` | no |
 | `ValidationError` on the reply | `RivaRequestError` `RIVA_INVALID_RESPONSE` | no |
 | the caller's abort | `RivaAbortError` | no |
+| a transport with no OpenAPI client, or one that lacks the operation | `RivaRequestError` `RIVA_REST_UNWIRED` | no |
+
+Only httpyz's own errors are mapped (they carry the `method` and `path` of their call): a `ValidationError` or a `TimeoutError` from another library passes through unchanged.
 
 `toRivaError(error, signal?)` is exported for your own transports. See [troubleshooting](./docs/troubleshooting.md).
 
@@ -101,7 +115,9 @@ The transport and the free fetcher throw riva's errors, defined once in the core
 By default an entry is keyed by request: the route and its input. To share resources between queries, opt in to entities from `@softistx/riva-rest/entities`: each object you recognise is stored once, and a refetch or a mutation result updates every query that shows it.
 
 ```ts
+import { query, mutation } from '@softistx/riva-rest';
 import { restEntities } from '@softistx/riva-rest/entities';
+import { api } from './api';
 
 // One policy for the client's queries and mutations.
 export const cache = restEntities({
@@ -113,11 +129,18 @@ export const invoices = query(api, 'get /invoices', { cache });
 export const createInvoice = mutation(api, 'post /invoices', { cache });
 ```
 
-`is` says whether an object of a response is that type (REST has no `__typename`), `key` gives its id. Recognised objects get a `__typename`, so data readers see carries it; the core's `readEntity('Invoice:7')`, `writeEntity` and `invalidateEntity` work on them. Share one `restEntities()` between a client's definitions: two policies with different keys on one client are refused with `RIVA_CACHE`.
+`is` says whether an object of a response is that type (REST has no `__typename`), `key` gives its id. Recognised objects get a `__typename`, so data readers see carries it; the core's `readEntity('Invoice:7')`, `writeEntity` and `invalidateEntity` work on them. `restEntities(types, { identify })` also takes the core's `identify` to replace the identity rule altogether.
+
+Pitfalls:
+
+- **Share the `restEntities()` result itself**, not its arguments: two calls throw `RIVA_CACHE` on one client, even with the same `types`.
+- **`is` must tell the types apart**: the first type that matches wins, so `'id' in o` for two resources tags both as the first one.
+- **The injected `__typename` shows up in the data.** Send it back to the API (an edit form's value as a request body) and request validation fails on the unknown field: drop it first.
+- **REST and GraphQL policies cannot share one client's store** in v1: a client holds one set of identity rules.
 
 ## Entry points
 
-- `@softistx/riva-rest`: `query`, `mutation`, `provideRest`, `httpyzTransport`, `toRivaError`, `operationOf` and the types (`RestTransport`, `RestContext`, `InputOf`, `DataOf`).
-- `@softistx/riva-rest/entities`: `restEntities`.
+- `@softistx/riva-rest`: `query`, `mutation`, `rest` (`{ query, mutation }`), `provideRest`, `httpyzTransport`, `toRivaError`, `operationOf` (reads a route into `{ id, method, path, operationId, hasInput }`) and the types: `RestTransport`, `RestContext`, `Route`, `Operation`, the options (`RestQueryOptions`, `RestMutationOptions`, `FreeQueryOptions`, `FreeMutationOptions`), the routes (`RouteOf`, `QueryRoute`, `MutationRoute`) and `InputOf`, `DataOf`, `SpecOf`, `ClientOf`, `DecodedOf`.
+- `@softistx/riva-rest/entities`: `restEntities` and the types `RestEntity`, `RestEntities`.
 
 Size: riva + riva-rest stays under 8 kB gzipped, httpyz and openapi-httpyz not counted.

@@ -4,9 +4,8 @@ import {
 	RivaHttpError,
 	RivaNetworkError,
 	type RivaRequestError,
-	RivaScopeError,
 } from '@softistx/riva';
-import { apiOver, httpWith, json } from '../test/fixtures';
+import { apiOver, httpWith, json, routeOf } from '../test/fixtures';
 import { httpyzTransport } from './http-transport';
 
 type Failed = RivaRequestError & { cause: { data: unknown } };
@@ -33,7 +32,7 @@ const signal = () => new AbortController().signal;
 test('calls the operation with its input and returns the data of the 2xx reply', async () => {
 	const t = transport(() => json({ id: '7', number: 'F-7', total: 12 }));
 	const data = await t.call(
-		{ method: 'get', path: '/invoices/{id}' },
+		routeOf('get /invoices/{id}'),
 		{ param: { id: '7' } },
 		{ signal: signal() },
 	);
@@ -46,18 +45,18 @@ test('sends a body and the query', async () => {
 		r.method === 'POST' ? json({ id: '1' }, 201) : json({ items: [] }),
 	);
 	await t.call(
-		{ method: 'post', path: '/invoices' },
+		routeOf('post /invoices'),
 		{ json: { number: 'F-1', total: 5 } },
 		{ signal: signal() },
 	);
 	expect(await seen.at(-1)?.json()).toEqual({ number: 'F-1', total: 5 });
 	await t.call(
-		{ method: 'get', path: '/invoices' },
+		routeOf('get /invoices'),
 		{ query: { page: 2 } },
 		{ signal: signal() },
 	);
 	expect(seen.at(-1)?.url).toBe('http://api.test/invoices?page=2');
-	await t.call({ method: 'get', path: '/invoices' }, undefined, {
+	await t.call(routeOf('get /invoices'), undefined, {
 		signal: signal(),
 	});
 	expect(seen.at(-1)?.url).toBe('http://api.test/invoices');
@@ -66,7 +65,7 @@ test('sends a body and the query', async () => {
 test('an operation with no input is called with the signal alone', async () => {
 	const t = transport(() => json({ ok: true }));
 	expect(
-		await t.call({ method: 'get', path: '/health' }, undefined, {
+		await t.call(routeOf('get /health'), undefined, {
 			signal: signal(),
 		}),
 	).toEqual({ ok: true });
@@ -76,7 +75,7 @@ test('a declared non-2xx reply is a RivaHttpError holding the reply', async () =
 	const t = transport(() => json({ title: 'Not found' }, 404));
 	const error = await failed(
 		t.call(
-			{ method: 'get', path: '/invoices/{id}' },
+			routeOf('get /invoices/{id}'),
 			{ param: { id: '9' } },
 			{ signal: signal() },
 		),
@@ -90,7 +89,7 @@ test('a declared non-2xx reply is a RivaHttpError holding the reply', async () =
 test('an undeclared status is a RivaHttpError, a 503 retryable', async () => {
 	const t = transport(() => new Response('down', { status: 503 }));
 	const error = await failed(
-		t.call({ method: 'get', path: '/health' }, undefined, { signal: signal() }),
+		t.call(routeOf('get /health'), undefined, { signal: signal() }),
 	);
 	expect(error).toBeInstanceOf(RivaHttpError);
 	expect(error.status).toBe(503);
@@ -102,7 +101,7 @@ test('a failed fetch is a RivaNetworkError', async () => {
 		throw new TypeError('fetch failed');
 	});
 	const error = await failed(
-		t.call({ method: 'get', path: '/health' }, undefined, { signal: signal() }),
+		t.call(routeOf('get /health'), undefined, { signal: signal() }),
 	);
 	expect(error).toBeInstanceOf(RivaNetworkError);
 	expect(error.retryable).toBe(true);
@@ -121,7 +120,7 @@ test('the signal reaches the request and an abort is a RivaAbortError', async ()
 			}),
 	);
 	const p = failed(
-		t.call({ method: 'get', path: '/health' }, undefined, { signal: c.signal }),
+		t.call(routeOf('get /health'), undefined, { signal: c.signal }),
 	);
 	await Bun.sleep(5);
 	expect(reqSignal?.aborted).toBe(false);
@@ -130,15 +129,27 @@ test('the signal reaches the request and an abort is a RivaAbortError', async ()
 	expect(reqSignal?.aborted).toBe(true);
 });
 
-test('a route the client does not have is a TypeError, and no api is a scope error', async () => {
+test('a route the client does not have, or no api, is a non-retryable request error', async () => {
 	const t = transport(() => json({}));
 	await expect(
-		t.call({ method: 'get', path: '/nope' }, undefined, { signal: signal() }),
-	).rejects.toThrow(TypeError);
+		t.call(
+			{ method: 'get', path: '/nope', operationId: 'nope', hasInput: false },
+			undefined,
+			{ signal: signal() },
+		),
+	).rejects.toMatchObject({
+		name: 'RivaRequestError',
+		retryable: false,
+		message: 'riva-rest: the OpenAPI client has no GET /nope.',
+	});
 	const bare = httpyzTransport(httpWith(() => json({})));
 	await expect(
-		bare.call({ method: 'get', path: '/health' }, undefined, {
+		bare.call(routeOf('get /health'), undefined, {
 			signal: signal(),
 		}),
-	).rejects.toBeInstanceOf(RivaScopeError);
+	).rejects.toMatchObject({
+		name: 'RivaRequestError',
+		retryable: false,
+		message: expect.stringContaining('has no OpenAPI client'),
+	});
 });

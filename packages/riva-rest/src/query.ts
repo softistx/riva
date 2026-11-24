@@ -11,8 +11,20 @@ import {
 } from '@softistx/riva';
 import { toRivaError } from './errors';
 import { operationOf } from './operation';
-import { type RestContext, restContext, transportOf } from './transport';
-import type { DataOf, InputOf, RouteOf, SpecOf } from './types';
+import {
+	type RestContext,
+	type Route,
+	restContext,
+	transportOf,
+} from './transport';
+import type {
+	ClientOf,
+	DataOf,
+	DecodedOf,
+	InputOf,
+	MutationRoute,
+	QueryRoute,
+} from './types';
 
 /** The core's query options, minus what the route gives. */
 export type RestQueryOptions<Vars, Data> = Omit<
@@ -51,7 +63,7 @@ export type FreeMutationOptions<Vars, Data> = Omit<
 };
 
 const callOf =
-	(route: { method: string; path: string }) =>
+	(route: Route) =>
 	async (vars: unknown, ctx: FetchContext): Promise<unknown> =>
 		transportOf(ctx.client).call(route, vars, { signal: ctx.signal });
 
@@ -85,11 +97,15 @@ function freeId(opts: { id?: unknown }, name: string): void {
  * - `query({ id, fetch })`: a free fetcher for an API with no schema, typed
  *   by the generics or the fetcher's own types.
  */
-export function query<Ops extends OperationsShape<Ops>, R extends RouteOf<Ops>>(
-	api: SpecOf<Ops>,
+export function query<
+	Ops extends OperationsShape<Ops>,
+	Api extends ClientOf<Ops, boolean>,
+	R extends QueryRoute<Ops>,
+>(
+	api: Api & ClientOf<Ops, boolean>,
 	route: R,
-	opts?: RestQueryOptions<InputOf<Ops, R>, DataOf<Ops, R>>,
-): Query<InputOf<Ops, R>, DataOf<Ops, R>>;
+	opts?: RestQueryOptions<InputOf<Ops, R>, DataOf<Ops, R, DecodedOf<Ops, Api>>>,
+): Query<InputOf<Ops, R>, DataOf<Ops, R, DecodedOf<Ops, Api>>>;
 export function query<Vars = void, Data = unknown>(
 	opts: FreeQueryOptions<Vars, Data>,
 ): Query<Vars, Data>;
@@ -106,7 +122,7 @@ export function query(
 		>;
 		return coreQuery({ ...rest, fetch: guarded(fetch) });
 	}
-	const op = operationOf(first as SpecOf<never>, route as never, 'query');
+	const op = operationOf(first as never, route as never, 'query');
 	return coreQuery({
 		...(opts as object),
 		id: opts.id ?? op.id,
@@ -120,12 +136,16 @@ export function query(
  */
 export function mutation<
 	Ops extends OperationsShape<Ops>,
-	R extends RouteOf<Ops>,
+	Api extends ClientOf<Ops, boolean>,
+	R extends MutationRoute<Ops>,
 >(
-	api: SpecOf<Ops>,
+	api: Api & ClientOf<Ops, boolean>,
 	route: R,
-	opts?: RestMutationOptions<InputOf<Ops, R>, DataOf<Ops, R>>,
-): Mutation<InputOf<Ops, R>, DataOf<Ops, R>>;
+	opts?: RestMutationOptions<
+		InputOf<Ops, R>,
+		DataOf<Ops, R, DecodedOf<Ops, Api>>
+	>,
+): Mutation<InputOf<Ops, R>, DataOf<Ops, R, DecodedOf<Ops, Api>>>;
 export function mutation<Vars = void, Data = unknown>(
 	opts: FreeMutationOptions<Vars, Data>,
 ): Mutation<Vars, Data>;
@@ -142,7 +162,7 @@ export function mutation(
 		>;
 		return coreMutation({ ...rest, run: guarded(run) });
 	}
-	const op = operationOf(first as SpecOf<never>, route as never, 'mutation');
+	const op = operationOf(first as never, route as never, 'mutation');
 	return coreMutation({
 		...(opts as object),
 		id: opts.id ?? op.id,

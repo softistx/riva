@@ -4,7 +4,7 @@ import type { RouteOf, SpecOf } from './types';
 
 const SAFE = new Set(['get', 'head', 'options']);
 
-/** The route of `'get /invoices/{id}'`, the definition's id as well. */
+/** What a route is read into: the transport's `Route`, and the definition's id (`'get /invoices/{id}'`). */
 export interface Operation extends Route {
 	readonly id: string;
 }
@@ -21,6 +21,10 @@ export function operationOf<Ops extends OperationsShape<Ops>>(
 	route: RouteOf<Ops>,
 	kind: 'query' | 'mutation',
 ): Operation {
+	if (typeof route !== 'string')
+		throw new TypeError(
+			`riva-rest: ${String(route)} is not a route; write it as '<method> <path>' (get /invoices/{id}).`,
+		);
 	const at = route.indexOf(' ');
 	const method = at > 0 ? route.slice(0, at) : '';
 	const path = at > 0 ? route.slice(at + 1) : '';
@@ -28,11 +32,14 @@ export function operationOf<Ops extends OperationsShape<Ops>>(
 		throw new TypeError(
 			`riva-rest: "${route}" is not a route; write it as '<method> <path>' (get /invoices/{id}).`,
 		);
-	const table = (spec?.operations ?? {}) as Record<
+	const table = (spec?.operations ?? {}) as unknown as Record<
 		string,
-		{ method: string; path: string }
+		{ method: string; path: string; parameters?: unknown[]; body?: unknown }
 	>;
-	if (!Object.values(table).some((o) => o.method === method && o.path === path))
+	const found = Object.entries(table).find(
+		([, o]) => o.method === method && o.path === path,
+	);
+	if (!found)
 		throw new TypeError(
 			`riva-rest: the OpenAPI client has no operation at ${method.toUpperCase()} ${path}; check the path as the spec writes it.`,
 		);
@@ -44,5 +51,12 @@ export function operationOf<Ops extends OperationsShape<Ops>>(
 		throw new TypeError(
 			`riva-rest: ${method.toUpperCase()} ${path} only reads; define it with query(), not mutation().`,
 		);
-	return { id: `${method} ${path}`, method, path };
+	const [operationId, entry] = found;
+	return {
+		id: `${method} ${path}`,
+		method,
+		path,
+		operationId,
+		hasInput: (entry.parameters?.length ?? 0) > 0 || entry.body !== undefined,
+	};
 }

@@ -1,20 +1,15 @@
 import type { HttpClient } from '@softistx/httpyz';
 import type { OpenApiClient } from '@softistx/openapi-httpyz';
-import { RivaHttpError, RivaScopeError } from '@softistx/riva';
+import { RivaHttpError, RivaRequestError } from '@softistx/riva';
 import { toRivaError } from './errors';
 import type { RestTransport } from './transport';
 
 type Reply = { status: number; data?: unknown };
-type Call = (...args: unknown[]) => Promise<Reply>;
+type ByOperation = (id: string, ...args: unknown[]) => Promise<Reply>;
 
-interface Operations {
-	readonly [id: string]: {
-		method: string;
-		path: string;
-		parameters: readonly unknown[];
-		body?: unknown;
-	};
-}
+// A transport that cannot run the call is a wiring mistake: retrying repeats it.
+const unwired = (message: string) =>
+	new RivaRequestError('RIVA_REST_UNWIRED', message, { retryable: false });
 
 /**
  * The transport over an httpyz client and, for OpenAPI definitions, the
@@ -33,23 +28,21 @@ export function httpyzTransport(
 		http,
 		async call(route, input, { signal }) {
 			if (!api)
-				throw new RivaScopeError(
+				throw unwired(
 					'This REST transport has no OpenAPI client: build it with httpyzTransport(http, api) to run OpenAPI definitions.',
 				);
-			const ops = api.operations as unknown as Operations;
-			const op = Object.values(ops).find(
-				(o) => o.method === route.method && o.path === route.path,
-			);
-			const send = (api as unknown as Record<string, Call>)[route.method];
+			const op = (api as unknown as { op?: ByOperation }).op;
+			const known = (api.operations as unknown as Record<string, unknown>)?.[
+				route.operationId
+			];
+			if (typeof op !== 'function' || !known)
+				throw unwired(
+					`riva-rest: the OpenAPI client has no ${route.method.toUpperCase()} ${route.path}.`,
+				);
 			try {
-				if (!send || !op)
-					throw new TypeError(
-						`riva-rest: the OpenAPI client has no ${route.method.toUpperCase()} ${route.path}.`,
-					);
-				const takesInput = op.parameters.length > 0 || op.body !== undefined;
-				const reply = await (takesInput
-					? send.call(api, route.path, input ?? {}, { signal })
-					: send.call(api, route.path, { signal }));
+				const reply = await (route.hasInput
+					? op.call(api, route.operationId, input ?? {}, { signal })
+					: op.call(api, route.operationId, { signal }));
 				if (reply.status < 200 || reply.status >= 300)
 					throw new RivaHttpError(
 						reply.status,

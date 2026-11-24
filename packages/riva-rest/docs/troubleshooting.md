@@ -32,11 +32,24 @@ Code: `RIVA_SCOPE` (`RivaScopeError`).
 
 ## `This REST transport has no OpenAPI client: build it with httpyzTransport(http, api) to run OpenAPI definitions.`
 
-Code: `RIVA_SCOPE` (`RivaScopeError`).
+Code: `RIVA_REST_UNWIRED` (`RivaRequestError`, never retried).
 
 **When:** an OpenAPI definition (`query(api, 'get /x')`) ran through `httpyzTransport(http)` made without `api`.
 
 **Fix:** pass the client `createOpenApiClient(http, operations)` made as the second argument.
+
+## `riva-rest: the OpenAPI client has no GET /nope.`
+
+Code: `RIVA_REST_UNWIRED` (`RivaRequestError`, never retried), thrown when the query runs.
+
+**Why:** the transport's `api` is not the client the definition came from: it has no operation at that method and path (two specs, or a client made over another `operations` table).
+
+**Fix:** build the transport over the same client the definitions use.
+
+```ts
+export const api = createOpenApiClient(http, operations);
+provideRest(client, httpyzTransport(http, api)); // the api the definitions take
+```
 
 ## `riva-rest: the OpenAPI client has no operation at GET /nope; check the path as the spec writes it.`
 
@@ -78,6 +91,10 @@ query({ id: 'todos', fetch: async () => [] as string[] });
 
 **Fix:** read the body from `error.cause.data` for a declared reply, or declare the status in the spec.
 
+## Which riva error an httpyz error becomes
+
+See the [error table in the README](../README.md#errors). The entries below add the cause and the fix.
+
 ## `RIVA_VALIDATION` and `RIVA_INVALID_RESPONSE` (`RivaRequestError`)
 
 **When:** `openapi-httpyz` validates by default. `RIVA_VALIDATION`: the input breaks the spec (`page: 0` where the minimum is 1), and nothing was sent. `RIVA_INVALID_RESPONSE`: the reply does not match the spec, or has a media type it does not declare.
@@ -88,21 +105,19 @@ query({ id: 'todos', fetch: async () => [] as string[] });
 
 ## `RIVA_NETWORK` (`RivaNetworkError`)
 
-**When:** no connection, a refused one, a CORS refusal or a timeout. It is retried per the definition's `retry` (3 in a browser, 0 on the server).
+**When:** no connection, a refused one, a CORS refusal or a timeout. It is retried per the definition's `retry` ([defaults in the core README](https://github.com/softistx/riva/blob/develop/packages/riva/README.md): 3 in a browser, 0 on the server).
 
-## Data of a client made with `decode: false` is typed wrong
+## Traps
 
-**Why:** the definitions type the data as the default client decodes it (a date-time is a `Date`). With `decode: false` the reply is as JSON carries it.
-
-**Fix:** use the free-fetcher mode with your own types, or keep `decode: true`.
+Entries with no message of their own, or with one the core throws.
 
 ## `This client already uses other entity identity rules. Share one entities() (or the same options objects) between its queries.`
 
 Code: `RIVA_CACHE`.
 
-**When:** two `restEntities()` calls with their own rules were used on one client.
+**When:** two `restEntities()` calls were used on one client, even with the same `types`: each call makes a policy of its own.
 
-**Fix:** create the policy once and share it between the client's definitions.
+**Fix:** create the policy once and share that very object between the client's definitions.
 
 ```ts
 export const cache = restEntities({ Invoice: { is: (o) => 'number' in o, key: (o) => o['id'] as string } });
@@ -113,3 +128,21 @@ export const cache = restEntities({ Invoice: { is: (o) => 'number' in o, key: (o
 **Why:** only an object `is` recognises is stored as an entity, and it needs the `key` to return a string or number. An object that already has a `__typename` keeps it.
 
 **Fix:** check `is` against a real response object, and that the queries share the same `restEntities()` policy.
+
+## A recognised object is the wrong type
+
+**Why:** the first type whose `is` matches wins, so a loose check (`'id' in o`) tags every resource as the first type.
+
+**Fix:** make `is` discriminate on something only that resource has.
+
+## A request refuses a field called `__typename`
+
+**Why:** `restEntities` injects `__typename` into the data. Data sent back as a request body, with request validation on, fails on the field.
+
+**Fix:** drop it before sending: `const { __typename, ...body } = invoice`.
+
+## REST and GraphQL entities on one client
+
+**Why:** a client holds one set of identity rules, so a REST policy and a GraphQL one cannot share its store in v1.
+
+**Fix:** use the entity policy for one of them, and request-keyed caching (the default) for the other.

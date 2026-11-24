@@ -3,6 +3,7 @@ import {
 	createOpenApiClient,
 	type OperationTable,
 } from '@softistx/openapi-httpyz';
+import { operationOf } from '../src/operation';
 import type { RestTransport } from '../src/transport';
 
 export interface Invoice {
@@ -47,6 +48,13 @@ export interface ClientOperations {
 		reply: Reply<200, { ok: boolean }>;
 		wire: Reply<200, { ok: boolean }>;
 	};
+	deleteInvoice: {
+		method: 'delete';
+		path: '/invoices/{id}';
+		args: [input: { param: { id: string } }];
+		reply: Reply<204, undefined>;
+		wire: Reply<204, undefined>;
+	};
 }
 
 const media = { 'application/json': { kind: 'json' as const } };
@@ -84,6 +92,12 @@ export const operations = {
 		parameters: [],
 		responses: { 200: media },
 	},
+	deleteInvoice: {
+		method: 'delete',
+		path: '/invoices/{id}',
+		parameters: [param('id', 'path')],
+		responses: { 204: {} },
+	},
 } as unknown as OperationTable<ClientOperations>;
 
 export type Handler = (req: Request) => Response | Promise<Response>;
@@ -104,3 +118,11 @@ export const apiOver = (http: HttpClient) =>
 export const fakeTransport = (
 	call: RestTransport['call'] = async () => undefined,
 ): RestTransport => ({ call });
+
+/** The `Route` a definition hands the transport for `'<method> <path>'`. */
+export const routeOf = (route: string) =>
+	operationOf(
+		{ operations } as never,
+		route as never,
+		/^(get|head|options) /.test(route) ? 'query' : 'mutation',
+	);

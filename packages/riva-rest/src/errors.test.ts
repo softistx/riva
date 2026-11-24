@@ -92,3 +92,23 @@ test('riva errors and unknown errors pass through', () => {
 	const client = new ClientError(ctx, 'x');
 	expect(toRivaError(client)).toBe(client);
 });
+
+test("a ValidationError or TimeoutError that is not httpyz's passes through unchanged", () => {
+	const zodLike = Object.assign(new Error('bad'), {
+		name: 'ValidationError',
+		failure: { kind: 'request' },
+	});
+	const noKind = Object.assign(new Error('bad'), {
+		name: 'ValidationError',
+		method: 'get',
+		path: '/x',
+		failure: { kind: 'other' },
+	});
+	const platform = new DOMException('timed out', 'TimeoutError');
+	const named = new Error('slow');
+	named.name = 'TimeoutError';
+	expect(toRivaError(zodLike)).toBe(zodLike);
+	expect(toRivaError(noKind)).toBe(noKind);
+	expect(toRivaError(platform)).toBe(platform);
+	expect(toRivaError(named)).toBe(named);
+});

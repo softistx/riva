@@ -1,3 +1,5 @@
+import { mutation, query } from './query';
+
 export const VERSION = '0.0.0';
 
 export { toRivaError } from './errors';
@@ -17,4 +19,16 @@ export {
 	type RestTransport,
 	type Route,
 } from './transport';
-export type { DataOf, InputOf, RouteOf, SpecOf } from './types';
+export type {
+	ClientOf,
+	DataOf,
+	DecodedOf,
+	InputOf,
+	MutationRoute,
+	QueryRoute,
+	RouteOf,
+	SpecOf,
+} from './types';
+
+/** `rest.query(api, 'get /invoices/{id}')`, beside the named exports. */
+export const rest = { query, mutation } as const;

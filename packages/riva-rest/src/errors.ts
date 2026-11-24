@@ -10,11 +10,20 @@ import {
 // httpyz at runtime.
 type Failure = Error & {
 	status?: number;
+	method?: unknown;
+	path?: unknown;
 	failure?: { kind?: string; status?: number };
 };
 
-const isNamed = (e: unknown, name: string): e is Failure =>
+const isErrorNamed = (e: unknown, name: string): e is Failure =>
 	e instanceof Error && e.name === name;
+
+// Name alone is not enough: zod has a `ValidationError`, the platform a
+// `TimeoutError`. httpyz's `ClientError`s carry the call they belong to.
+const isNamed = (e: unknown, name: string): e is Failure =>
+	isErrorNamed(e, name) &&
+	typeof e.method === 'string' &&
+	typeof e.path === 'string';
 
 /**
  * Maps what `@softistx/httpyz` throws to riva's errors, so the core's retry
@@ -42,13 +51,16 @@ export function toRivaError(error: unknown, signal?: AbortSignal): unknown {
 		return error;
 	if (
 		(isNamed(error, 'UndeclaredStatusError') ||
-			isNamed(error, 'ReplyStatusError')) &&
+			isErrorNamed(error, 'ReplyStatusError')) &&
 		typeof error.status === 'number'
 	)
 		return new RivaHttpError(error.status, error.message, { cause: error });
 	if (isNamed(error, 'NetworkError') || isNamed(error, 'TimeoutError'))
 		return new RivaNetworkError(error.message, { cause: error });
-	if (isNamed(error, 'ValidationError'))
+	if (
+		isNamed(error, 'ValidationError') &&
+		(error.failure?.kind === 'request' || error.failure?.kind === 'response')
+	)
 		return new RivaRequestError(
 			error.failure?.kind === 'request'
 				? 'RIVA_VALIDATION'

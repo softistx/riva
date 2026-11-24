@@ -11,8 +11,16 @@ test('reads a route into its id, method and path', () => {
 		id: 'get /invoices/{id}',
 		method: 'get',
 		path: '/invoices/{id}',
+		operationId: 'getInvoice',
+		hasInput: true,
 	});
+	expect(of('get /health').hasInput).toBe(false);
 	expect(of('post /invoices', 'mutation').method).toBe('post');
+});
+
+test('refuses a route that is not a string', () => {
+	expect(() => of(undefined as never)).toThrow('is not a route');
+	expect(() => of(42 as never)).toThrow('is not a route');
 });
 
 test('refuses what is not a route', () => {

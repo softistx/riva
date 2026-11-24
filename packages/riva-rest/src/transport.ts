@@ -5,10 +5,16 @@ import {
 	RivaScopeError,
 } from '@softistx/riva';
 
-/** Which operation to call: a method (lowercase) and a path as the spec writes it. */
+/** Which operation to call, as found in the client's table when the definition was made. */
 export interface Route {
+	/** The method, lowercase. */
 	readonly method: string;
+	/** The path as the spec writes it. */
 	readonly path: string;
+	/** The operation's `operationId`, the key of the client's table. */
+	readonly operationId: string;
+	/** Whether the operation takes an input (parameters or a body). */
+	readonly hasInput: boolean;
 }
 
 /**

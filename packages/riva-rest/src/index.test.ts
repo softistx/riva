@@ -9,6 +9,7 @@ test('the main entry exports the transport and the definitions, nothing from the
 		'operationOf',
 		'provideRest',
 		'query',
+		'rest',
 		'toRivaError',
 	]);
 });
