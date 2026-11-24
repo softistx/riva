@@ -152,6 +152,7 @@ export const rename = mutation(RENAME_PATIENT_MUTATION, {
 
 `normalized()` walks the operation's selection set and stores each object that has a `__typename` and an `id` once, as an entity, so two queries that show the same patient update each other, and a mutation's result updates every query showing it. It is built on the core entity store (`@softistx/riva/entities`): `readEntity`, `writeEntity`, `useFragment` and a mutation's optimistic layer, commit and rollback work as with `entities()`.
 
+- **Objects without an id** are stored inside their parent, merged with what another query stored for the same field. When a shared scalar disagrees (a reordered list) the stored object is replaced, so another query selecting more fields of it refetches once.
 - **Aliases** are stored under the field's name and read back under the response key; one field selected under two aliases has its sub-selections merged.
 - **Field arguments** get one stored field per argument set, variables resolved. They are not shown by `readEntity` or a plain `entities()` read, which skip those keys; read them through the query.
 - **Fragments** (inline and named) and type conditions work. `possibleTypes` maps each interface or union to the names of its member types (`{ Person: ['Patient', 'Doctor'] }`, as codegen's `fragment-matcher` writes it), and may nest abstract types. Without it, a fragment on an abstract type is applied only to the objects whose `__typename` equals its condition; for an object with no `__typename` the cache cannot tell and reads the fragment's fields too, so a miss stays visible.
@@ -194,6 +195,7 @@ A BFF's `/_data` route executes only documents it knows by id. The client preset
 ```ts
 // codegen.ts (needs @graphql-codegen/cli and @graphql-codegen/client-preset)
 import type { CodegenConfig } from '@graphql-codegen/cli';
+import { addTypenameSelectionDocumentTransform } from '@graphql-codegen/client-preset';
 
 export default {
 	schema: 'schema.graphql',
@@ -202,6 +204,8 @@ export default {
 		'app/generated/': {
 			preset: 'client',
 			presetConfig: { persistedDocuments: true },
+			// Needed by `normalized()`: it adds __typename to every selection set.
+			documentTransforms: [addTypenameSelectionDocumentTransform],
 		},
 	},
 	// Runs once every file is written, whatever the order of the outputs.

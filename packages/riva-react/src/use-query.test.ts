@@ -226,7 +226,7 @@ test('suspense with data already cached renders at once', async () => {
 	await m.unmount();
 });
 
-test('suspense suspends again while a hidden entity is refetched, never yielding undefined data', async () => {
+test('suspense suspends again while an observed hidden entity is refetched', async () => {
 	const holes = atom(false);
 	const cache: CachePolicy<unknown> = {
 		write: (_c, data) => data,
@@ -259,6 +259,43 @@ test('suspense suspends again while a hidden entity is refetched, never yielding
 	await flush();
 	expect(calls).toBe(2);
 	expect(m.text()).toBe('got:V2');
+	await m.unmount();
+});
+
+test('a fresh suspense mount after an eviction never renders undefined data', async () => {
+	const holes = atom(false);
+	const cache: CachePolicy<unknown> = {
+		write: (_c, data) => data,
+		read: (c, stored) => (c.get(holes) ? undefined : stored),
+		release: () => {},
+	};
+	const client = newClient();
+	let calls = 0;
+	const def = query<{ school: string }, string>({
+		id: 'uq/suspense-fresh',
+		retry: 0,
+		cache,
+		fetch: async () => {
+			calls++;
+			client.set(holes, false);
+			return `v${calls}`;
+		},
+	});
+	await def.ensure(client, { school: 's' });
+	client.set(holes, true);
+	const seen: unknown[] = [];
+	function C() {
+		const q = useQuery(def, { school: 's' }, { suspense: true });
+		seen.push(q.data);
+		return h('p', null, `got:${q.data}`);
+	}
+	const m = await mount(
+		h(Suspense, { fallback: h('p', null, 'loading') }, h(C)),
+		client,
+	);
+	await flush();
+	expect(seen).not.toContain(undefined);
+	expect(m.text()).toBe('got:v2');
 	await m.unmount();
 });
 

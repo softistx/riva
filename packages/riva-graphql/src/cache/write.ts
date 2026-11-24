@@ -73,8 +73,9 @@ function writeObject(
 		writer.pending.set(ref, { ...writer.pending.get(ref), ...entries });
 		return { __ref: ref };
 	}
-	// Embedded: merged over what the same field held for the same type, so
-	// two queries selecting different fields of it both stay whole.
+	// Embedded (no id): merged over what the same field held for the same type,
+	// so two queries selecting different fields of it both stay whole; replaced
+	// when a shared scalar disagrees (a reordered list).
 	const previous =
 		isPlain(existing) && !isRef(existing) && existing['__typename'] === typename
 			? existing

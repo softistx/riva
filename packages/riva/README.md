@@ -84,7 +84,7 @@ const off = client.subscribe(user, { id: '1' }, (state) => console.log(state.sta
 user.prefetch(client, { id: '2' }); // fire and forget, never rejects
 user.invalidate(client, { id: '1' }); // stale; refetches when observed. No variables: every entry of the definition
 user.setData(client, { id: '1' }, { id: '1', name: 'Ada' }); // success, updatedAt now; a fetch in flight resolves its waiters with it
-user.cancel(client, { id: '1' }); // aborts the fetch, restores the previous state
+user.cancel(client, { id: '1' }); // aborts the fetch, restores the previous state (an observed entry whose data reads undefined is fetched again after a cancel)
 ```
 
 - **Status model**: `idle | pending | success | error`, plus `isFetching`. A background refetch keeps `status: 'success'` and the old data with `isFetching: true`; an error keeps the last data.

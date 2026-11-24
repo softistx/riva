@@ -134,7 +134,13 @@ A `TypeError`, thrown when `query()` or `mutation()` is called with a `normalize
 // codegen.ts
 import { addTypenameSelectionDocumentTransform } from '@graphql-codegen/client-preset';
 
-presetConfig: { persistedDocuments: true, documentTransforms: [addTypenameSelectionDocumentTransform] }
+generates: {
+	'app/generated/': {
+		preset: 'client',
+		presetConfig: { persistedDocuments: true },
+		documentTransforms: [addTypenameSelectionDocumentTransform], // beside `preset`, not inside presetConfig
+	},
+},
 ```
 
 ## `The cache cannot read the query's data after a fetch.`

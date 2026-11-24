@@ -46,7 +46,7 @@ function refetch(c: Ctx, flag: 'refetchOnFocus' | 'refetchOnReconnect'): void {
 function complete(c: Ctx, e: Entry, s: State): void {
 	if (e.run) return;
 	if (s.status === 'success') {
-		if (unreadable(c, e)) {
+		if (s.data === undefined && unreadable(c, e)) {
 			e.invalidated = true;
 			pin(c, e);
 		}
