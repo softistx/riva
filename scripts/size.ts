@@ -10,7 +10,7 @@
  * `@softistx/graphql-client` and `graphql` external; the riva-rest row leaves
  * `@softistx/httpyz` and `@softistx/openapi-httpyz` external; the riva-react-router
  * row leaves `react-router` external and has none for its `/server` subpath;
- * the riva-graphql/bff row counts the browser's side of `/_data` (the `/server` allowlist runs on the server).
+ * the riva-graphql/bff and riva-rest/bff rows count the browser's side of `/_data` (the `/server` subpaths run on the server).
  */
 export interface Budget {
 	name: string;
@@ -111,6 +111,16 @@ export const budgets: Budget[] = [
 		name: '@softistx/riva + riva-rest',
 		entry: ['packages/riva/dist/index.js', 'packages/riva-rest/dist/index.js'],
 		limit: 8192,
+	},
+	{
+		name: '@softistx/riva + riva-rest/bff',
+		entry: [
+			'packages/riva/dist/index.js',
+			'packages/riva/dist/ssr/index.js',
+			'packages/riva-rest/dist/index.js',
+			'packages/riva-rest/dist/bff/index.js',
+		],
+		limit: 9216,
 	},
 ];
 

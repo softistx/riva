@@ -110,6 +110,31 @@ Only httpyz's own errors are mapped (they carry the `method` and `path` of their
 
 `toRivaError(error, signal?)` is exported for your own transports. See [troubleshooting](./docs/troubleshooting.md).
 
+## BFF mode
+
+Run the REST calls on the server and keep the browser away from the API: the browser posts `{ id, variables }` to a `dataRoute` (`@softistx/riva-react-router`'s `/_data`), the server runs the operation through the request client's transport (with its session and base URL) and sends the data back.
+
+```ts
+// server: one transport per request, and the operations the spec describes
+import { dataRoute } from '@softistx/riva-react-router/server';
+import { operations } from '@softistx/riva-rest/server';
+import { api } from './api'; // createOpenApiClient(http, operations)
+
+export const data = dataRoute({ sources: [operations(api)] });
+// ... and provideRest(client, httpyzTransport(http, api)) in rivaMiddleware's setup
+
+// browser: the same definitions, another transport
+import { bffTransport } from '@softistx/riva-rest/bff';
+
+provideRest(client, bffTransport()); // posts to /_data
+```
+
+- **Ids are `rest:<operationId>`**: the spec's `operationId` (`rest:getInvoice`), not the route. An id the spec lacks is a 404 (`RIVA_DATA_UNKNOWN`). The browser never sends a URL or a method.
+- `operations(api)` takes the OpenAPI client (`createOpenApiClient`). A GET, HEAD or OPTIONS is a query, any other method a mutation.
+- `bffTransport({ url?, fetch?, headers? })`: `url` defaults to `/_data`, `headers` is a function (a CSRF token), `fetch` defaults to the global one. Same-origin cookies go with each call.
+- Errors come back as the core's classes (`RivaRequestError` with the route's `code` and `status`, retried for 5xx, 408 and 429; `RivaNetworkError`, `RivaAbortError`, `RIVA_INVALID_RESPONSE`), so `instanceof` holds.
+- **Free fetchers are server-only**: they use httpyz, which the browser does not have. Reading `http` from a free fetcher's context with `bffTransport` throws `RivaScopeError`. Run them in a loader, or describe the call in the spec.
+
 ## Cache
 
 By default an entry is keyed by request: the route and its input. To share resources between queries, opt in to entities from `@softistx/riva-rest/entities`: each object you recognise is stored once, and a refetch or a mutation result updates every query that shows it.
@@ -142,5 +167,7 @@ Pitfalls:
 
 - `@softistx/riva-rest`: `query`, `mutation`, `rest` (`{ query, mutation }`), `provideRest`, `httpyzTransport`, `toRivaError`, `operationOf` (reads a route into `{ id, method, path, operationId, hasInput }`) and the types: `RestTransport`, `RestContext`, `Route`, `Operation`, the options (`RestQueryOptions`, `RestMutationOptions`, `FreeQueryOptions`, `FreeMutationOptions`), the routes (`RouteOf`, `QueryRoute`, `MutationRoute`) and `InputOf`, `DataOf`, `SpecOf`, `ClientOf`, `DecodedOf`.
 - `@softistx/riva-rest/entities`: `restEntities` and the types `RestEntity`, `RestEntities`.
+- `@softistx/riva-rest/server`: `operations(api)` (a `DataSource` for `dataRoute`) and the types `DataSource`, `DataOperation`, `OperationsOf`.
+- `@softistx/riva-rest/bff`: `bffTransport(opts)` and the type `BffTransportOptions`.
 
-Size: riva + riva-rest stays under 8 kB gzipped, httpyz and openapi-httpyz not counted.
+Size: riva + riva-rest stays under 8 kB gzipped, and riva + `/bff` under 9 kB, httpyz and openapi-httpyz not counted.

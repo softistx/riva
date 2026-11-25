@@ -91,6 +91,24 @@ query({ id: 'todos', fetch: async () => [] as string[] });
 
 **Fix:** read the body from `error.cause.data` for a declared reply, or declare the status in the spec.
 
+## `A free fetcher uses httpyz, which is server-only: …`
+
+Code: `RIVA_SCOPE` (`RivaScopeError`).
+
+**When:** in the browser, with `provideRest(client, bffTransport())`, a free fetcher (`query({ id, fetch })`) read `http` from its context.
+
+**Why:** the BFF transport posts to `/_data` and holds no httpyz client; a free fetcher is arbitrary code against the API, so it only runs on the server.
+
+**Fix:** run it in a loader (on the server), or describe the call in the OpenAPI spec and define it with `query(api, 'get /path')`, which the browser can run through `/_data`.
+
+## `Unknown operation.` (`RIVA_DATA_UNKNOWN`, 404) on an operation that exists
+
+**When:** a call through `bffTransport` is answered 404 although the route is in the spec.
+
+**Why:** the id is `rest:<operationId>`, read from the spec's operation table. The server's `operations(api)` was built from another spec (a stale generated `operations.ts`, a different version), or the route is not in `dataRoute({ sources })` at all.
+
+**Fix:** build `operations()` from the same `createOpenApiClient` the browser's definitions use, and check the `operationId` in both specs.
+
 ## Which riva error an httpyz error becomes
 
 See the [error table in the README](../README.md#errors). The entries below add the cause and the fix.
