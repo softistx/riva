@@ -46,7 +46,7 @@ Codes: `RIVA_DATA_METHOD` (405), `RIVA_DATA_CROSS_SITE` (403), `RIVA_DATA_MEDIA_
 
 **Why and fix:** each code's cause and fix is in the [`riva-graphql` table](https://github.com/softistx/riva/blob/develop/packages/riva-graphql/docs/troubleshooting.md#riva_data_-refusals-from-the-_data-route). A network or HTTP failure of the API reaches the browser with its code and the message "The API is unavailable."; the original error goes to `dataRoute`'s `onError`.
 
-For REST operations (`operations(api)` from `@softistx/riva-rest/server`, listed in `sources` beside `allowlist(manifest as AllowlistManifest)`), see [BFF mode](https://github.com/softistx/riva/blob/develop/packages/riva-rest/README.md#bff-mode), the [404 on an operation that exists](https://github.com/softistx/riva/blob/develop/packages/riva-rest/docs/troubleshooting.md#riva_data_unknown-404-on-an-operation-that-exists) and the [non-JSON answer](https://github.com/softistx/riva/blob/develop/packages/riva-rest/docs/troubleshooting.md#the-data-route-answered-n-with-a-body-that-is-not-json).
+For REST operations (`operations(api)` from `@softistx/riva-rest/server`, listed in `sources` beside `allowlist(manifest)`), see [BFF mode](https://github.com/softistx/riva/blob/develop/packages/riva-rest/README.md#bff-mode), the [404 on an operation that exists](https://github.com/softistx/riva/blob/develop/packages/riva-rest/docs/troubleshooting.md#riva_data_unknown-404-on-an-operation-that-exists) and the [non-JSON answer](https://github.com/softistx/riva/blob/develop/packages/riva-rest/docs/troubleshooting.md#the-data-route-answered-n-with-a-body-that-is-not-json).
 
 ## Data refetches right after hydration
 

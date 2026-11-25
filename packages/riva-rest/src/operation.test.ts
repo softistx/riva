@@ -1,4 +1,5 @@
 import { expect, test } from 'bun:test';
+import { RivaError } from '@softistx/riva';
 import { operations } from '../test/fixtures';
 import { operationOf } from './operation';
 
@@ -33,7 +34,7 @@ test('refuses a route the spec has no operation for', () => {
 		'riva-rest: the OpenAPI client has no operation at GET /nope',
 	);
 	expect(() => operationOf({} as never, 'get /x' as never, 'query')).toThrow(
-		TypeError,
+		RivaError,
 	);
 });
 

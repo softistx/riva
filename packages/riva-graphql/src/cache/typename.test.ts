@@ -1,4 +1,5 @@
 import { describe, expect, test } from 'bun:test';
+import { RivaError } from '@softistx/riva';
 import { parse } from 'graphql';
 import { assertTypename } from './typename';
 
@@ -6,7 +7,7 @@ const check = (source: string) => () => assertTypename(parse(source));
 
 describe('assertTypename', () => {
 	test('refuses a nested selection set without __typename', () => {
-		expect(check('{ patient { id name } }')).toThrow(TypeError);
+		expect(check('{ patient { id name } }')).toThrow(RivaError);
 		expect(check('{ patient { id name } }')).toThrow(/^riva-graphql: /);
 		expect(check('{ patient { id name } }')).toThrow(
 			/"patient".*addTypenameSelectionDocumentTransform.*documentTransforms/,
@@ -41,7 +42,7 @@ describe('assertTypename', () => {
 			),
 		).toThrow(/"search"/);
 		expect(check('{ patient { ... on Patient { __typename id } } }')).toThrow(
-			TypeError,
+			RivaError,
 		);
 	});
 

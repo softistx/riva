@@ -39,4 +39,4 @@ Each one is documented in the [core guide](../../../riva/docs/guide/queries.md).
 ## Traps
 
 - **Ids must be unique.** Two definitions with the same `id` (an override reused by mistake, or two documents sharing an operation name) collide on one cache entry.
-- A document that is not one named query is refused with a `TypeError` when the definition is created.
+- A document that is not one named query is refused with a `RivaError` (`RIVA_DEFINITION`) when the definition is created.

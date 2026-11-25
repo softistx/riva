@@ -59,7 +59,7 @@ describe('collectFields', () => {
 
 	test('a spread of an unknown fragment throws', () => {
 		expect(() => keysOf(walkOf('{ ...Missing }'))).toThrow(
-			'The document has no fragment Missing',
+			'riva-graphql: the document uses the fragment Missing but does not define it',
 		);
 	});
 });
@@ -67,7 +67,7 @@ describe('collectFields', () => {
 describe('cacheDocumentOf and variablesOf', () => {
 	test('a document with no operation throws', () => {
 		expect(() => cacheDocumentOf(parse('fragment F on A { a }'))).toThrow(
-			'The document holds no operation',
+			'riva-graphql: the document holds no operation',
 		);
 	});
 

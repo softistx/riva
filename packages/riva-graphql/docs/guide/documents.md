@@ -42,7 +42,7 @@ export const RENAME_PATIENT_MUTATION = graphql(`
 
 ## Traps
 
-- A document that is not exactly one named query or mutation is refused when the definition is created, with a `TypeError` that says why: no operation, several operations, no name, a subscription, or the wrong helper (`query()` on a mutation).
+- A document that is not exactly one named query or mutation is refused when the definition is created, with a `RivaError` (`RIVA_DEFINITION`) that says why: no operation, several operations, no name, a subscription, or the wrong helper (`query()` on a mutation).
 - A `TypedDocumentString` (`documentMode: 'string'`) is refused for the same reason.
 - Never rewrite a document at runtime: a persisted id is the hash of its text.
 

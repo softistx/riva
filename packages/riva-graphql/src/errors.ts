@@ -1,4 +1,5 @@
 import {
+	isRetryableStatus,
 	RivaAbortError,
 	RivaHttpError,
 	RivaNetworkError,
@@ -17,9 +18,6 @@ type Failure = Error & {
 
 const isNamed = (e: unknown, name: string): e is Failure =>
 	e instanceof Error && e.name === name;
-
-const retryable = (status: number) =>
-	status >= 500 || status === 408 || status === 429;
 
 /**
  * Maps what `@softistx/graphql-client` throws to riva's errors, so the
@@ -46,7 +44,7 @@ export function toRivaError(error: unknown, signal?: AbortSignal): unknown {
 		const status = error.status ?? 400;
 		return new RivaRequestError(error.code ?? 'GRAPHQL_ERROR', error.message, {
 			status,
-			retryable: retryable(status),
+			retryable: isRetryableStatus(status),
 			cause: error,
 		});
 	}

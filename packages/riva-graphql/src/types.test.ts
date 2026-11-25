@@ -58,7 +58,9 @@ test('bffTransport is a GraphQLTransport and allowlist takes buildAllowlist outp
 		bffTransport({ url: '/x', fetch, headers: () => ({}) }),
 	).toExtend<GraphQLTransport>();
 	expectTypeOf(allowlist(buildAllowlist({}))).toEqualTypeOf<DataSource>();
+	expectTypeOf<AllowlistManifest>().toExtend<Parameters<typeof allowlist>[0]>();
+	// A JSON import types `kind` as a string: accepted with no assertion.
 	expectTypeOf<
-		Parameters<typeof allowlist>[0]
-	>().toEqualTypeOf<AllowlistManifest>();
+		Record<string, { id: string; name: string; kind: string; document: string }>
+	>().toExtend<Parameters<typeof allowlist>[0]>();
 });

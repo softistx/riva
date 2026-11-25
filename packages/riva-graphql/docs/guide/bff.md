@@ -21,12 +21,11 @@ provideGraphQL(client, bffTransport({ url: '/_data' }));
 ```ts
 // app/routes/_data.ts (a route with an action and a loader)
 import { dataRoute } from '@softistx/riva-react-router/server';
-import type { AllowlistManifest } from '@softistx/riva-graphql/codegen';
 import { allowlist } from '@softistx/riva-graphql/server';
 import manifest from '../generated/allowlist.json';
 
 const route = dataRoute({
-	sources: [allowlist(manifest as AllowlistManifest)],
+	sources: [allowlist(manifest)],
 });
 export const action = route.action;
 export const loader = route.loader;

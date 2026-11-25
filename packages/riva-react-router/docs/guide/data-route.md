@@ -11,12 +11,11 @@ Entry point: `@softistx/riva-react-router/server`.
 ```ts
 // app/routes/_data.ts
 import { dataRoute } from '@softistx/riva-react-router/server';
-import type { AllowlistManifest } from '@softistx/riva-graphql/codegen';
 import { allowlist } from '@softistx/riva-graphql/server';
 import manifest from '../generated/allowlist.json';
 
 const route = dataRoute({
-	sources: [allowlist(manifest as AllowlistManifest)],
+	sources: [allowlist(manifest)],
 });
 export const action = route.action;
 export const loader = route.loader; // 405
@@ -28,7 +27,7 @@ export const loader = route.loader; // 405
 import { operations } from '@softistx/riva-rest/server';
 
 const route = dataRoute({
-	sources: [allowlist(manifest as AllowlistManifest), operations(api)],
+	sources: [allowlist(manifest), operations(api)],
 });
 ```
 
@@ -57,7 +56,7 @@ Refusals are `{ error: { code, message, status } }` with `RIVA_DATA_*` codes (th
 
 ## Traps
 
-- A JSON import widens `kind` to `string`: assert the manifest's type (`manifest as AllowlistManifest`).
+- The manifest imports as plain JSON (`import manifest from "./allowlist.json"`): `allowlist` accepts it as is and refuses an unknown `kind` (rerun the codegen).
 - Behind a proxy the request's origin may differ from the browser's: set `origin`.
 - An unknown id is a 404 even for an operation that exists: the id is the persisted id (GraphQL) or `rest:<operationId>` (REST), regenerate the allowlist after changing a document.
 

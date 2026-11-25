@@ -3,6 +3,7 @@ import { NetworkError } from '@softistx/httpyz';
 import {
 	createRivaClient,
 	RivaAbortError,
+	RivaError,
 	RivaNetworkError,
 	RivaScopeError,
 } from '@softistx/riva';
@@ -181,10 +182,10 @@ test('a free definition with no ctx.http client says how to build the transport'
 	);
 });
 
-test('a free fetcher or mutation with no id throws a TypeError', () => {
+test('a free fetcher or mutation with no id throws a RivaError', () => {
 	expect(() =>
 		query({ fetch: async () => 1 } as unknown as Parameters<typeof query>[0]),
-	).toThrow(TypeError);
+	).toThrow(RivaError);
 	expect(() =>
 		query({ fetch: async () => 1 } as unknown as Parameters<typeof query>[0]),
 	).toThrow('query() needs an id');

@@ -64,4 +64,4 @@ const manifest = buildAllowlist({
 
 - It fails on a text with no operation or several, an anonymous one, a subscription, and two operations of one name.
 - Do not rely on the order of outputs inside one codegen run: build the manifest from the `afterAllFileWrite` hook.
-- Import the manifest JSON with a type assertion (`manifest as AllowlistManifest`): a JSON import widens `kind` to `string`.
+- Import the manifest JSON as it is: `allowlist` takes its JSON shape (`kind` as a `string`) and refuses an unknown kind at startup.

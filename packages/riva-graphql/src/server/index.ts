@@ -1,8 +1,23 @@
-import type { DataOperation, DataSource } from '@softistx/riva';
+import { type DataOperation, type DataSource, RivaError } from '@softistx/riva';
 import { type DocumentNode, parse } from 'graphql';
-import type { AllowlistManifest } from '../codegen/index';
 import { type Operation, operationOf } from '../operation';
 import { transportOf } from '../transport';
+
+/**
+ * What `allowlist` reads: the manifest as a JSON import types it (`kind` is a
+ * `string`), so no assertion is needed. `AllowlistManifest` fits it.
+ */
+export type AllowlistInput = Readonly<
+	Record<
+		string,
+		{
+			readonly id: string;
+			readonly name: string;
+			readonly kind: string;
+			readonly document: string;
+		}
+	>
+>;
 
 /**
  * The server side of `bffTransport`: runs the operations of `buildAllowlist`'s
@@ -10,7 +25,15 @@ import { transportOf } from '../transport';
  * manifest's ids are known, and the text executed is the manifest's, never the
  * browser's. Each document is parsed once, on first use.
  */
-export function allowlist(manifest: AllowlistManifest): DataSource {
+export function allowlist(manifest: AllowlistInput): DataSource {
+	for (const id of Object.keys(manifest)) {
+		const kind = manifest[id]?.kind;
+		if (kind !== 'query' && kind !== 'mutation')
+			throw new RivaError(
+				'RIVA_DEFINITION',
+				`riva-graphql: the allowlist entry "${id}" has the kind "${String(kind)}", not "query" or "mutation": rerun the codegen to rebuild the manifest.`,
+			);
+	}
 	const made = new Map<string, DataOperation>();
 	return {
 		find(id) {
@@ -21,7 +44,7 @@ export function allowlist(manifest: AllowlistManifest): DataSource {
 			if (!op) {
 				let operation: Operation | undefined;
 				op = {
-					kind: entry.kind,
+					kind: entry.kind as DataOperation['kind'],
 					run(client, variables, signal) {
 						operation ??= {
 							...operationOf(parse(entry.document) as DocumentNode),

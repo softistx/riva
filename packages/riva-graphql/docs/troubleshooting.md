@@ -23,7 +23,7 @@ provideGraphQL(client, graphqlClientTransport(createGraphQLClient({ url: 'https:
 
 ## `riva-graphql: the operation has no name; name it (query Patients { ... }) so it has an id.`
 
-A `TypeError`, thrown when the definition is created.
+Code: `RIVA_DEFINITION` (`RivaError`), thrown when the definition is created.
 
 **Why:** the definition's id, its cache keys and the allowlist's ids come from the operation name (or its persisted id), so an anonymous operation has none.
 
@@ -146,9 +146,9 @@ Code: `RIVA_CACHE` (`RivaError`).
 
 **Fix:** check the transport; a GraphQL result's `data` is an object.
 
-## `The document has no fragment X` and `The document holds no operation`
+## `riva-graphql: the document uses the fragment X but does not define it` and `riva-graphql: the document holds no operation`
 
-Both are `TypeError`s, thrown when `query()` or `mutation()` is called.
+Code: `RIVA_DEFINITION` (`RivaError`), thrown when `query()` or `mutation()` is called.
 
 **Why:** the document given to `query()` or `mutation()` with a `normalized()` cache spreads a fragment it does not define, or defines no operation.
 
@@ -156,7 +156,7 @@ Both are `TypeError`s, thrown when `query()` or `mutation()` is called.
 
 ## `riva-graphql: the field "X" selects no __typename, which the cache needs to identify objects: …`
 
-A `TypeError`, thrown when `query()` or `mutation()` is called with a `normalized()` cache.
+Code: `RIVA_DEFINITION` (`RivaError`), thrown when `query()` or `mutation()` is called with a `normalized()` cache.
 
 **Why:** an object with no `__typename` has no identity, so it could not be stored as an entity. The cache refuses the document rather than rewrite it: a persisted id is the hash of the document's text.
 
@@ -201,7 +201,7 @@ Code: `RIVA_CACHE` (`RivaError`).
 
 ## `riva-graphql: X is a subscription; subscriptions are not supported yet.`
 
-A `TypeError`, thrown when the definition is created (`X` is the operation's name).
+Code: `RIVA_DEFINITION` (`RivaError`), thrown when the definition is created (`X` is the operation's name).
 
 **Why:** a definition runs one request and one reply; a subscription is a stream.
 
