@@ -1,5 +1,32 @@
 # @softistx/riva-rest
 
+## 0.2.0
+
+### Minor Changes
+
+- [#59](https://github.com/softistx/riva/pull/59) [`a8bfdf2`](https://github.com/softistx/riva/commit/a8bfdf207ec5387f73bc1512c029766c8fff3502) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `RivaClient` is renamed `Riva`: the instance holds local state too, so it is not a client.
+  
+  | Before | After |
+  | --- | --- |
+  | `RivaClient` | `Riva` |
+  | `createRivaClient` | `createRiva` |
+  | `ClientOptions`, `ClientEvents` | `RivaOptions`, `RivaEvents` |
+  | `setDefaultClient` | `setDefaultRiva` |
+  | `useClient` (riva-react) | `useRiva` |
+  | `<RivaProvider client={client}>` | `<RivaProvider riva={riva}>` |
+  | store action context `{ client, fetch, mutate }` | `{ riva, fetch, mutate }` |
+  | `RivaRouterProvider` `client` prop | `riva` |
+  | the `FetchContext` and free-fetcher context `client` | `riva` |
+  
+  Error messages follow: `No Riva in scope: wrap the tree in <RivaProvider riva={riva}>. On the server, create one per request.` Error codes are unchanged.
+  
+  The old names stay for one minor as deprecated aliases (the same references, so `instanceof` still holds): `RivaClient` (value and type), `createRivaClient`, `ClientOptions`, `ClientEvents`, `setDefaultClient`, `useClient`, and `RivaProvider` and `RivaRouterProvider` still accept `client`. They are removed in the next minor. `ctx.client` (store actions, `FetchContext`, free fetchers) gets no deprecated alias: read `ctx.riva`. Objects named `client` that are genuinely network clients (`@softistx/graphql-client`, httpyz and OpenAPI clients) keep their names.
+
+### Patch Changes
+
+- Updated dependencies [[`a8bfdf2`](https://github.com/softistx/riva/commit/a8bfdf207ec5387f73bc1512c029766c8fff3502), [`8ab68de`](https://github.com/softistx/riva/commit/8ab68dece6dce7e33e4891f9f05611991298bee6)]:
+  - @softistx/riva@0.2.0
+
 ## 0.1.1
 
 ### Patch Changes
