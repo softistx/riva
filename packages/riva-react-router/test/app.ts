@@ -110,6 +110,8 @@ export function makeApp({
 	browser = fakeApi(),
 	onPatient,
 }: AppOptions = {}) {
+	/** The `server` flag each provider mount's `setup` saw. */
+	const envs: boolean[] = [];
 	const root = (setupServer: boolean): NonIndexRouteObject => ({
 		id: 'root',
 		path: '/',
@@ -124,11 +126,13 @@ export function makeApp({
 			h(
 				RivaRouterProvider,
 				{
-					setup: (client, env) =>
+					setup: (client, env) => {
+						envs.push(env.server);
 						provideGraphQL(
 							client,
 							env.server ? server.transport : browser.transport,
-						),
+						);
+					},
 				},
 				h(Outlet),
 			),
@@ -211,21 +215,34 @@ export function makeApp({
 		const request = new Request(`http://app.test${url}`);
 		let html = '';
 		let loaderData: Record<string, unknown> = {};
-		await handler.query(request, {
-			requestContext: context,
-			generateMiddlewareResponse: async (next) => {
-				const result = await next(request);
-				if (result instanceof Response) return result;
-				loaderData = JSON.parse(JSON.stringify(result.loaderData));
-				const router = createStaticRouter(handler.dataRoutes, result);
-				const stream = await renderToReadableStream(
-					h(StaticRouterProvider, { router, context: result, hydrate: false }),
-				);
-				await stream.allReady;
-				html = await new Response(stream).text();
-				return new Response(html);
-			},
-		});
+		// A server has no `document`: hide happy-dom's so the provider takes its
+		// server branch, as in production.
+		const g = globalThis as { document?: unknown };
+		const doc = g.document;
+		delete g.document;
+		try {
+			await handler.query(request, {
+				requestContext: context,
+				generateMiddlewareResponse: async (next) => {
+					const result = await next(request);
+					if (result instanceof Response) return result;
+					loaderData = JSON.parse(JSON.stringify(result.loaderData));
+					const router = createStaticRouter(handler.dataRoutes, result);
+					const stream = await renderToReadableStream(
+						h(StaticRouterProvider, {
+							router,
+							context: result,
+							hydrate: false,
+						}),
+					);
+					await stream.allReady;
+					html = await new Response(stream).text();
+					return new Response(html);
+				},
+			});
+		} finally {
+			g.document = doc;
+		}
 		return { html, loaderData, client: context.get(rivaContext) };
 	}
 
@@ -260,5 +277,5 @@ export function makeApp({
 		};
 	}
 
-	return { server, browser, serverRoutes, browserRoutes, serve, boot };
+	return { server, browser, envs, serverRoutes, browserRoutes, serve, boot };
 }

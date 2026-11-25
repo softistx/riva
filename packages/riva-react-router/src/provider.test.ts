@@ -14,6 +14,14 @@ test('the server HTML holds the data and the server makes one fetch', async () =
 	expect(app.server.calls).toEqual(['Patients']);
 });
 
+test('the server render takes the server branch of the provider and never fetches in the browser', async () => {
+	const app = makeApp();
+	await app.serve('/patients');
+	expect(app.envs).toEqual([true]);
+	expect(app.browser.calls).toEqual([]);
+	expect(typeof document).toBe('object');
+});
+
 test('the browser boots from the loader data with no fetch while it is fresh', async () => {
 	const app = makeApp();
 	const { loaderData } = await app.serve('/patients');
