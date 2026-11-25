@@ -61,3 +61,20 @@ import { query } from '@softistx/riva-graphql';
 
 export const patients = query(PATIENTS_QUERY, { staleTime: '30s' });
 ```
+
+## `Property 'graphql' does not exist on type 'Riva'`
+
+**When:** a loader or action calls `rivaOf(context).graphql` (or `.rest`) and TypeScript refuses it.
+
+**Why:** without a `Register` augmentation `rivaOf` returns the base `Riva`, which has no `graphql` or `rest`. The augmentation is also ignored when its file is not part of the program.
+
+**Fix:** declare it once, in a file the app's `tsconfig.json` includes (`include` or `files`), with `AppRiva` the type your `createRiva` returns.
+
+```ts
+// app/riva.ts
+declare module '@softistx/riva-react-router' {
+	interface Register {
+		riva: AppRiva;
+	}
+}
+```

@@ -32,6 +32,8 @@ declare module '@softistx/riva-react-router' {
 }
 ```
 
+`RegisteredRiva` is what `rivaOf` returns (your registered riva, else `Riva`); `RivaFrom<R>` is the helper that reads `R['riva']`, falling back to `Riva`.
+
 ```ts
 // app/riva.server.ts: built in a *.server.ts module, so /server stays out of the browser bundle
 import { rivaMiddleware } from '@softistx/riva-react-router/server';

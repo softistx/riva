@@ -158,6 +158,8 @@ export default function Patients({ params }: { params: { school: string } }) {
 
 Types: `Register` (augment it with `riva: AppRiva` to type `rivaOf`), `RegisteredRiva`, `RivaFrom`, `ContextLike` (what `rivaOf` and `riva` accept, a `context.get`), `RivaRouterProviderProps` from `.`; `RivaMiddlewareOptions`, `MiddlewareArgs`, `DataRouteOptions`, `DataRoute`, `DataSource` and `DataOperation` from `/server`.
 
+`RegisteredRiva` is what `rivaOf` returns (your registered riva, else `Riva`); `RivaFrom<R>` is the helper that reads `R['riva']`, falling back to `Riva`.
+
 ## Notes for hosts
 
 - The ambient scope is one `AsyncLocalStorage` per process, wired by importing `/server` (`setScopeResolver` is one per process: another resolver replaces it).
