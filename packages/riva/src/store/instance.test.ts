@@ -49,4 +49,38 @@ describe('instance', () => {
 			delete g.document;
 		}
 	});
+	test('a replaced definition does not take the name back (hot-reload ping-pong)', () => {
+		const a = make('i3');
+		const b = make('i3');
+		const c = createRivaClient();
+		const g = globalThis as { document?: unknown };
+		g.document = {};
+		try {
+			instance(a, c);
+			const ib = instance(b, c);
+			(ib[1]['inc'] as () => void)();
+			expect(ib[0]['n']).toBe(1);
+			// A, still held by a component, is seen again: it resolves to B's instance.
+			expect(instance(a, c)).toBe(ib);
+			expect(c.slots.get('name:i3')).toBe(b);
+			expect(instance(b, c)).toBe(ib);
+			expect(ib[0]['n']).toBe(1);
+			// A third definition takes over; both older ones resolve to it.
+			const d = make('i3');
+			const id = instance(d, c);
+			expect(instance(a, c)).toBe(id);
+			expect(instance(b, c)).toBe(id);
+			expect(c.slots.get('name:i3')).toBe(d);
+		} finally {
+			delete g.document;
+		}
+	});
+
+	test('on the server a definition other than the holder is still refused', () => {
+		const a = make('i4');
+		const c = createRivaClient();
+		instance(a, c);
+		expect(() => instance(make('i4'), c)).toThrow(/two stores are named "i4"/);
+		expect(() => instance(make('i4'), c)).toThrow(/two stores are named "i4"/);
+	});
 });

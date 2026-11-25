@@ -102,7 +102,9 @@ A state, computed or action key repeats, or is one of `kind`, `name`, `reset`, `
 
 ### Store "<name>": two stores are named "<name>" on this client: give each store a unique name.
 
-Two store definitions with one name were used on one client, on the server. Give each a unique `name`. In a browser the newer definition takes over instead (a hot-reloaded module), so this error does not happen there.
+Two store definitions with one name were used on one client, on the server. Give each a unique `name`. In a browser the newer definition takes over instead (a hot-reloaded module), so this error does not happen there. A replaced definition that a component still holds (the old module, read again after the new one) resolves to the current instance: it neither takes the name back nor resets the state.
+
+The browser test is `'document' in globalThis`. A server or a test run that defines `document` (happy-dom, jsdom) is taken for a browser, so a second store with the same name takes over there instead of throwing. The fix is one definition per name, or a different name for each; remove the DOM globals from server code.
 
 ### A nested mutation throws a `TypeError` in development
 

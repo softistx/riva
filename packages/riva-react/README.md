@@ -169,7 +169,7 @@ function Books() {
 }
 ```
 
-`s` is tracked per key and read-only: a write throws `RIVA_STORE`; write through `a`. [Guide](./docs/guide/store.md).
+`s` is tracked per key and read-only: a write throws `RIVA_STORE`; write through `a`. A key is watched once the component that called `useStore` has rendered it: a `memo` child that gets `s` as a prop and alone reads a new key is not watched for it until the parent renders again, so call `useStore` in that child (see [troubleshooting](./docs/troubleshooting.md)). [Guide](./docs/guide/store.md).
 
 ## Entities
 

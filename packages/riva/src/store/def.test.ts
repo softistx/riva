@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { createRivaClient } from '../client';
 import { signal } from '../signal';
-import { freeze, inBrowser, put, RESERVED, writable } from './def';
+import { freeze, put, RESERVED, writable } from './def';
 
 describe('freeze', () => {
 	test('freezes a value and what it holds (dev), once', () => {
@@ -39,7 +39,6 @@ describe('put', () => {
 	});
 });
 
-test('the reserved keys, and the server/browser switch', () => {
+test('the reserved keys', () => {
 	expect(RESERVED).toEqual(['kind', 'name', 'reset', 'bind', 'then']);
-	expect(inBrowser()).toBe(false);
 });
