@@ -5,7 +5,7 @@ GraphQL for [riva](https://github.com/softistx/riva/blob/develop/packages/riva/R
 Guides and fixes: [docs](./docs/README.md). Work in progress, see the [spec](https://github.com/softistx/riva/blob/develop/docs/spec.md).
 
 ```sh
-bun add @softistx/riva @softistx/riva-graphql @softistx/graphql-client graphql
+bun add @softistx/riva @softistx/riva-graphql @softistx/graphql-client @graphql-typed-document-node/core graphql
 ```
 
 Peers: `@softistx/riva` and `@softistx/graphql-client`. `graphql` and `@graphql-typed-document-node/core` are optional: `graphql` is needed by `/server` (the allowlist parses the manifest's text) and `/codegen`, and the types of every definition need the second (`@softistx/graphql-client` already brings it). The main, `/infinite`, `/cache` and `/bff` entries import none of them.

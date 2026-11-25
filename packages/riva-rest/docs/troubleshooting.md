@@ -176,3 +176,9 @@ export const cache = restEntities({ Invoice: { is: (o) => 'number' in o, key: (o
 **Why:** a client holds one set of identity rules, so a REST policy and a GraphQL one cannot share its store in v1.
 
 **Fix:** use the entity policy for one of them, and request-keyed caching (the default) for the other.
+
+## `riva-rest: DELETE /x changes data; define it with mutation(), not query().`
+
+A `TypeError`, thrown when the definition is created, for a `PUT`, `PATCH` or `DELETE` route given to `query()`.
+
+**Fix:** use `mutation(api, 'delete /x')`. Only `GET`, `HEAD`, `OPTIONS` and a `POST` that only reads (a search) are queries.

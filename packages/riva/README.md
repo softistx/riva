@@ -160,6 +160,10 @@ The snapshot is an opaque format: pass on what `dehydrate` returned. A fresh ent
 
 `@softistx/riva/data` is the browser's side of a `/_data` route, for a transport of your own: `postData(opts, id, variables, signal?)`. [data](./docs/guide/data.md).
 
+## Types
+
+`ClientOptions` (what `createRivaClient` takes), `DataOperation` and `DataSource` (a `/_data` route's operations, from the main entry), `AddContextLast` and `ReservedKey` (the store's typing helpers, from `/store`). Each subpath exports its own types, listed in its [guide](./docs/README.md).
+
 ## Size budget
 
 The main entry stays within 6144 B gzipped, with `entities` or `infinite` within 8192 B each, with `ssr` or `store` within 7424 B each, with `data` within 7168 B, with every subpath within 12288 B, core + react within 9216 B (`bun run size` checks every row).

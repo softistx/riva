@@ -18,8 +18,7 @@ const ROOT = fileURLToPath(new URL('..', import.meta.url)).replace(/\/$/, '');
 const byCodePoint = (a: string, b: string): number =>
 	a < b ? -1 : a > b ? 1 : 0;
 
-export const INDEX_PATH =
-	'plugins/riva/skills/use-riva/references/packages.md';
+export const INDEX_PATH = 'plugins/riva/skills/use-riva/references/packages.md';
 
 type Manifest = {
 	name: string;

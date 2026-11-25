@@ -305,3 +305,17 @@ Code: `RIVA_UNKNOWN`, on the `error` of a hydrated query entry.
 **Why:** a snapshot carries codes only, never a message, a stack or a cause, so a server detail cannot leak. An error that is not a `RivaError` has no code to carry.
 
 **Fix:** throw riva's errors from fetchers (`RivaHttpError`, `RivaRequestError`...), or map the failure in the fetcher. Log the original error on the server.
+
+## `Several listeners or computeds threw.`
+
+An `AggregateError`, thrown when a write flushes its listeners and more than one of them (an `effect`, a `computed`, a subscriber) throws. With a single failure that error is rethrown as is.
+
+**Fix:** read `error.errors`: it lists every failure, in the order they ran. Fix each listener; one that throws never stops the others from running.
+
+## `The data route answered without a "data" field.`
+
+Code: `RIVA_INVALID_RESPONSE` (`RivaRequestError`, not retryable).
+
+**When:** the data route answered 2xx with JSON that is not `{ data }`, for example a proxy's or a login page's body.
+
+**Fix:** check that the URL given to `postData` (or `bffTransport`) reaches the `dataRoute` action and not another handler; look at the response in the network tab.

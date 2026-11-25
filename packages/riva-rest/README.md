@@ -146,7 +146,7 @@ export const createInvoice = mutation(api, 'post /invoices', { cache });
 
 - `@softistx/riva-rest`: `query`, `mutation`, `rest` (`{ query, mutation }`), `provideRest`, `httpyzTransport`, `toRivaError`, `operationOf` (reads a route into `{ id, method, path, operationId, hasInput }`) and the types: `RestTransport`, `RestContext`, `Route`, `Operation`, the options (`RestQueryOptions`, `RestMutationOptions`, `FreeQueryOptions`, `FreeMutationOptions`), the routes (`RouteOf`, `QueryRoute`, `MutationRoute`) and `InputOf`, `DataOf`, `SpecOf`, `ClientOf`, `DecodedOf`.
 - `@softistx/riva-rest/entities`: `restEntities` and the types `RestEntity`, `RestEntities`.
-- `@softistx/riva-rest/server`: `operations(api)` (a `DataSource` for `dataRoute`) and the types `DataSource`, `DataOperation`, `OperationsOf`.
+- `@softistx/riva-rest/server`: `operations(api)` (a `DataSource` for `dataRoute`), the constant `PREFIX` (`'rest:'`, the prefix of every id the route serves: `rest:<operationId>`) and the types `DataSource`, `DataOperation`, `OperationsOf`.
 - `@softistx/riva-rest/bff`: `bffTransport(opts)` and the type `BffTransportOptions`.
 
 Size: riva + riva-rest stays under 8 kB gzipped, and riva + `/bff` under 9 kB, httpyz and openapi-httpyz not counted.

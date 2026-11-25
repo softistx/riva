@@ -19,7 +19,9 @@ test('every package has an entry, with its entry points and docs', () => {
 	for (const folder of packageFolders())
 		expect(index).toContain(`## @softistx/${folder}`);
 	expect(index).toContain('`@softistx/riva/store`');
-	expect(index).toContain('node_modules/@softistx/riva/docs/troubleshooting.md');
+	expect(index).toContain(
+		'node_modules/@softistx/riva/docs/troubleshooting.md',
+	);
 });
 
 test('a guide with `index: false` in its frontmatter is skipped', () => {
@@ -37,7 +39,11 @@ test('a missing or edited index is stale', () => {
 	mkdirSync(join(root, 'packages', 'a', 'docs'), { recursive: true });
 	writeFileSync(
 		join(root, 'packages', 'a', 'package.json'),
-		JSON.stringify({ name: '@softistx/a', description: 'd', exports: { '.': {} } }),
+		JSON.stringify({
+			name: '@softistx/a',
+			description: 'd',
+			exports: { '.': {} },
+		}),
 	);
 	writeFileSync(join(root, 'packages', 'a', 'docs', 'README.md'), '# A docs\n');
 	expect(isFresh(root)).toBe(false);

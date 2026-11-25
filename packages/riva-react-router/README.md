@@ -3,48 +3,56 @@
 React Router host for riva: one `RivaClient` per request, server-side loading with `dehydrate`, browser hydration and a merge of each navigation's data. Built for React Router 8 framework mode (and `@softistx/alxia-react-router`, which hosts the same routes); it never imports alxia.
 
 ```sh
-bun add @softistx/riva-react-router @softistx/riva @softistx/riva-react
+bun add @softistx/riva-react-router @softistx/riva @softistx/riva-react react react-router
 ```
+
+Peers: `@softistx/riva`, `@softistx/riva-react`, `react` ^19 and `react-router` ^8. `@softistx/alxia-react-router` is an optional peer, for hosting the routes with alxia.
 
 ## Setup
 
 `middleware` on a route module needs React Router 8 framework mode. The middleware goes on the root route, the provider in the root component:
+
+```ts
+// app/riva.server.ts: built in a *.server.ts module, so /server stays out of the browser bundle
+import { createGraphQLClient } from '@softistx/graphql-client';
+import { graphqlClientTransport, provideGraphQL } from '@softistx/riva-graphql';
+import { rivaMiddleware } from '@softistx/riva-react-router/server';
+
+const API_URL = 'https://api.example.com/graphql'; // schematic: your API
+
+export const rivaMw = rivaMiddleware({
+	// the caller port of the request: here its session cookie goes to the API
+	setup: (client, { request }) =>
+		provideGraphQL(
+			client,
+			graphqlClientTransport(
+				createGraphQLClient({
+					url: API_URL,
+					headers: { cookie: request.headers.get('cookie') ?? '' },
+				}),
+			),
+		),
+});
+```
 
 ```tsx
 // app/root.tsx
 import { createGraphQLClient } from '@softistx/graphql-client';
 import { graphqlClientTransport, provideGraphQL } from '@softistx/riva-graphql';
 import { RivaRouterProvider } from '@softistx/riva-react-router';
-import { rivaMiddleware } from '@softistx/riva-react-router/server';
 import { Outlet } from 'react-router';
+import { rivaMw } from './riva.server';
 
 const API_URL = 'https://api.example.com/graphql'; // schematic: your API
 
-export const middleware = [
-	rivaMiddleware({
-		// the caller port of the request: here its session cookie goes to the API
-		setup: (client, { request }) =>
-			provideGraphQL(
-				client,
-				graphqlClientTransport(
-					createGraphQLClient({
-						url: API_URL,
-						headers: { cookie: request.headers.get('cookie') ?? '' },
-					}),
-				),
-			),
-	}),
-];
+export const middleware = [rivaMw];
 
 export default function Root() {
 	return (
 		<RivaRouterProvider
 			// the client the render and the browser use; the data itself comes from the loaders
 			setup={(client) =>
-				provideGraphQL(
-					client,
-					graphqlClientTransport(createGraphQLClient({ url: API_URL })),
-				)
+				provideGraphQL(client, graphqlClientTransport(createGraphQLClient({ url: API_URL })))
 			}
 		>
 			<Outlet />

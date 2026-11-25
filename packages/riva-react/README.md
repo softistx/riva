@@ -216,4 +216,6 @@ A hook never starts a fetch during a server render, except through `suspense: tr
 | `@softistx/riva-react/entities` | `useFragment` |
 | `@softistx/riva-react/store` | `useStore` |
 
+Types: `MutationResult` (what `useMutation` returns), `RivaProviderProps`, `SuspendedState` and `UseQueryOptions` (main entry), `InfiniteResult` and `UseInfiniteQueryOptions` (`/infinite`).
+
 Core plus the main entry stays under 9 kB gzipped; the subpaths cost nothing until imported.
