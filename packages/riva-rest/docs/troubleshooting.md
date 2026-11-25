@@ -91,6 +91,36 @@ query({ id: 'todos', fetch: async () => [] as string[] });
 
 **Fix:** read the body from `error.cause.data` for a declared reply, or declare the status in the spec.
 
+## `A free fetcher uses httpyz, which is server-only: …`
+
+Code: `RIVA_SCOPE` (`RivaScopeError`).
+
+**When:** in the browser, with `provideRest(client, bffTransport())`, a free fetcher (`query({ id, fetch })`) read `http` from its context.
+
+**Why:** the BFF transport posts to `/_data` and holds no httpyz client; a free fetcher is arbitrary code against the API, so it only runs on the server.
+
+**Fix:** run it in a loader (on the server), or describe the call in the OpenAPI spec and define it with `query(api, 'get /path')`, which the browser can run through `/_data`.
+
+## `RIVA_DATA_UNKNOWN` (404) on an operation that exists
+
+Code: `RIVA_DATA_UNKNOWN`, message `Unknown operation.` (`RivaRequestError`, status 404).
+
+**When:** a call through `bffTransport` is answered 404 although the route is in the spec.
+
+**Why:** the id is `rest:<operationId>`, read from the spec's operation table. Either the server's `operations(api)` was built from another spec (a stale generated `operations.ts`, a different version), the route has no `operationId` in the spec (the table is keyed by it: add one), or `operations(api)` is not in `dataRoute({ sources })` at all.
+
+**Fix:** build `operations()` from the same `createOpenApiClient` the browser's definitions use, give the operation an `operationId` and regenerate, and check `sources`.
+
+## `The data route answered N with a body that is not JSON.`
+
+Code: `RIVA_INVALID_RESPONSE` (`RivaRequestError`), not retried. The variant `The data route answered without a "data" field.` is a 2xx JSON body that is not the route's `{ data }`.
+
+**When:** a call through `bffTransport` got HTML or text back (N is the status).
+
+**Why:** the request did not reach `dataRoute`: a proxy or CDN page, a login redirect, the route not mounted (the app's own 404 page), or a wrong `url`.
+
+**Fix:** check the `url` option (default `/_data`), mount `dataRoute` on a route that exports `action`, and look at the response in the browser's network tab.
+
 ## Which riva error an httpyz error becomes
 
 See the [error table in the README](../README.md#errors). The entries below add the cause and the fix.

@@ -24,6 +24,16 @@
 			"import": "./dist/entities/index.js",
 			"default": "./dist/entities/index.js"
 		},
+		"./server": {
+			"types": "./dist/server/index.d.ts",
+			"import": "./dist/server/index.js",
+			"default": "./dist/server/index.js"
+		},
+		"./bff": {
+			"types": "./dist/bff/index.d.ts",
+			"import": "./dist/bff/index.js",
+			"default": "./dist/bff/index.js"
+		},
 		"./package.json": "./package.json"
 	},
 	"keywords": [
@@ -67,7 +77,9 @@
 	"nxgt": {
 		"entrypoints": [
 			"src/index.ts",
-			"src/entities/index.ts"
+			"src/entities/index.ts",
+			"src/server/index.ts",
+			"src/bff/index.ts"
 		]
 	}
 }

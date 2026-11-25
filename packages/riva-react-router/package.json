@@ -54,6 +54,7 @@
 		"@softistx/riva": "workspace:*",
 		"@softistx/riva-graphql": "workspace:*",
 		"@softistx/riva-react": "workspace:*",
+		"@softistx/riva-rest": "workspace:*",
 		"@types/bun": "^1.4.5",
 		"@types/react": "^19.0.0",
 		"@types/react-dom": "^19.0.0",
