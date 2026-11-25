@@ -12,7 +12,14 @@ export const isBrowser = (): boolean => 'document' in globalThis;
 
 /** The client in scope, if any. */
 export const active = (): RivaClient | undefined =>
-	current ?? (isBrowser() ? fallback : undefined);
+	current ?? resolver?.() ?? (isBrowser() ? fallback : undefined);
+
+let resolver: (() => RivaClient | undefined) | undefined;
+
+/** Sets the ambient resolver `@softistx/riva/ssr` exposes. @internal */
+export const setResolver = (fn: typeof resolver): void => {
+	resolver = fn;
+};
 
 /** The client in scope, or a `RivaScopeError` naming the fix. */
 export function resolve(): RivaClient {

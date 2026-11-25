@@ -46,6 +46,8 @@ export function createQueryCache(
 	};
 	return {
 		sched,
+		/** The entries' shared context. @internal */
+		ctx: c,
 		/** An optimistic layer over an entry; returns its drop. @internal */
 		lay(def: AnyQuery, vars: unknown, l: Lay): () => void {
 			const e = entryOf(c, def, vars);

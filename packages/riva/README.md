@@ -281,6 +281,31 @@ s.hasNext; s.hasPrevious; s.isFetchingNext; s.isFetchingPrevious;
 
 `infinite`; types `Infinite`, `InfiniteOptions`, `InfiniteData`, `InfiniteList`, `InfiniteState`, `Connection`, `Edge`, `PageInfo`, `PageParam`, `Cursors` and `FeedVars`.
 
+## Server rendering
+
+`@softistx/riva/ssr` moves what a request fetched to the browser, so the first render needs no second fetch. It holds no state of its own: a snapshot is plain JSON.
+
+```ts
+import { dehydrate, hydrate } from '@softistx/riva/ssr';
+
+// On the server, once the request's loaders are done:
+const snapshot = dehydrate(client); // JSON-safe, hand it to the page
+
+// In the browser, before the first render:
+hydrate(client, snapshot);
+```
+
+- `dehydrate(client)` writes the settled query entries (successes and errors; idle and in-flight ones are skipped), read as readers see the committed data, so a normalized or infinite entry travels denormalized and is stored again by its own cache policy on arrival. Optimistic layers never travel. Each entry carries its age, not the server's clock, so a skewed clock cannot make fresh data stale.
+- Atoms travel only when they are named and changed from their initial value. Give an atom a unique `name` to send it; `ssr: false` keeps it local (riva's own atoms are all `ssr: false`).
+- `hydrate(client, snapshot)` seeds entries and atoms the client has not created yet, at the moment their definition is first used, so the hydrating code needs none of the definitions. An entry the client already has is replaced only by a newer snapshot, and never while it is fetching or carries optimistic layers; an existing atom is never overwritten. With `{ deferObserved: true }` the entries something observes are not written: they are returned as a snapshot to apply later, outside a render.
+- A fresh entry is not fetched again: data hydrated with the definition's `staleTime` (the default is 0, see [troubleshooting](./docs/troubleshooting.md)) stays fresh for it. A failed entry comes back as a `RivaError` (a `RivaRequestError` when it had a status), with its code, message, status and `retryable`; anything that was not a `RivaError` travels as `RIVA_UNKNOWN` with no message, and no stack or cause ever travels.
+- Dates survive (`{ $t: 'D' }`), as do `NaN` and the infinities. A bigint, a function, a symbol, a `Map`, a `Set`, a class instance or a cycle is refused with `RIVA_SSR`, naming its path.
+- `setScopeResolver(fn)` lets a host (a request context kept in an `AsyncLocalStorage`, for instance) supply the ambient client: `client.run` still wins, and with no resolver, or a resolver that returns `undefined`, a server read with no client throws as before.
+
+### Exported types and helpers
+
+`dehydrate`, `hydrate`, `encode`, `decode`, `setScopeResolver` and the type `Snapshot`.
+
 ## Size budget
 
-The main entry `@softistx/riva` stays within 6144 B gzipped, the main entry with `entities` or with `infinite` within 8192 B each, the main entry with every subpath within 10240 B, and core + react within 9216 B. `@softistx/riva-graphql` with the entities and its `/cache` stays within 11264 B (`bun run size` checks every row).
+The main entry `@softistx/riva` stays within 6144 B gzipped, the main entry with `entities` or with `infinite` within 8192 B each, the main entry with `ssr` within 7168 B, the main entry with every subpath within 11264 B, and core + react within 9216 B. `@softistx/riva-graphql` with the entities and its `/cache` stays within 11264 B (`bun run size` checks every row).

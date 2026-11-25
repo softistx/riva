@@ -35,6 +35,10 @@ export interface Graph {
 	depth: number;
 	flushing: boolean;
 	pending: Set<Node>;
+	/** The atoms that travel in an SSR snapshot, by name; null once a name is taken twice. @internal */
+	named: Map<string, Node | null>;
+	/** Values of hydrated atoms not created yet, by name. @internal */
+	seeds?: Map<string, unknown>;
 }
 
 export const createGraph = (client: RivaClient): Graph => ({
@@ -45,15 +49,22 @@ export const createGraph = (client: RivaClient): Graph => ({
 	depth: 0,
 	flushing: false,
 	pending: new Set(),
+	named: new Map(),
 });
 
 export function nodeOf(g: Graph, def: Def): Node {
 	let n = g.nodes.get(def);
 	if (!n) {
 		const isAtom = def.kind === 'atom';
+		const seeded = isAtom && def.ssr && def.name && g.seeds?.has(def.name);
+		const value = seeded
+			? g.seeds?.get(def.name as string)
+			: isAtom
+				? def.initial
+				: undefined;
 		n = {
 			def,
-			value: isAtom ? def.initial : undefined,
+			value,
 			ver: 0,
 			stamp: -1,
 			refs: 0,
@@ -65,6 +76,8 @@ export function nodeOf(g: Graph, def: Def): Node {
 			init: isAtom,
 		};
 		g.nodes.set(def, n);
+		if (isAtom && def.ssr && def.name)
+			g.named.set(def.name, g.named.has(def.name) ? null : n);
 	}
 	return n;
 }

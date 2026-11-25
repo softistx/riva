@@ -53,6 +53,10 @@ export interface Ctx {
 	/** Observers over every entry, to attach the window events once. */
 	observed: number;
 	detach: (() => void) | undefined;
+	/** Called on a new entry: `@softistx/riva/ssr` seeds it from a snapshot. @internal */
+	seed?: (c: Ctx, e: Entry) => void;
+	/** Snapshot entries waiting for their entry, by key. @internal */
+	pending?: Map<string, unknown>;
 }
 
 const IDLE: State = Object.freeze({
@@ -173,8 +177,8 @@ export function entryOf(c: Ctx, def: AnyQuery, vars: unknown): Entry {
 	const key = stableKey(def.id, vars);
 	let e = c.entries.get(key);
 	if (!e) {
-		const a = atom<State>(IDLE, { name: key });
-		const lay = atom<Lay[]>([], { name: `${key}#layers` });
+		const a = atom<State>(IDLE, { name: key, ssr: false });
+		const lay = atom<Lay[]>([], { name: `${key}#layers`, ssr: false });
 		const { cache, derive } = def.options;
 		e = {
 			key,
@@ -202,6 +206,7 @@ export function entryOf(c: Ctx, def: AnyQuery, vars: unknown): Entry {
 			poll: undefined,
 		};
 		c.entries.set(key, e);
+		c.seed?.(c, e);
 		armGc(c, e);
 	}
 	return e;
