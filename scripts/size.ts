@@ -98,6 +98,11 @@ export const budgets: Budget[] = [
 		limit: 11264,
 	},
 	{
+		name: '@softistx/riva + data',
+		entry: ['packages/riva/dist/index.js', 'packages/riva/dist/data/index.js'],
+		limit: 7168,
+	},
+	{
 		name: '@softistx/riva + riva-graphql/bff',
 		entry: [
 			'packages/riva/dist/index.js',

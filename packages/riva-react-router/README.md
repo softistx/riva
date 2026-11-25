@@ -123,6 +123,8 @@ export const action = route.action;
 export const loader = route.loader; // 405
 ```
 
+For REST, add `operations(api)` from `@softistx/riva-rest/server` to `sources` (`sources: [allowlist(manifest as AllowlistManifest), operations(api)]`) and use `bffTransport` from `@softistx/riva-rest/bff` in the browser: see [BFF mode in the riva-rest README](https://github.com/softistx/riva/blob/develop/packages/riva-rest/README.md#bff-mode). An unknown id and a non-JSON answer: [404 on an operation that exists](https://github.com/softistx/riva/blob/develop/packages/riva-rest/docs/troubleshooting.md#riva_data_unknown-404-on-an-operation-that-exists), [body that is not JSON](https://github.com/softistx/riva/blob/develop/packages/riva-rest/docs/troubleshooting.md#the-data-route-answered-n-with-a-body-that-is-not-json).
+
 Options: `sources` (asked in order, the first that knows the id runs it), `origin` (the one allowed origin, default the request's own; set it behind a proxy), `maxBytes` (default 262144), `onError(error, request)` (what a non-`RivaRequestError` threw, or a network or HTTP failure of the API; the browser only sees a generic answer). Refusals are `{ error: { code, message, status } }` with `RIVA_DATA_*` codes (the `DataRouteCode` type), listed in the [`riva-graphql` troubleshooting](https://github.com/softistx/riva/blob/develop/packages/riva-graphql/docs/troubleshooting.md#riva_data_-refusals-from-the-_data-route).
 
 ## After a write

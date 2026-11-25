@@ -327,6 +327,18 @@ setScopeResolver(() => als.getStore());
 
 `dehydrate`, `hydrate`, `encode`, `decode`, `setScopeResolver` and the type `Snapshot`.
 
+## Data route client
+
+`@softistx/riva/data` is the browser's side of a `/_data` route, shared by the adapters' `bffTransport` (`@softistx/riva-graphql/bff`, `@softistx/riva-rest/bff`). You only import it to write a transport of your own.
+
+```ts
+import { type BffTransportOptions, postData } from '@softistx/riva/data';
+
+const data = await postData({ url: '/_data' }, 'rest:getInvoice', { param: { id: '7' } }, signal);
+```
+
+`postData(opts, id, variables, signal?)` posts `{ id, variables }` (variables in the SSR codec, so Dates travel), and returns the decoded `{ data }`. The route's `{ error: { code, message, status } }` is thrown as a `RivaRequestError` with that `code` and `status` (retryable for 5xx, 408 and 429); a failed fetch is a `RivaNetworkError`, an abort a `RivaAbortError`, a body that is not the route's JSON `RIVA_INVALID_RESPONSE`. `BffTransportOptions` is `{ url? ('/_data'), fetch?, headers? (a function) }`. Exports: `postData` and the type `BffTransportOptions`.
+
 ## Size budget
 
-The main entry `@softistx/riva` stays within 6144 B gzipped, the main entry with `entities` or with `infinite` within 8192 B each, the main entry with `ssr` within 7424 B, the main entry with every subpath within 11264 B, and core + react within 9216 B. `@softistx/riva-graphql` with the entities and its `/cache` stays within 11264 B (`bun run size` checks every row).
+The main entry `@softistx/riva` stays within 6144 B gzipped, the main entry with `entities` or with `infinite` within 8192 B each, the main entry with `ssr` within 7424 B, the main entry with every subpath within 11264 B, core + react within 9216 B, and the main entry with `data` within 7168 B. `@softistx/riva-graphql` with the entities and its `/cache` stays within 11264 B (`bun run size` checks every row).

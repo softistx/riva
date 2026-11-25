@@ -2,7 +2,12 @@ import { expect, expectTypeOf, test } from 'bun:test';
 import { createRivaClient, RivaScopeError } from '@softistx/riva';
 import { operations as table } from '../../test/fixtures';
 import { provideRest, type Route } from '../transport';
-import { type DataSource, operations } from './index';
+import {
+	type DataOperation,
+	type DataSource,
+	type OperationsOf,
+	operations,
+} from './index';
 
 function setup() {
 	const seen: Array<{ route: Route; input: unknown; signal: AbortSignal }> = [];
@@ -73,4 +78,10 @@ test('running on a client with no REST transport throws RivaScopeError', async (
 
 test('types: operations() is a DataSource', () => {
 	expectTypeOf(operations).returns.toEqualTypeOf<DataSource>();
+	expectTypeOf<
+		Parameters<typeof operations>[0]
+	>().toEqualTypeOf<OperationsOf>();
+	expectTypeOf<DataSource['find']>().returns.toEqualTypeOf<
+		DataOperation | undefined
+	>();
 });

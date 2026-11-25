@@ -34,6 +34,11 @@
 			"import": "./dist/ssr/index.js",
 			"default": "./dist/ssr/index.js"
 		},
+		"./data": {
+			"types": "./dist/data/index.d.ts",
+			"import": "./dist/data/index.js",
+			"default": "./dist/data/index.js"
+		},
 		"./package.json": "./package.json"
 	},
 	"keywords": [
@@ -66,7 +71,8 @@
 			"src/index.ts",
 			"src/entities/index.ts",
 			"src/infinite/index.ts",
-			"src/ssr/index.ts"
+			"src/ssr/index.ts",
+			"src/data/index.ts"
 		]
 	}
 }
