@@ -28,7 +28,7 @@ function Show({
 	return h('p', null, `${q.status}:${q.data ?? '-'}:${q.isFetching}`);
 }
 
-test('goes pending then success, and refetch marks it stale and fetches', async () => {
+test('goes loading then success, and refetch marks it stale and fetches', async () => {
 	let n = 0;
 	const gates: Array<ReturnType<typeof deferred<string>>> = [];
 	const def = users('uq/basic', () => {
@@ -44,7 +44,7 @@ test('goes pending then success, and refetch marks it stale and fetches', async 
 		return h('p', null, `${q.status}:${q.data ?? '-'}`);
 	}
 	const m = await mount(h(C), newRiva());
-	expect(m.text()).toBe('pending:-');
+	expect(m.text()).toBe('loading:-');
 	await flush(() => gates[0]?.resolve('a'));
 	expect(m.text()).toBe('success:a');
 	await flush(() => void refetch());

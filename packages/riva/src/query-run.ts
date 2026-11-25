@@ -53,7 +53,7 @@ function start(c: Ctx, e: Entry): Inflight {
 	};
 	e.run = f;
 	put(c, e, {
-		status: f.prev.status === 'success' ? 'success' : 'pending',
+		status: f.prev.status === 'success' ? 'success' : 'loading',
 		error: undefined,
 		isFetching: true,
 	});

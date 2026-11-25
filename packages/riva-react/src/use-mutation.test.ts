@@ -21,7 +21,7 @@ function setup(run: (v: { id: string; name: string }) => Promise<string>) {
 	return [box, C] as const;
 }
 
-test('status flows idle, pending, success with the data', async () => {
+test('status flows idle, loading, success with the data', async () => {
 	const gate = deferred<string>();
 	const [box, C] = setup(() => gate.promise);
 	const m = await mount(h(C), newRiva());
@@ -30,7 +30,7 @@ test('status flows idle, pending, success with the data', async () => {
 	await act(async () => {
 		result = box.m?.run({ id: '1', name: 'a' }) as Promise<string>;
 	});
-	expect(m.text()).toBe('pending:-:true');
+	expect(m.text()).toBe('loading:-:true');
 	await act(async () => gate.resolve('done'));
 	expect(await result).toBe('done');
 	expect(m.text()).toBe('success:done:false');

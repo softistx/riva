@@ -43,6 +43,7 @@ Install the core and one package per need. Every adapter peers
 | A normalized cache shared by queries (one copy per entity) | `@softistx/riva/entities` |
 | Cursor pagination, infinite lists | `@softistx/riva/infinite` |
 | A domain's state, computeds and actions | `@softistx/riva/store` |
+| A reactive, awaitable view of a query, a mutation handle, a stream | `@softistx/riva/resource` |
 | Dehydrate on the server, hydrate in the browser, an ambient scope resolver | `@softistx/riva/ssr` |
 | Your own `/_data` transport | `@softistx/riva/data` |
 | React: provider and hooks | `@softistx/riva-react` (`/infinite`, `/entities`, `/store`) |

@@ -1,7 +1,7 @@
 import type { Riva } from './client';
 import { type Duration, ms } from './duration';
 
-export type QueryStatus = 'idle' | 'pending' | 'success' | 'error';
+export type QueryStatus = 'idle' | 'loading' | 'success' | 'error';
 
 /**
  * What a query entry holds. `status` stays `success` with the old data during

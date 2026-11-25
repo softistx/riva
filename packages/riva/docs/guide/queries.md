@@ -39,7 +39,7 @@ const off = riva.subscribe(user, { id: '1' }, (state) => console.log(state.statu
 
 `QueryState<Data>` is `{ status, data, error, isFetching, updatedAt }`.
 
-- `status` is `idle | pending | success | error`.
+- `status` is `idle | loading | success | error`.
 - A background refetch keeps `status: 'success'` and the old data with `isFetching: true`. An error keeps the last data.
 - Data the cache can no longer read (an evicted entity) counts as stale: `ensure` fetches it and an observed entry refetches.
 

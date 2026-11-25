@@ -162,7 +162,7 @@ test('concurrent ensure and subscribe share one fetch', async () => {
 	off();
 });
 
-test('status transitions: idle, pending, success; background refetch keeps success', async () => {
+test('status transitions: idle, loading, success; background refetch keeps success', async () => {
 	const { riva } = setup();
 	const m = manual<void, string>();
 	const q = query({ id: 'q', fetch: m.fetch });
@@ -170,7 +170,7 @@ test('status transitions: idle, pending, success; background refetch keeps succe
 	const seen: Array<[string, boolean]> = [];
 	const off = riva.subscribe(q, (s) => seen.push([s.status, s.isFetching]));
 	expect(riva.get(q)).toMatchObject({
-		status: 'pending',
+		status: 'loading',
 		isFetching: true,
 		data: undefined,
 	});
@@ -193,7 +193,7 @@ test('status transitions: idle, pending, success; background refetch keeps succe
 	await flush();
 	expect(riva.get(q).data).toBe('two');
 	expect(seen).toEqual([
-		['pending', true],
+		['loading', true],
 		['success', false],
 		['success', true],
 		['success', false],
@@ -442,7 +442,7 @@ test('a computed reading riva.get re-evaluates on state change', async () => {
 	const off = riva.subscribe(label, (v) => seen.push(v));
 	expect(riva.get(label)).toBe('idle');
 	await q.ensure(riva, { n: 4 });
-	expect(seen).toEqual(['pending', 'got 8']);
+	expect(seen).toEqual(['loading', 'got 8']);
 	off();
 });
 
@@ -735,7 +735,7 @@ test('subscribe with no variables, listener called on changes only', async () =>
 	const off = riva.subscribe(q, (s) => states.push(s));
 	await flush();
 	off();
-	expect(states.map((s) => s.status)).toEqual(['pending', 'success']);
+	expect(states.map((s) => s.status)).toEqual(['loading', 'success']);
 });
 
 test('invalidate restarts an unobserved in-flight fetch: waiters get fresh data', async () => {
@@ -812,7 +812,7 @@ test('a refetch after an error clears the error and keeps the data', async () =>
 	await expect(p2).rejects.toThrow('bad');
 	const r = q2.ensure(riva).catch(() => {});
 	expect(riva.get(q2)).toMatchObject({
-		status: 'pending',
+		status: 'loading',
 		isFetching: true,
 		error: undefined,
 	});

@@ -16,6 +16,7 @@ Zero runtime dependencies. Definitions are stateless; values live in a `Riva`: o
 | `@softistx/riva/entities` | the normalized cache | [entities](./docs/guide/entities.md) |
 | `@softistx/riva/infinite` | cursor pagination | [infinite](./docs/guide/infinite.md) |
 | `@softistx/riva/store` | domain stores | [store](./docs/guide/store.md) |
+| `@softistx/riva/resource` | reactive resources: tracked variables, `enabled`, built-in `idle / loading / success / error` | [resources](./docs/guide/resources.md) |
 | `@softistx/riva/ssr` | dehydrate, hydrate, scope resolver | [ssr](./docs/guide/ssr.md) |
 | `@softistx/riva/data` | the browser's `/_data` riva | [data](./docs/guide/data.md) |
 
@@ -160,6 +161,26 @@ const [s, a] = BookStore.bind(riva); // read-only view and bound actions
 
 The context, `reset`, naming rules and SSR: [store](./docs/guide/store.md).
 
+## Resources
+
+```ts
+import { resource } from '@softistx/riva/resource';
+
+const page = signal(1);
+const books = resource(
+	riva,
+	() => [booksQuery, { page: riva.get(page) }] as const, // tracked: a new page is a new key
+	{ enabled: () => riva.get(signedIn) }, // while false: `idle`, the source is not called
+);
+
+books.subscribe((s) => {
+	if (s.status === 'success') render(s.data, s.placeholder); // `placeholder`: the previous page, until the new one lands
+});
+const first = await books; // or a one-shot load that rejects with the error
+```
+
+Also `mutationHandle(riva, run)` (a callable with a reactive `state` and `reset`) and `streamResource(riva, source)` (a subscription as a resource). A resource starts at its first reader and stops at the last; the status is `idle | loading | success | error`. [resources](./docs/guide/resources.md).
+
 ## Server rendering
 
 ```ts
@@ -185,4 +206,4 @@ The snapshot is an opaque format: pass on what `dehydrate` returned. A fresh ent
 
 ## Size budget
 
-The main entry stays within 6144 B gzipped, with `entities` or `infinite` within 8192 B each, with `ssr` or `store` within 7680 B each, with `data` within 7168 B, with every subpath within 12288 B, core + react within 9216 B (`bun run size` checks every row).
+The main entry stays within 6144 B gzipped, with `entities` or `infinite` within 8192 B each, with `ssr` or `store` within 7680 B each, with `data` within 7168 B, with `resource` within 7680 B, with every subpath within 12288 B, core + react within 9216 B (`bun run size` checks every row).

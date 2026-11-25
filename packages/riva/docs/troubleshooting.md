@@ -358,3 +358,45 @@ Code: `RIVA_INVALID_RESPONSE` (`RivaRequestError`, not retryable).
 **When:** the data route answered 2xx with JSON that is not `{ data }`, for example a proxy's or a login page's body.
 
 **Fix:** check that the URL given to `postData` (or `bffTransport`) reaches the `dataRoute` action and not another handler; look at the response in the network tab.
+
+## The resource is disabled: await it once `enabled` is true.
+
+Code: `RIVA_DEFINITION` (`RivaError`).
+
+**When:** you `await` a `resource(...)` while its `enabled` option is false.
+
+**Why:** a disabled resource has no key to load, and its `source` is never called.
+
+**Fix:** await it once `enabled` is true, or read `state` (`idle` while disabled) instead of awaiting.
+
+```ts
+const r = resource(riva, source, { enabled: () => riva.get(signedIn) });
+if (riva.get(signedIn)) await r;
+```
+
+## A resource never fetches
+
+**When:** `resource(...).state` stays `loading` and no request starts.
+
+**Why:** a resource is lazy. It observes its entry only while something subscribes to it or an observed computed or effect reads `state`, and only in a browser. A plain read, and any read on the server, starts nothing.
+
+**Fix:** `subscribe` to it, read `state` inside an effect, or `await` it for a one-shot load (the only way on a server).
+
+```ts
+const stop = riva.effect(() => render(books.state));
+```
+
+## A stream resource restarts on every change, or not at all
+
+**When:** `streamResource`'s stream restarts although the variables are equal, or does not restart after a change.
+
+**Why:** the stream restarts when the factory `source` returns is a new function, and `source` runs again only when what it reads changes. Return a new `(signal) => iterable` each time (reading the variables through the tracked getters); returning one shared function never restarts it.
+
+**Fix:** build the factory inside `source`.
+
+```ts
+streamResource(riva, () => {
+	const id = riva.get(roomId);
+	return (signal) => subscribeToRoom(id, signal);
+});
+```

@@ -7,6 +7,7 @@
 - [Mutations](./guide/mutations.md): read when you write: optimistic updates, rollback, ordering, invalidation.
 - [Entities](./guide/entities.md): read when queries share objects: the normalized cache, `writeEntity`, codecs.
 - [Infinite lists](./guide/infinite.md): read for cursor pagination and infinite scroll.
+- [Resources](./guide/resources.md): read for reactive, awaitable views of a query: tracked variables, `enabled`, mutation handles and streams.
 - [Stores](./guide/store.md): read to group a domain's state, computeds and actions.
 - [Server rendering](./guide/ssr.md): read for dehydrate, hydrate and the ambient scope on a server.
 - [Data route riva](./guide/data.md): read to write a transport that posts to a `/_data` route.
