@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
-import { createRivaClient } from '@softistx/riva';
+import { createRivaClient, RivaError } from '@softistx/riva';
 import { store } from '@softistx/riva/store';
-import { act } from 'react';
+import { act, memo, useMemo, useState } from 'react';
 import { renderToString } from 'react-dom/server';
 import { h, mount, newClient } from '../../test/render';
 import { RivaProvider } from '../context';
@@ -120,7 +120,16 @@ test('s refuses a write in a component', async () => {
 		return null;
 	}
 	const m = await mount(h(C), client);
-	expect(write).toThrow(/written in its actions/);
+	try {
+		write();
+		throw new Error('no refusal');
+	} catch (e) {
+		expect(e).toBeInstanceOf(RivaError);
+		expect((e as RivaError).code).toBe('RIVA_STORE');
+		expect((e as RivaError).message).toBe(
+			'Store "react-books": "filter" is read-only here; write it in an action.',
+		);
+	}
 	await m.unmount();
 });
 
@@ -141,4 +150,52 @@ test('renderToString reads the server client state', () => {
 	}
 	const out = renderToString(h(RivaProvider, { client }, h(C)));
 	expect(out).toContain('1:server');
+});
+
+test('s is a new object after a change, so useMemo([s]) follows it', async () => {
+	const client = newClient();
+	let computes = 0;
+	function Memo() {
+		const [s] = useStore(Books);
+		const label = useMemo(() => {
+			computes++;
+			return `n=${s.items.length}`;
+		}, [s]);
+		return h('p', null, label);
+	}
+	const m = await mount(h(Memo), client);
+	expect(m.text()).toBe('n=0');
+	await act(async () => Books.bind(client)[1].add('a'));
+	expect(m.text()).toBe('n=1');
+	expect(computes).toBe(2);
+	await m.unmount();
+});
+
+test('a memoised child that reads s keeps being watched, and follows a change', async () => {
+	const client = newClient();
+	let childRenders = 0;
+	const Child = memo(function Child({ s }: { s: { filter: string } }) {
+		childRenders++;
+		return h('i', null, s.filter || '-');
+	});
+	let rerender!: () => void;
+	function Parent() {
+		const [s] = useStore(Books);
+		const [, setN] = useState(0);
+		rerender = () => setN((n) => n + 1);
+		return h(
+			'div',
+			null,
+			h(Child, { s }),
+			h('b', null, String(s.items.length)),
+		);
+	}
+	const m = await mount(h(Parent), client);
+	// an unrelated parent render does not drop what the child read
+	await act(async () => rerender());
+	expect(childRenders).toBe(1);
+	await act(async () => Books.bind(client)[1].filterBy('q'));
+	expect(m.text()).toBe('q0');
+	expect(childRenders).toBe(2);
+	await m.unmount();
 });

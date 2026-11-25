@@ -1,6 +1,7 @@
 import {
 	type Readable,
 	type RivaClient,
+	RivaError,
 	type Signal,
 	signal,
 } from '@softistx/riva';
@@ -13,16 +14,15 @@ import {
 import { useClient } from '../context';
 
 interface Tracker {
-	/** What this render read. */
+	/** What the renders since the view was last built read: not committed yet. */
 	keys: Set<Readable<unknown>>;
+	/** What the last committed render read: the keys the subscription watches. */
+	committed: Readable<unknown>[];
 	/** What the last render, or the last check, saw of each. */
 	seen: Map<Readable<unknown>, unknown>;
-	/** What the subscription watches now. */
-	watched: Readable<unknown>[];
 	ver: number;
 	/** Bumped after a commit that read other keys, so the subscription follows. */
 	tick: Signal<number>;
-	view: unknown;
 }
 
 const isMember = (m: unknown): m is Readable<unknown> =>
@@ -32,49 +32,31 @@ const isMember = (m: unknown): m is Readable<unknown> =>
 /**
  * A store's state and computeds as `s`, and its actions as `a`, bound to the
  * provider's client. `s` is tracked per key: the component re-renders only
- * when a key it read changes.
+ * when a key it read changes, and `s` is a new object after each change, so
+ * `useMemo([s])` and `React.memo` children follow it.
  */
 export function useStore<V, B>(def: {
+	readonly name: string;
 	bind(client: RivaClient): readonly [V, B];
 }): readonly [V, B] {
 	const client = useClient();
-	const t = useMemo<Tracker>(() => {
-		const tracker = {
+	const t = useMemo<Tracker>(
+		() => ({
 			keys: new Set(),
+			committed: [],
 			seen: new Map(),
-			watched: [],
 			ver: 0,
 			tick: signal(0),
-		} as unknown as Tracker;
-		tracker.view = new Proxy(
-			{},
-			{
-				get: (_, k) => {
-					const m = (def as unknown as Record<PropertyKey, unknown>)[k];
-					if (!isMember(m)) return undefined;
-					const v = client.get(m);
-					tracker.keys.add(m);
-					tracker.seen.set(m, v);
-					return v;
-				},
-				set: () => {
-					throw new Error(
-						'A store is written in its actions: call a(…) from useStore.',
-					);
-				},
-			},
-		);
-		return tracker;
-	}, [client, def]);
-	t.keys.clear();
+		}),
+		[client, def],
+	);
 
 	const subscribe = useCallback(
 		(notify: () => void) =>
 			client.effect(() => {
 				client.get(t.tick);
-				t.watched = [...t.keys];
 				let changed = false;
-				for (const m of t.watched) {
+				for (const m of t.committed) {
 					const v = client.get(m);
 					if (!Object.is(t.seen.get(m), v)) {
 						t.seen.set(m, v);
@@ -89,16 +71,44 @@ export function useStore<V, B>(def: {
 		[client, t],
 	);
 	const read = () => t.ver;
-	useSyncExternalStore(subscribe, read, read);
-
-	useLayoutEffect(() => {
-		if (
-			t.keys.size !== t.watched.length ||
-			t.watched.some((m) => !t.keys.has(m))
-		)
-			client.set(t.tick, (n) => n + 1);
-	});
+	const ver = useSyncExternalStore(subscribe, read, read);
 
 	const a = def.bind(client)[1];
-	return useMemo(() => [t.view as V, a] as const, [t, a]);
+	// A new view per version: what read the old one re-renders, and starts a
+	// new set of keys. Reads made by a render that is not committed stay in `keys`.
+	const s = useMemo(() => {
+		t.keys.clear();
+		return new Proxy(
+			{},
+			{
+				get: (_, k) => {
+					const m = (def as unknown as Record<PropertyKey, unknown>)[k];
+					if (!isMember(m)) return undefined;
+					const v = client.get(m);
+					t.keys.add(m);
+					t.seen.set(m, v);
+					return v;
+				},
+				set: (_, k) => {
+					throw new RivaError(
+						'RIVA_STORE',
+						`Store "${def.name}": "${String(k)}" is read-only here; write it in an action.`,
+					);
+				},
+			},
+		) as V;
+	}, [t, ver, a]);
+
+	useLayoutEffect(() => {
+		const next = [...t.keys];
+		if (
+			next.length !== t.committed.length ||
+			next.some((m) => !t.committed.includes(m))
+		) {
+			t.committed = next;
+			client.set(t.tick, (n) => n + 1);
+		}
+	});
+
+	return useMemo(() => [s, a] as const, [s, a]);
 }
