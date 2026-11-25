@@ -2,7 +2,7 @@ import { expect, spyOn, test } from 'bun:test';
 import { createRivaClient, type RivaClient } from '@softistx/riva';
 import { useClient } from '@softistx/riva-react';
 import { act, createElement as h, StrictMode } from 'react';
-import { createRoot } from 'react-dom/client';
+import { createRoot, hydrateRoot } from 'react-dom/client';
 import { createMemoryRouter, RouterProvider } from 'react-router';
 import { counter, errorsOf, local, makeApp, seen } from '../test/app';
 import { RivaRouterProvider } from './provider';
@@ -69,11 +69,10 @@ test('a named signal is seeded once and a local signal survives a navigation', a
 	await page.unmount();
 });
 
-test('React StrictMode double render hydrates once and still shows the data', async () => {
-	const app = makeApp();
-	const { loaderData } = await app.serve('/patients');
+async function strict(app: ReturnType<typeof makeApp>, url: string) {
+	const { loaderData } = await app.serve(url);
 	const router = createMemoryRouter(app.browserRoutes, {
-		initialEntries: ['/patients'],
+		initialEntries: [url],
 		hydrationData: { loaderData },
 	});
 	const container = document.createElement('div');
@@ -82,11 +81,70 @@ test('React StrictMode double render hydrates once and still shows the data', as
 	await act(async () =>
 		dom.render(h(StrictMode, null, h(RouterProvider, { router }))),
 	);
+	return {
+		router,
+		text: (selector: string) =>
+			container.querySelector(selector)?.textContent ?? '',
+		settle: (run: () => Promise<unknown>) =>
+			act(async () => {
+				await run();
+				await new Promise((r) => setTimeout(r, 5));
+			}),
+		unmount: async () => {
+			await act(async () => dom.unmount());
+			container.remove();
+		},
+	};
+}
+
+test('under React StrictMode the page shows the loader data with no browser fetch', async () => {
+	const app = makeApp();
+	const page = await strict(app, '/patients');
+	expect(page.text('#patients')).toBe('Patients:s #1');
+	expect(app.browser.calls).toEqual([]);
+	await page.unmount();
+});
+
+test('under React StrictMode a navigation and a revalidation still merge without a browser fetch', async () => {
+	const spy = spyOn(console, 'error').mockImplementation(() => {});
+	const app = makeApp();
+	const page = await strict(app, '/patients');
+	await page.settle(() => page.router.navigate('/patients/1'));
+	expect(page.text('#patient')).toBe('Patient:1 #2');
+	await page.settle(() => page.router.revalidate());
+	expect(page.text('#patient')).toBe('Patient:1 #3');
+	expect(app.browser.calls).toEqual([]);
+	expect(errorsOf(spy)).toEqual([]);
+	spy.mockRestore();
+	await page.unmount();
+});
+
+test('hydrating the server HTML reports no mismatch', async () => {
+	const errors: unknown[] = [];
+	const spy = spyOn(console, 'error').mockImplementation(() => {});
+	const app = makeApp();
+	const { html, loaderData } = await app.serve('/patients');
+	const router = createMemoryRouter(app.browserRoutes, {
+		initialEntries: ['/patients'],
+		hydrationData: { loaderData },
+	});
+	const container = document.createElement('div');
+	container.innerHTML = html;
+	document.body.append(container);
+	let root: ReturnType<typeof hydrateRoot> | undefined;
+	await act(async () => {
+		root = hydrateRoot(container, h(RouterProvider, { router }), {
+			onRecoverableError: (e) => errors.push(e),
+		});
+	});
+	expect(errors).toEqual([]);
+	expect(errorsOf(spy)).toEqual([]);
 	expect(container.querySelector('#patients')?.textContent).toBe(
 		'Patients:s #1',
 	);
 	expect(app.browser.calls).toEqual([]);
-	await act(async () => dom.unmount());
+	spy.mockRestore();
+	await act(async () => root?.unmount());
 	container.remove();
 });
 
