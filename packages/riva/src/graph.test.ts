@@ -1,9 +1,9 @@
 import { expect, test } from 'bun:test';
-import { signal } from './signal';
 import { createRivaClient } from './client';
 import { computed } from './computed';
 import type { RivaError } from './errors';
 import { nodeOf, read, subscribe, write } from './graph';
+import { signal } from './signal';
 
 test('nodeOf creates one node per definition and client', () => {
 	const a = signal(1);

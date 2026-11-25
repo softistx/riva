@@ -1,4 +1,3 @@
-import { type Signal, signal } from './signal';
 import type { RivaClient } from './client';
 import { computed, type Readable } from './computed';
 import type { ClientEvents, Scheduler } from './env';
@@ -6,6 +5,7 @@ import { nodeOf } from './graph';
 import { stableKey } from './key';
 import type { Query, QueryState } from './query';
 import { isBrowser } from './scope';
+import { type Signal, signal } from './signal';
 import type { SeedEntry } from './ssr/hydrate';
 
 // biome-ignore lint/suspicious/noExplicitAny: entries of every definition share one map

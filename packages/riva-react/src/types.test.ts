@@ -1,8 +1,8 @@
 import { expectTypeOf, test } from 'bun:test';
-import { signal, computed, mutation, query } from '@softistx/riva';
+import { computed, mutation, query, signal } from '@softistx/riva';
 import { infinite } from '@softistx/riva/infinite';
 import { useFragment } from './entities';
-import { useSignal, useMutation, useQuery, useValue } from './index';
+import { useMutation, useQuery, useSignal, useValue } from './index';
 import { useInfiniteQuery } from './infinite';
 
 // Type tests only: nothing here runs (hooks need a render).

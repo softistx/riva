@@ -1,10 +1,10 @@
 import { expectTypeOf, test } from 'bun:test';
 import {
-	type Signal,
-	signal,
 	type Computed,
 	computed,
 	createRivaClient,
+	type Signal,
+	signal,
 } from './index';
 
 test('types', () => {

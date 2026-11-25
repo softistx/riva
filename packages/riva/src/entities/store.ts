@@ -1,6 +1,6 @@
-import { type Signal, signal } from '../signal';
 import type { RivaClient } from '../client';
 import { nodeOf } from '../graph';
+import { type Signal, signal } from '../signal';
 import { fieldsOf } from './denormalize';
 import { type Identify, makeIdentify } from './identity';
 import { equal, refsIn } from './json';

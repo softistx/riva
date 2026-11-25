@@ -1,5 +1,10 @@
 import { expect, spyOn, test } from 'bun:test';
-import { signal, type CachePolicy, query, RivaScopeError } from '@softistx/riva';
+import {
+	type CachePolicy,
+	query,
+	RivaScopeError,
+	signal,
+} from '@softistx/riva';
 import { Component, type ReactNode, Suspense } from 'react';
 import { deferred, flush, h, mount, newClient } from '../test/render';
 import { RivaProvider } from './context';

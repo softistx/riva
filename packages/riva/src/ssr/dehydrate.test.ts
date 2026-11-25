@@ -1,8 +1,8 @@
 import { describe, expect, test } from 'bun:test';
 import { fakeEnv, settle } from '../../test/ssr';
-import { signal } from '../signal';
 import { RivaError, RivaHttpError } from '../errors';
 import { query } from '../query';
+import { signal } from '../signal';
 import { dehydrate } from './index';
 
 const items = query<{ page: number }, { n: number; at: Date }>({

@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
-import { signal } from './signal';
 import { createRivaClient } from './client';
+import { signal } from './signal';
 
 test('is a frozen stateless definition with its initial value', () => {
 	const a = signal(3, { name: 'n' });

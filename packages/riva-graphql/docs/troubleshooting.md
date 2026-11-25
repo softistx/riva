@@ -198,3 +198,11 @@ Code: `RIVA_CACHE` (`RivaError`).
 **Why:** each query entry has its own root: which fields it selected and with which arguments. A query's first fetch is unconditional, and it reads from the store afterwards. Later, a field or entity its selection needs that no write has stored (an argument set not yet fetched: `friends({"first":2})` is not `friends({"first":1})`) makes its data `undefined`, and an observed query refetches once.
 
 **Fix:** expected: the query fetches, then reads from the store.
+
+## `riva-graphql: X is a subscription; subscriptions are not supported yet.`
+
+A `TypeError`, thrown when the definition is created (`X` is the operation's name).
+
+**Why:** a definition runs one request and one reply; a subscription is a stream.
+
+**Fix:** use a query or a mutation. Poll with `refetchEvery` where a stream would have refreshed the data.

@@ -285,3 +285,37 @@ Code: `RIVA_NETWORK` (`RivaNetworkError`, a `RivaRequestError`).
 **Why:** it is always retryable, so the engine retries it per `retry` before settling the error state.
 
 **Fix:** check connectivity and the URL; look at `error.cause` for the underlying failure. On the server `retry` defaults to 0, so set it to retry there.
+
+## `The data route answered <status> with a body that is not JSON.`
+
+Code: `RIVA_INVALID_RESPONSE` (`RivaRequestError`, not retryable). Also `The data route answered without a "data" field.`
+
+**When:** a call made through `postData` (`@softistx/riva/data`, so any `bffTransport`) got an answer that is not the `/_data` route's JSON: an HTML error page from a proxy, a login redirect, a route that is not a `dataRoute`.
+
+**Why:** the transport expects `{ data }` or `{ error: { code, message, status } }`, and retrying cannot change what the URL serves.
+
+**Fix:** check the URL (`url` option, default `/_data`) and that the route mounts `dataRoute`'s `action`. Look at the status the message names and at what sits in front of the route (a proxy, an auth redirect).
+
+## `RIVA_UNKNOWN` on a hydrated error
+
+Code: `RIVA_UNKNOWN`, on the `error` of a hydrated query entry.
+
+**When:** a query failed on the server with something that was not a `RivaError` (a `TypeError` in a fetcher, a thrown string), and the browser reads the entry after `hydrate`.
+
+**Why:** a snapshot carries codes only, never a message, a stack or a cause, so a server detail cannot leak. An error that is not a `RivaError` has no code to carry.
+
+**Fix:** throw riva's errors from fetchers (`RivaHttpError`, `RivaRequestError`...), or map the failure in the fetcher. Log the original error on the server.
+
+## `Several listeners or computeds threw.`
+
+An `AggregateError`, thrown when a write flushes its listeners and more than one of them (an `effect`, a `computed`, a subscriber) throws. With a single failure that error is rethrown as is.
+
+**Fix:** read `error.errors`: it lists every failure, in the order they ran. Fix each listener; one that throws never stops the others from running.
+
+## `The data route answered without a "data" field.`
+
+Code: `RIVA_INVALID_RESPONSE` (`RivaRequestError`, not retryable).
+
+**When:** the data route answered 2xx with JSON that is not `{ data }`, for example a proxy's or a login page's body.
+
+**Fix:** check that the URL given to `postData` (or `bffTransport`) reaches the `dataRoute` action and not another handler; look at the response in the network tab.

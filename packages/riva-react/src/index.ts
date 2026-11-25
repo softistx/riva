@@ -1,7 +1,6 @@
 export const VERSION = '0.0.0';
 
 export { RivaProvider, type RivaProviderProps, useClient } from './context';
-export { useSignal, useValue } from './use-signal';
 export {
 	type MutationResult,
 	useMutation,
@@ -12,3 +11,4 @@ export {
 	type UseQueryOptions,
 	useQuery,
 } from './use-query';
+export { useSignal, useValue } from './use-signal';

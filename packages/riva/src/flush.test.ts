@@ -1,10 +1,10 @@
 import { expect, test } from 'bun:test';
-import { signal } from './signal';
 import { createRivaClient } from './client';
 import { computed } from './computed';
 import { RivaError } from './errors';
 import { collect } from './flush';
 import { nodeOf, subscribe } from './graph';
+import { signal } from './signal';
 
 test('listeners run in their own client, not the ambient one', () => {
 	const x = signal(0);

@@ -1,9 +1,9 @@
-import type { Signal, Listener } from './signal';
 import type { RivaClient } from './client';
 import type { Computed, Readable } from './computed';
 import { RivaError } from './errors';
 import { collect, flush } from './flush';
 import { withClient } from './scope';
+import type { Listener, Signal } from './signal';
 
 type Def = Signal<unknown> | Computed<unknown>;
 

@@ -1,5 +1,5 @@
-import { type Signal, signal } from '../signal';
 import type { RivaClient } from '../client';
+import { type Signal, signal } from '../signal';
 import type { Dir } from './refetch';
 
 export type Flags = readonly [next: boolean, previous: boolean];

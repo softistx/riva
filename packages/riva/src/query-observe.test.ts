@@ -1,10 +1,10 @@
 import { expect, test } from 'bun:test';
-import { signal } from './signal';
 import { createRivaClient } from './client';
 import type { ClientEvents, Scheduler } from './env';
 import type { RivaError } from './errors';
 import { mutation } from './mutation';
 import { type CachePolicy, query } from './query';
+import { signal } from './signal';
 
 const flush = () => new Promise<void>((r) => setImmediate(r));
 

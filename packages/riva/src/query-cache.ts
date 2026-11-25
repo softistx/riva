@@ -1,4 +1,3 @@
-import type { Listener } from './signal';
 import type { RivaClient } from './client';
 import type { ClientEvents, Scheduler } from './env';
 import { RivaAbortError } from './errors';
@@ -23,6 +22,7 @@ import {
 import { type ObserveOptions, observe } from './query-observe';
 import { abandon, cancel, join, pin, restart } from './query-run';
 import { raceAbort } from './retry';
+import type { Listener } from './signal';
 
 function mark(c: Ctx, e: Entry): void {
 	e.invalidated = true;

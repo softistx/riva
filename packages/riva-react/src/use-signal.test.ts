@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { signal, computed } from '@softistx/riva';
+import { computed, signal } from '@softistx/riva';
 import { act } from 'react';
 import { h, mount, newClient } from '../test/render';
 import { useSignal, useValue } from './use-signal';

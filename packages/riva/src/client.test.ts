@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
-import { signal } from './signal';
 import { createRivaClient, RivaClient } from './client';
 import { computed } from './computed';
+import { signal } from './signal';
 
 test('createRivaClient returns a RivaClient', () => {
 	expect(createRivaClient()).toBeInstanceOf(RivaClient);

@@ -1,6 +1,19 @@
-# @softistx/riva-rest docs
+# riva-rest docs
 
-- [Troubleshooting](./troubleshooting.md): every error the package throws, and the traps (routes, transports, ids, entities, BFF mode), with the fix.
-- [Package README](../README.md): install, the transport, the OpenAPI mode, the free fetcher, BFF mode (`/server`, `/bff`), errors and the entity cache.
-- [Core docs](https://github.com/softistx/riva/blob/develop/packages/riva/docs/README.md): the errors and traps of `@softistx/riva` itself.
-- [Spec](https://github.com/softistx/riva/blob/develop/docs/spec.md): the decision record.
+The package's [README](../README.md) is the short path. These pages go deeper.
+
+## Guides
+
+| Page | Read it when |
+|---|---|
+| [Transport](./guide/transport.md) | You wire a client to the API, per request on a server. |
+| [OpenAPI mode](./guide/openapi.md) | You have a spec and want typed `query` and `mutation` from it. |
+| [Free fetcher](./guide/free-fetcher.md) | The API has no schema and you write the function. |
+| [Errors](./guide/errors.md) | You branch on a failure or map httpyz errors. |
+| [BFF mode](./guide/bff.md) | The browser must never reach the API. |
+| [Cache](./guide/cache.md) | Several queries show the same resource and must stay in step. |
+
+## Also
+
+- [Troubleshooting](./troubleshooting.md): every error message and `RivaError` code this package throws, with the fix.
+- [The core guides](../../riva/docs/README.md).

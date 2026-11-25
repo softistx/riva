@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
-import { signal } from './signal';
 import { batch, untracked } from './batch';
 import { createRivaClient } from './client';
 import { computed } from './computed';
+import { signal } from './signal';
 
 test('batch defers notifications until the outermost batch ends', () => {
 	const a = signal(0);

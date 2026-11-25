@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from 'bun:test';
-import { signal } from '../signal';
 import { createRivaClient } from '../client';
 import { RivaScopeError } from '../errors';
+import { signal } from '../signal';
 import * as ssr from './index';
 
 afterEach(() => ssr.setScopeResolver(undefined));
