@@ -63,6 +63,39 @@ client.effect(() => {
 });
 ```
 
+## RIVA_STORE
+
+Code: `RIVA_STORE`. Thrown by `@softistx/riva/store`. The message names the store and the key.
+
+**`"<key>" is written outside an action`**: a state key was written with `Store.key.set(…)` or `client.set(Store.key, …)`, in a component, a listener or a test. Only an action writes. Write it in an action of the store (`s.key = …`), and call the action.
+
+```ts
+const Counter = store({
+	name: 'counter',
+	state: { n: 0 },
+	actions: { inc(s) { s.n += 1; } },
+});
+Counter.inc(); // not Counter.n.set(1)
+```
+
+**`"<key>" is written after its action settled`**: an action kept `s` (in a timer or a callback) and wrote after the action's promise settled. Write only while the action runs: `await` what the write depends on, or start another action.
+
+**`"<key>" is not a state key`**: `s.total = …` where `total` is a computed, or a key the store does not have. Only state is writable.
+
+**`a computed cannot write "<key>"`**: a computed assigned on its `s`. A computed only reads; move the write to an action.
+
+**`"<key>" is read-only here`**: a write on the view `useStore` or `Store.bind(client)[0]` returns. Write through the actions.
+
+**`the key "<key>" is taken`**: a state, computed or action key repeats, or is one of `kind`, `name`, `reset`, `bind`. Rename it.
+
+**`Two stores are named "<name>"`**: two store definitions with one name were used on one client. Give each a unique `name`. A module that is re-evaluated by hot reload defines a second store with the same name: reload the page when a store module changes.
+
+**A nested mutation throws a `TypeError` in development**: stored values are deep-frozen outside production, so `s.items.push(b)` or `s.items[0].title = …` throws. Replace the value: `s.items = [...s.items, b]`.
+
+**The context is not where I expect it**: the context goes right after the arguments the caller passes or the function declares, whichever is longer. A default value before it (`(s, page = 1, ctx)`) shortens the function's declared length and moves it. Use an optional argument instead: `(s, page?: number, ctx?: StoreContext)`.
+
+**Reads after an `await` fail with `RIVA_SCOPE`**: `BookStore.total.get()` inside an async action, after the first `await`, has no ambient client. Read `s.total` instead: `s` stays bound to the action's client.
+
 ## Invalid duration
 
 Code: `RIVA_DURATION` (`RivaError`).

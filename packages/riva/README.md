@@ -42,7 +42,7 @@ client.effect(() => {
 - `signal(initial, { name?, equals?, ssr? })` (`ssr: true` with a `name` sends the value in an SSR snapshot), `computed(fn, { name?, equals? })`: stateless definitions. Subscribers fire only when the value changes (`equals`, default `Object.is`), once per change, never on a half-updated graph.
 - `client.get / set / subscribe / effect / run / batch`: the whole API outside any ambient scope.
 - `effect(() => …)` (free function) re-runs on the ambient client in a browser and is a no-op on the server; `client.effect` always runs.
-- Exported types: `Signal`, `SignalOptions`, `Computed`, `ComputedOptions`, `Readable`, `Getter`, `Listener`, `Unsubscribe`, `EffectFn`.
+- Exported types: `Signal`, `SignalOptions`, `ReadonlySignal`, `Computed`, `ComputedOptions`, `Readable`, `Getter`, `Listener`, `Unsubscribe`, `EffectFn`.
 
 ### Errors
 
@@ -281,6 +281,65 @@ s.hasNext; s.hasPrevious; s.isFetchingNext; s.isFetchingPrevious;
 
 `infinite`; types `Infinite`, `InfiniteOptions`, `InfiniteData`, `InfiniteList`, `InfiniteState`, `Connection`, `Edge`, `PageInfo`, `PageParam`, `Cursors` and `FeedVars`.
 
+## Stores
+
+`@softistx/riva/store`: `store`. One definition per domain groups its state, computeds and actions. Every state key is a signal named `<name>.<key>` and every computed a riva computed, so both are read as definitions (`.get()`, `client.get()`, `useValue()`). Like any definition, a store is stateless: its values live per `RivaClient`, one instance per client.
+
+```ts
+import { createRivaClient, mutation } from '@softistx/riva';
+import { store, type StoreContext } from '@softistx/riva/store';
+
+const saveBook = mutation<{ book: Book }, Book>({ id: 'saveBook', run: postBook });
+
+export const BookStore = store({
+	name: 'books', // required, unique on a client; prefixes the signal names
+	ssr: true, // every state key travels in an SSR snapshot (default false)
+	state: { items: [] as Book[], filter: '', saving: false },
+	computed: {
+		visible: (s) => s.items.filter((b) => b.title.includes(s.filter)), // s: the state, tracked per key
+		total: (s) => s.items.length,
+		discount: (s, get) => (get(UserStore.vip) ? 0.1 : 0), // other stores through their definitions
+	},
+	actions: {
+		add(s, book: Book) {
+			s.items = [...s.items, book]; // top-level assignment; one call, one notification
+		},
+		filterBy(s, q: string) {
+			s.filter = q;
+		},
+		async save(s, book: Book, { mutate }: StoreContext) {
+			s.saving = true;
+			const saved = await mutate(saveBook, { book });
+			s.items = [...s.items, saved];
+			s.saving = false;
+		},
+	},
+});
+
+const client = createRivaClient();
+client.get(BookStore.visible); // explicit client
+client.run(() => {
+	BookStore.total.get(); // ambient read
+	BookStore.add(book); // an action, on the ambient client
+	BookStore.reset(); // every state key back to its initial value
+});
+const [s, a] = BookStore.bind(client); // a read-only view of state and computeds, and the actions
+await a.save(book); // `s` stays bound to `client` across the await
+```
+
+- **Only actions write**, by top-level assignment on `s`. A state key is typed `ReadonlySignal` (no `set`), and a write made any other way (`BookStore.items.set(…)`, `client.set(BookStore.items, …)`, a computed, an unknown key) throws `RIVA_STORE`. The exceptions are `hydrate` and `reset()`. Values are immutable: replace them (`s.items = [...s.items, b]`). In development a stored value is deep-frozen (when `process.env.NODE_ENV` is not `production`), so `s.items.push(b)` throws.
+- **Batched.** Every action runs in a batch: one call, one notification. After an `await`, the writes of one synchronous segment make one notification at its end; unrelated writes made on that client in that segment are held until then.
+- **`s` and `ctx`.** An action is `(s, ...args, ctx)`; callers pass only `args`. Annotate `ctx: StoreContext` to type it (`{ client, fetch, mutate }`, where `fetch(query, vars?)` is `query.ensure(client, …)` and `mutate(mutation, vars?)` is `mutation.run(client, …)`). The context goes right after the declared arguments: give optional arguments `?`, never default values, before it. `s` reads state and computeds, writes state, and is revoked once the action settles (a later write throws `RIVA_STORE`, reads still work).
+- **Computeds** receive `(s, get)`: `s` holds the state only (no other computed), `get(def)` reads any other definition, another store's included. A cycle is refused with `RIVA_CYCLE`.
+- **Names.** `name` is required. A state, computed or action key cannot repeat, nor be `kind`, `name`, `reset` or `bind` (refused at definition). Two stores with one name on a client are refused with `RIVA_STORE` when the second is first used on it.
+- **`reset(client?)`** puts every state key back to its initial value (the same reference, so the key no longer travels in a snapshot) in one notification. A write an async action makes after the reset still applies.
+- **SSR.** With `ssr: true` every state key travels as `<name>.<key>` (computeds never do); by default nothing does. A snapshot seeds a store first used after `hydrate`. Hot reload: reload the page when a store module changes, since a re-evaluated module is a second store with the same name.
+- The deep signals (per-path reactivity on nested state) and store families (one instance per key) come later.
+
+### Exported types and helpers
+
+`store`; types `Store`, `StoreOptions`, `StoreContext`, `Action`, `Args`, `Bound` and `View`. `ReadonlySignal` comes from the main entry.
+
 ## Server rendering
 
 `@softistx/riva/ssr` moves what a request fetched to the browser, so the first render needs no second fetch. It holds no state of its own: a snapshot is plain JSON.
@@ -341,4 +400,4 @@ const data = await postData({ url: '/_data' }, 'rest:getInvoice', { param: { id:
 
 ## Size budget
 
-The main entry `@softistx/riva` stays within 6144 B gzipped, the main entry with `entities` or with `infinite` within 8192 B each, the main entry with `ssr` within 7424 B, the main entry with every subpath within 11264 B, core + react within 9216 B, and the main entry with `data` within 7168 B. `@softistx/riva-graphql` with the entities and its `/cache` stays within 11264 B (`bun run size` checks every row).
+The main entry `@softistx/riva` stays within 6144 B gzipped, the main entry with `entities` or with `infinite` within 8192 B each, the main entry with `ssr` within 7424 B, the main entry with `store` within 7424 B, the main entry with every subpath within 11264 B, core + react within 9216 B, and the main entry with `data` within 7168 B. `@softistx/riva-graphql` with the entities and its `/cache` stays within 11264 B (`bun run size` checks every row).
