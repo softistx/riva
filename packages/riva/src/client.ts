@@ -122,9 +122,7 @@ export class Riva {
 			return graph.subscribe(this.graph, def, a as Listener<unknown>);
 		return typeof a === 'function'
 			? this.queries.observe(def, undefined, a as Listener<QueryState<unknown>>)
-			: this.queries.observe(def, a, b as Listener<QueryState<unknown>>, {
-					staleTime: ms(o?.staleTime),
-				});
+			: this.queries.observe(def, a, b as Listener<QueryState<unknown>>, o);
 	}
 
 	/** Re-runs `fn` when what it read changes; the returned cleanup runs before each re-run and on dispose. */

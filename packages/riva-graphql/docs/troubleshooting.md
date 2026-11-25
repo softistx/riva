@@ -41,7 +41,7 @@ Code: `RIVA_DEFINITION` (`RivaError`), thrown when the definition is created.
 
 ## `riva-graphql: X is a mutation; use mutation() to define it, not query().`
 
-**Fix:** use the helper that matches the document: `query()` and `infinite()` for queries, `mutation()` for mutations. Subscriptions are not supported yet (`riva-graphql: X is a subscription; …`).
+**Fix:** use the helper that matches the document: `query()` and `infinite()` for queries, `mutation()` for mutations.
 
 ## `riva-graphql: expected a TypedDocumentNode (set documentMode: "documentNode" in the client preset), got something else.`
 
@@ -201,10 +201,24 @@ Code: `RIVA_CACHE` (`RivaError`).
 
 **Fix:** expected: the query fetches, then reads from the store.
 
-## `riva-graphql: X is a subscription; subscriptions are not supported yet.`
+## `riva-graphql: X is a subscription; run it with riva.graphql.subscribe(), it has no query() or mutation() definition.`
 
-Code: `RIVA_DEFINITION` (`RivaError`), thrown when the definition is created (`X` is the operation's name).
+Code: `RIVA_DEFINITION` (`RivaError`), thrown when `query()`, `mutation()` or `infinite()` is given a subscription document (`X` is the operation's name).
 
 **Why:** a definition runs one request and one reply; a subscription is a stream.
 
-**Fix:** use a query or a mutation. Poll with `refetchEvery` where a stream would have refreshed the data.
+**Fix:** use `riva.graphql.subscribe(DOC, vars, { next, error })` from `graphql()`, or poll with `refetchEvery`.
+
+## `riva-graphql: this transport cannot subscribe: give graphql() a @softistx/graphql-client client, or a transport with a subscribe method.`
+
+Code: `RIVA_DEFINITION` (`RivaError`), thrown by `riva.graphql.subscribe`.
+
+**Why:** the transport given to `graphql()` has no optional `subscribe(operation, variables, { signal })` method (a BFF transport, a test double).
+
+**Fix:** pass the `@softistx/graphql-client` client (or `graphqlClientTransport(client)`), or add `subscribe` returning an `AsyncIterable` of results that ends when the signal aborts.
+
+## `riva-graphql: X is a query; use query() to define it, not subscription().`
+
+Code: `RIVA_DEFINITION`, from `riva.graphql.subscribe` given a query or mutation document (`X` is the operation's name; the kind in the message follows the document).
+
+**Fix:** use `riva.graphql.query` or `mutate` for it, or give `subscribe` a subscription document.

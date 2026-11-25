@@ -65,6 +65,8 @@ export interface QueryOptions<Vars, Data> {
 
 export interface EnsureOptions {
 	signal?: AbortSignal;
+	/** Replaces the definition's `staleTime` (and the riva's default) for this call's freshness check. */
+	staleTime?: Duration;
 }
 
 /** The variables argument, optional when `Vars` is `void` or `undefined`. */

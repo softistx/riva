@@ -38,11 +38,11 @@ Any object with `execute(operation, variables, { signal })` is a transport. The 
 |---|---|
 | `document` | The typed document. |
 | `name` | The operation's name. |
-| `kind` | `'query'` or `'mutation'`. |
+| `kind` | `'query'`, `'mutation'` or `'subscription'`. |
 | `persistedId` | The preset's hash, when there is one. |
 | `id` | The persisted id, else the name. |
 
-A transport that only posts an id and variables to a BFF route fits. Map its failures with `toRivaError(error, signal?)`.
+`subscribe(operation, variables, { signal })` is optional: it returns an `AsyncIterable` of results that ends when the signal aborts, and `riva.graphql.subscribe` throws without it. A transport must not define `mutate`: `graphql()` takes an object that has one for a `@softistx/graphql-client` client. A transport that only posts an id and variables to a BFF route fits. Map its failures with `toRivaError(error, signal?)`.
 
 ```ts
 import { provideGraphQL, toRivaError, type GraphQLTransport } from '@softistx/riva-graphql';

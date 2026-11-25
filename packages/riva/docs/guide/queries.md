@@ -27,7 +27,7 @@ const off = riva.subscribe(user, { id: '1' }, (state) => console.log(state.statu
 
 | Call | What it does |
 | --- | --- |
-| `def.ensure(riva, vars, { signal? })` | Fetches if missing or stale and awaits; resolves the cache when fresh. |
+| `def.ensure(riva, vars, { signal?, staleTime? })` | Fetches if missing or stale and awaits; resolves the cache when fresh. A call's `staleTime` wins over the definition's, then `defaults.staleTime`, then 0. |
 | `riva.get(def, vars)` | The state: a pure read, tracked in a computed or effect, never fetches. |
 | `riva.subscribe(def, vars, listener, { staleTime? })` | Observes: fetches when missing or stale, polls, refetches on focus and reconnect. Returns an unsubscribe. |
 | `def.prefetch(riva, vars)` | Fire and forget; never rejects. |
@@ -63,7 +63,7 @@ Never retried: `RivaAbortError`, and a `RivaRequestError` with `retryable: false
 ## Dedupe and abort
 
 - One in-flight fetch per key: concurrent `ensure` and `subscribe` share it.
-- The fetcher gets `signal`. `ensure(riva, vars, { signal })` rejects with `RivaAbortError` when the caller aborts; the shared fetch is aborted only when no other waiter or observer remains, and an aborted fetch never writes an error state.
+- The fetcher gets `signal`. `ensure(riva, vars, { signal })` rejects with `RivaAbortError` when the caller aborts (`ensure`'s `staleTime`, call > definition > `defaults` > 0, decides only this call's freshness check); the shared fetch is aborted only when no other waiter or observer remains, and an aborted fetch never writes an error state.
 - `riva.subscribe(def, vars, listener, { staleTime })` overrides the definition's `staleTime` for this observer's first fetch decision only, for example to trust data an `ensure` just loaded.
 
 ## Tests and other hosts
