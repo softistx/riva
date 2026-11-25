@@ -1,5 +1,3 @@
-export const VERSION = '0.0.0';
-
 export { RivaProvider, type RivaProviderProps, useClient } from './context';
 export {
 	type MutationResult,
