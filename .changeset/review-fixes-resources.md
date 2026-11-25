@@ -1,6 +1,6 @@
 ---
 '@softistx/riva': patch
-'@softistx/riva-react': patch
+'@softistx/riva-react': minor
 '@softistx/riva-graphql': minor
 '@softistx/riva-rest': minor
 ---

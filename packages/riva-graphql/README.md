@@ -105,7 +105,7 @@ function Books({ first }: { first: number }) {
 How the hooks behave:
 
 - They return the resource state (`idle | loading | success | error`). A server render seeds and dehydrates like `useQuery`, and hydration does not refetch fresh data.
-- Variables are a plain value, a riva signal or computed, or a function. A function is evaluated at each render, so it follows props (`() => ({ id: props.id })`) as well as the signals it reads; a change of the result re-derives the key. Equal variables are one key.
+- Variables are a plain value, a riva signal or computed, or a function. A function is evaluated at each render, so it follows props (`() => ({ id: props.id })`) as well as the signals it reads; a change of the result re-derives the key. Equal variables are one key. A signal or computed is keyed by identity: define it once (module level or `useMemo`), never inline in render.
 - A new key refetches and keeps the previous data as `placeholder` (`keepPrevious`, default true).
 - While `enabled` is false the status is `idle`, the variables function is not called and nothing is fetched.
 - `suspense: true` suspends until data and types the state as `success`. Any error, a response with partial data and errors included, goes to the nearest error boundary. `enabled` cannot be combined with `suspense` (a type error): a suspending hook has data or throws, it is never idle. A subscription cannot suspend.
