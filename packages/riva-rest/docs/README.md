@@ -17,4 +17,4 @@ The package's [README](../README.md) is the short path. These pages go deeper.
 ## Also
 
 - [Troubleshooting](./troubleshooting.md): every error message and `RivaError` code this package throws, with the fix.
-- [The core guides](../../riva/docs/README.md).
+- [The core guides](https://github.com/softistx/riva/blob/develop/packages/riva/docs/README.md).

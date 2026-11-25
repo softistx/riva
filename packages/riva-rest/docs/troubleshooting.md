@@ -206,3 +206,15 @@ Code: `RIVA_VALIDATION` (`RivaRequestError`, not retryable), thrown by the `rest
 **Why:** a string in `invalidates` is the path of a `riva.rest.get`, as the spec writes it (`'/invoices/{id}'`, with the placeholder, for every input of it); with `rest({ baseUrl })` it is the URL path you passed to `get` (`'/invoices/42'`). A query made with `query(api, route)` has its own entries and is not reached by a string.
 
 **Fix:** pass the same path as the `get`, or the definition (`invalidates: [invoicesQuery]`) or `at(invoicesQuery, vars)` for a hand-made one. A path the spec has no `get` for throws `riva-rest: the OpenAPI client has no operation at GET /x; …` before the mutation runs.
+
+## `GET /x: the reply is not JSON.`
+
+Code: `RIVA_INVALID_RESPONSE` (`RivaRequestError`, not retryable), from the `rest({ baseUrl })` transport on a 2xx reply whose body is not JSON (an HTML login page, a proxy error). An empty body is `undefined`, not an error.
+
+**Fix:** check the URL and the `accept` header (`application/json` is sent unless your `headers` set another), or use a spec client, which decodes by content type.
+
+## `riva-rest: param.id of /things/{id} must not be empty, "." or "..".`
+
+Code: `RIVA_VALIDATION` (`RivaRequestError`, not retryable), from the `rest({ baseUrl })` transport before any request: such a value (also as `%2e`) would collapse the path to another URL.
+
+**Fix:** pass a real identifier.

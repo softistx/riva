@@ -68,9 +68,13 @@ await riva.rest.delete('/invoices/{id}', { param: { id: '1' } }, { invalidates: 
 
 `riva.rest.post / put / patch / delete(path, input, opts)` is the one-shot call with no state. `invalidates` is an array, checked before the call runs: a string is the path of a `get` (every input of it, written as the spec writes it: `'/invoices/{id}'`), and a hand-made `query()` definition or `at(query, vars)` targets its own entries.
 
+## Cache and staleTime
+
+`rest(api, { cache })` and `rest({ baseUrl, cache })` set how the data of every simple call is stored. Default: as is, a keyed cache with no entities; pass `restEntities(...)` from `@softistx/riva-rest/entities` to share entities between calls. `staleTime` defaults to the riva's `defaults.staleTime` (0 when unset), so data is refetched by the next read once it is older; a per-call `staleTime` overrides it.
+
 ## Errors
 
-The transport's errors are riva's: a declared non-2xx reply is a `RivaHttpError`, a failed request a `RivaNetworkError`, a request or reply the spec refuses a `RivaRequestError`, an abort a `RivaAbortError`. They are the `error` of the state and what `await` throws; see [Errors](./errors.md).
+The transport's errors are riva's: a declared non-2xx reply is a `RivaHttpError`, a failed request a `RivaNetworkError`, a request or reply the spec refuses (or, with `baseUrl`, a 2xx reply that is not JSON) a `RivaRequestError`, an abort a `RivaAbortError`. They are the `error` of the state and what `await` throws; see [Errors](./errors.md).
 
 Definitions made with `query()` and `mutation()` keep working on the same riva, under their own ids; the simple calls use `rest:<method> <path>`.
 

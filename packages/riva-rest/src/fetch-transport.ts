@@ -35,7 +35,18 @@ function urlOf(base: string, path: string, input: RestInput): string {
 				`riva-rest: ${path} needs param.${name}.`,
 				{ retryable: false },
 			);
-		return encodeURIComponent(String(v));
+		const text = String(v);
+		let plain = text;
+		try {
+			plain = decodeURIComponent(text);
+		} catch {}
+		if (!text || !plain || plain === '.' || plain === '..')
+			throw new RivaRequestError(
+				'RIVA_VALIDATION',
+				`riva-rest: param.${name} of ${path} must not be empty, "." or "..".`,
+				{ retryable: false },
+			);
+		return encodeURIComponent(text);
 	});
 	const qs = new URLSearchParams();
 	for (const [k, v] of Object.entries(input.query ?? {}))
@@ -55,7 +66,10 @@ export function fetchTransport(options: RestBaseOptions): RestTransport {
 	return {
 		async call(route, input, { signal }) {
 			const body = (input ?? {}) as RestInput;
-			const headers = new Headers(options.headers);
+			const headers = new Headers({
+				accept: 'application/json',
+				...options.headers,
+			});
 			if (body.json !== undefined)
 				headers.set('content-type', 'application/json');
 			const method = route.method.toUpperCase();
@@ -84,7 +98,16 @@ export function fetchTransport(options: RestBaseOptions): RestTransport {
 					{ cause: response },
 				);
 			const text = await response.text();
-			return text ? JSON.parse(text) : undefined;
+			if (!text) return undefined;
+			try {
+				return JSON.parse(text);
+			} catch (cause) {
+				throw new RivaRequestError(
+					'RIVA_INVALID_RESPONSE',
+					`${method} ${route.path}: the reply is not JSON.`,
+					{ retryable: false, cause },
+				);
+			}
 		},
 	};
 }

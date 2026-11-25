@@ -316,6 +316,8 @@ describe('types', () => {
 			Resource<{ a: 1 }>
 		>();
 		expectTypeOf(riva.rest.get('/a')).toEqualTypeOf<Resource<unknown>>();
-		expectTypeOf(riva.rest.post<number>('/a')).toEqualTypeOf<Promise<number>>();
+		// Never run: it would fetch.
+		const _post = () => riva.rest.post<number>('/a');
+		expectTypeOf(_post).returns.toEqualTypeOf<Promise<number>>();
 	});
 });
