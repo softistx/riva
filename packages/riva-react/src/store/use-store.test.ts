@@ -245,7 +245,7 @@ test('a memoised child that alone reads a new key is not watched for it (documen
 	await m.unmount();
 });
 
-test('a render that is discarded leaves its keys uncommitted', async () => {
+test('a render that is discarded leaves its keys uncommitted until the next commit', async () => {
 	const client = newClient();
 	let renders = 0;
 	let suspend = false;
@@ -274,9 +274,12 @@ test('a render that is discarded leaves its keys uncommitted', async () => {
 	const m = await mount(h(StrictMode, null, h(App)), client);
 	expect(m.text()).toBe('00');
 	suspend = true;
+	const before = renders;
 	// the transition renders Reader, which reads `filter` then suspends: discarded
 	await act(async () => go());
 	expect(m.text()).toBe('00');
+	// Reader really rendered (and suspended) in the transition
+	expect(renders).toBeGreaterThan(before);
 	suspend = false;
 	const base = renders;
 	await act(async () => Books.bind(client)[1].filterBy('q'));
