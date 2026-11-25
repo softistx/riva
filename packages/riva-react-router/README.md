@@ -123,7 +123,7 @@ export const action = route.action;
 export const loader = route.loader; // 405
 ```
 
-Options: `sources` (asked in order, the first that knows the id runs it), `origin` (the one allowed origin, default the request's own; set it behind a proxy), `maxBytes` (default 262144), `onError(error, request)` (what a non-`RivaRequestError` threw; the browser only sees a 500). Refusals are `{ error: { code, message, status } }` with `RIVA_DATA_*` codes (the `DataRouteCode` type), listed in the [`riva-graphql` troubleshooting](https://github.com/softistx/riva/blob/develop/packages/riva-graphql/docs/troubleshooting.md#riva_data_-refusals-from-the-_data-route).
+Options: `sources` (asked in order, the first that knows the id runs it), `origin` (the one allowed origin, default the request's own; set it behind a proxy), `maxBytes` (default 262144), `onError(error, request)` (what a non-`RivaRequestError` threw, or a network or HTTP failure of the API; the browser only sees a generic answer). Refusals are `{ error: { code, message, status } }` with `RIVA_DATA_*` codes (the `DataRouteCode` type), listed in the [`riva-graphql` troubleshooting](https://github.com/softistx/riva/blob/develop/packages/riva-graphql/docs/troubleshooting.md#riva_data_-refusals-from-the-_data-route).
 
 ## After a write
 

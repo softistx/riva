@@ -84,7 +84,7 @@ Raised by `dataRoute` (`@softistx/riva-react-router/server`) and rethrown by `bf
 | `RIVA_DATA_TOO_LARGE` | 413 | The body is over `maxBytes` (262144) | Send less, or raise `maxBytes`. |
 | `RIVA_DATA_BAD_REQUEST` | 400 | The body is not `{ "id": string, "variables"?: object }` | Use `bffTransport`. |
 | `RIVA_DATA_UNKNOWN` | 404 | No source knows the id | See below. |
-| `RIVA_DATA_INTERNAL` | 500 | An operation threw something that is not a `RivaRequestError` | The browser sees only this generic answer; read the cause through `dataRoute`'s `onError`. |
+| `RIVA_DATA_INTERNAL` | 500 | An operation threw something that is not a `RivaRequestError` | The browser sees only this generic answer; read the cause through `dataRoute`'s `onError`, which also receives the API's network and HTTP failures (sent to the browser with their own code and the message "The API is unavailable."). |
 
 ## `The data route answered <status> with a body that is not JSON.`
 
