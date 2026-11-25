@@ -112,11 +112,13 @@ Code: `RIVA_INVALID_RESPONSE` (`RivaRequestError`), or `RivaHttpError` (`HTTP_<s
 
 **Fix:** set `presetConfig: { persistedDocuments: true }` on the preset, check that the path passed to `writeAllowlist` is the preset's output folder plus `persisted-documents.json`, and fix the codegen error that came first.
 
-## Two definitions share one cache entry
+## Two definitions share the id "<id>": define each query once (a module-level const) and import it, or pass a distinct id.
 
-**Why:** a definition's `id` is the document's persisted id, else its operation name; two definitions with the same `id` collide.
+Code: `RIVA_KEY` (`RivaError`).
 
-**Fix:** pass a distinct `id` when you define one document twice with different options.
+**Why:** a definition's `id` is the document's persisted id, else its operation name. Two definitions with the same `id` read on one client on the server throw `RIVA_KEY`; in a browser a hot reload takes over instead.
+
+**Fix:** define each query once, as a module-level const, and import it. Pass a distinct `id` when you define one document twice with different options. See the [core entry](../../riva/docs/troubleshooting.md).
 
 ## An error has the API's code but `error.fields` is undefined
 
