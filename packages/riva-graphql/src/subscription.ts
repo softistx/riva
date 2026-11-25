@@ -1,10 +1,10 @@
 import { type CachePolicy, type Riva, RivaError } from '@softistx/riva';
-import { streamResource } from '@softistx/riva/resource';
+import { streamResource, trackedInput } from '@softistx/riva/resource';
 import type { Doc } from './calls';
 import { toRivaError } from './errors';
 import { operationOf } from './operation';
 import type { OperationCache } from './query';
-import { memoFactory, varsReader } from './resources';
+import { memoFactory } from './resources';
 import type { GraphQLTransport } from './transport';
 
 /** The options and callbacks of `riva.graphql.subscribe`, all optional. An error thrown by `next`, `error` or `complete` is raised outside the stream (never reported to `error`), and a throwing `next` ends it. */
@@ -34,7 +34,7 @@ export function subscriptionOf(
 			'RIVA_DEFINITION',
 			'riva-graphql: this transport cannot subscribe: give graphql() a @softistx/graphql-client client, or a transport with a subscribe method.',
 		);
-	const read = varsReader(riva, vars as never);
+	const read = trackedInput(riva, vars as never);
 	const policy =
 		cache && 'forOperation' in cache ? cache.forOperation(op) : cache;
 	const subscribeTo = transport.subscribe.bind(transport);

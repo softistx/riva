@@ -4,8 +4,13 @@ import * as api from './index';
 test('the subpath exports the resource builders and nothing else at runtime', () => {
 	expect(Object.keys(api).sort()).toEqual([
 		'GraphQLError',
+		'abortable',
+		'callResource',
+		'isReactive',
+		'mutateInvalidating',
 		'mutationHandle',
 		'resource',
 		'streamResource',
+		'trackedInput',
 	]);
 });

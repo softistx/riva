@@ -1,21 +1,8 @@
 import { describe, expect, test } from 'bun:test';
-import { computed, createRiva, RivaAbortError, signal } from '@softistx/riva';
+import { RivaAbortError } from '@softistx/riva';
 import type { Resource, ResourceState } from '@softistx/riva/resource';
 import { GraphQLError } from './errors';
-import { graphqlResource, memoFactory, varsReader } from './resources';
-
-describe('varsReader', () => {
-	test('reads a plain value, a signal, a computed and a function', () => {
-		const riva = createRiva();
-		const s = signal({ a: 1 });
-		const c = computed(() => ({ a: riva.get(s).a + 1 }));
-		expect(varsReader(riva, { a: 0 })()).toEqual({ a: 0 });
-		expect(varsReader(riva, s)()).toEqual({ a: 1 });
-		expect(varsReader(riva, c)()).toEqual({ a: 2 });
-		expect(varsReader(riva, () => ({ a: 3 }))()).toEqual({ a: 3 });
-		expect(varsReader(riva, undefined)()).toBeUndefined();
-	});
-});
+import { graphqlResource, memoFactory } from './resources';
 
 describe('memoFactory', () => {
 	test('equal variables keep the same factory, others make a new one', () => {

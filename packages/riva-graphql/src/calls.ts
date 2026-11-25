@@ -7,10 +7,15 @@ import type {
 	Query,
 	Riva,
 } from '@softistx/riva';
-import { mutationHandle, resource } from '@softistx/riva/resource';
+import {
+	callResource,
+	mutateInvalidating,
+	mutationHandle,
+	trackedInput,
+} from '@softistx/riva/resource';
 import { operationOf } from './operation';
 import { mutation, type OperationCache, query } from './query';
-import { graphqlResource, varsReader } from './resources';
+import { graphqlResource } from './resources';
 
 export type Doc<Data, Vars> = TypedDocumentNode<Data, Vars>;
 
@@ -77,40 +82,23 @@ export function callsOf(
 		doc: Doc<unknown, never>,
 		vars?: unknown,
 		call?: MutateCall,
-	) => {
-		const def = mutationOf(doc);
-		// Resolved first: a bad entry throws before anything was written.
-		const stale = (call?.invalidates ?? []).map((t) =>
-			'definitions' in t
-				? (
-						(d) => () =>
-							d.invalidate(riva)
-					)(queryOf(t as never))
-				: 'query' in t
-					? () => t.query.invalidate(riva, t.vars)
-					: () => (t as Query<unknown, unknown>).invalidate(riva),
+	) =>
+		mutateInvalidating(riva, mutationOf(doc), vars, call, (t) =>
+			'definitions' in t ? (queryOf(t as never) as never) : (t as never),
 		);
-		const data = await (def.run as (...a: unknown[]) => Promise<never>)(
-			riva,
-			vars,
-			{ signal: call?.signal },
-		);
-		for (const f of stale) f();
-		return data;
-	};
 	return {
 		mutate,
 		query(doc: Doc<unknown, never>, vars?: unknown, call?: QueryCall) {
 			const def = queryOf(doc);
-			const read = varsReader(riva, vars);
-			const { enabled, keepPrevious, staleTime } = call ?? {};
+			const { signal, ...options } = call ?? {};
 			return graphqlResource(
-				resource(riva, () => [def, read()] as never, {
-					...(enabled !== undefined && { enabled }),
-					...(keepPrevious !== undefined && { keepPrevious }),
-					...(staleTime !== undefined && { staleTime }),
-				}),
-				call?.signal,
+				callResource(
+					riva,
+					def as never,
+					trackedInput(riva, vars as never),
+					options,
+				),
+				signal,
 			);
 		},
 		mutation: (doc: Doc<unknown, never>) =>
