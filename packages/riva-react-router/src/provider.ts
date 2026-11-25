@@ -1,8 +1,4 @@
-import {
-	createRivaClient,
-	type Invalidation,
-	type RivaClient,
-} from '@softistx/riva';
+import { createRiva, type Invalidation, type Riva } from '@softistx/riva';
 import { hydrate, type Snapshot } from '@softistx/riva/ssr';
 import { RivaProvider } from '@softistx/riva-react';
 import {
@@ -20,17 +16,17 @@ import { REVALIDATOR, revalidate } from './revalidate';
 
 export interface RivaRouterProviderProps {
 	/**
-	 * The client of this tree. By default one is created per mount. It must stay
+	 * The riva of this tree. By default one is created per mount. It must stay
 	 * the same object for the lifetime of the mount: the provider reads it once
 	 * and does not follow a new one.
 	 */
-	client?: RivaClient;
+	riva?: Riva;
 	/**
-	 * Runs on the client of this mount, before any loader snapshot is read
+	 * Runs on the riva of this mount, before any loader snapshot is read
 	 * (e.g. `provideGraphQL`). It must be idempotent: React StrictMode runs the
 	 * initial state twice in development, so it can be called twice.
 	 */
-	setup?: (client: RivaClient, env: { server: boolean }) => void;
+	setup?: (riva: Riva, env: { server: boolean }) => void;
 	/** Invalidated each time a non-GET navigation or fetcher settles. */
 	invalidateOnAction?: readonly Invalidation[];
 	children?: ReactNode;
@@ -41,25 +37,25 @@ const snapshotOf = (data: unknown): Snapshot | undefined =>
 	(data as { '~riva'?: Snapshot } | null | undefined)?.['~riva'];
 
 /**
- * Puts a client in scope and keeps it in step with the loaders: every match's
+ * Puts a riva in scope and keeps it in step with the loaders: every match's
  * `~riva` snapshot (see `riva(context)`) is hydrated once. The first render
- * seeds the client before its children read it, so the server markup and the
+ * seeds the riva before its children read it, so the server markup and the
  * browser's first render agree; on a navigation or a revalidation, what
  * observed entries or entities could reach is held back and applied in a
  * layout effect. Place it in the root route component.
  */
 export function RivaRouterProvider({
-	client,
+	riva,
 	setup,
 	invalidateOnAction,
 	children,
 }: RivaRouterProviderProps): ReactElement {
 	const [own] = useState(() => {
-		const c = client ?? createRivaClient();
+		const c = riva ?? createRiva();
 		setup?.(c, { server: typeof document === 'undefined' });
 		return c;
 	});
-	const active = client ?? own;
+	const active = riva ?? own;
 	const seen = useRef(new WeakSet<object>());
 	const started = useRef(false);
 	const later = useRef<Snapshot[]>([]);
@@ -97,5 +93,5 @@ export function RivaRouterProvider({
 	useLayoutEffect(() => {
 		for (const rest of later.current.splice(0)) hydrate(active, rest);
 	});
-	return createElement(RivaProvider, { client: active }, children);
+	return createElement(RivaProvider, { riva: active }, children);
 }

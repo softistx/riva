@@ -12,12 +12,12 @@ import { PATIENTS_QUERY } from './graphql';
 
 export const patients = query(PATIENTS_QUERY, { staleTime: '30s' });
 
-await patients.ensure(client, { school: 'north' }); // variables typed from the document
-const state = client.get(patients, { school: 'north' }); // state.data is the document's data
-patients.invalidate(client, { school: 'north' });
+await patients.ensure(riva, { school: 'north' }); // variables typed from the document
+const state = riva.get(patients, { school: 'north' }); // state.data is the document's data
+patients.invalidate(riva, { school: 'north' });
 ```
 
-A document with no variables takes none: `viewer.ensure(client)`.
+A document with no variables takes none: `viewer.ensure(riva)`.
 
 ## Options
 

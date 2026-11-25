@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { createRivaClient } from './client';
+import { createRiva } from './client';
 import { RivaAbortError } from './errors';
 import { query } from './query';
 
@@ -11,10 +11,10 @@ test('join shares one fetch among callers; success settles the state', async () 
 		id: 'q',
 		fetch: async () => `v${++calls}`,
 	});
-	const client = createRivaClient();
-	const [a, b] = await Promise.all([q.ensure(client), q.ensure(client)]);
+	const riva = createRiva();
+	const [a, b] = await Promise.all([q.ensure(riva), q.ensure(riva)]);
 	expect([a, b, calls]).toEqual(['v1', 'v1', 1]);
-	expect(client.get(q)).toMatchObject({
+	expect(riva.get(q)).toMatchObject({
 		status: 'success',
 		data: 'v1',
 		isFetching: false,
@@ -29,9 +29,9 @@ test('a failure with no retry settles the error state and rejects', async () => 
 			throw new Error('boom');
 		},
 	});
-	const client = createRivaClient();
-	await expect(q.ensure(client)).rejects.toThrow('boom');
-	expect(client.get(q).status).toBe('error');
+	const riva = createRiva();
+	await expect(q.ensure(riva)).rejects.toThrow('boom');
+	expect(riva.get(q).status).toBe('error');
 });
 
 test('cancel aborts the fetch and restores the previous state', async () => {
@@ -43,14 +43,14 @@ test('cancel aborts the fetch and restores the previous state', async () => {
 			return new Promise(() => {});
 		},
 	});
-	const client = createRivaClient();
-	const p = q.ensure(client);
+	const riva = createRiva();
+	const p = q.ensure(riva);
 	const settled = p.catch((e) => e);
-	q.cancel(client, undefined);
+	q.cancel(riva, undefined);
 	expect(await settled).toBeInstanceOf(RivaAbortError);
 	expect(signal?.aborted).toBe(true);
 	await flush();
-	expect(client.get(q).status).toBe('idle');
+	expect(riva.get(q).status).toBe('idle');
 });
 
 test('invalidate while observed restarts the fetch on a new controller', async () => {
@@ -64,12 +64,12 @@ test('invalidate while observed restarts the fetch on a new controller', async (
 				: Promise.resolve('fresh');
 		},
 	});
-	const client = createRivaClient();
-	const off = client.subscribe(q, () => {});
-	q.invalidate(client);
+	const riva = createRiva();
+	const off = riva.subscribe(q, () => {});
+	q.invalidate(riva);
 	await flush();
 	expect(signals[0]?.aborted).toBe(true);
 	expect(signals.length).toBe(2);
-	expect(client.get(q).data).toBe('fresh');
+	expect(riva.get(q).data).toBe('fresh');
 	off();
 });

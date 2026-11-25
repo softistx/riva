@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { createRivaClient } from '../client';
+import { createRiva } from '../client';
 import { RivaAbortError, RivaHttpError } from '../errors';
 import { infinite } from './infinite';
 
@@ -82,13 +82,13 @@ function gated(total = 6, extra: { retry?: number } = {}) {
 }
 
 const tick = () => new Promise((r) => setTimeout(r, 5));
-const nodes = (c: ReturnType<typeof createRivaClient>, f: {}) =>
+const nodes = (c: ReturnType<typeof createRiva>, f: {}) =>
 	(c.get(f as never) as { data?: { nodes: string[] } }).data?.nodes;
 
 describe('fetchNext and a refetch', () => {
 	test('a fetchNext started during a refetch waits and appends to the fresh pages', async () => {
 		const { s, feed, gate } = gated();
-		const c = createRivaClient();
+		const c = createRiva();
 		await feed.ensure(c);
 		await feed.fetchNext(c);
 		s.ver = 'new';
@@ -113,7 +113,7 @@ describe('fetchNext and a refetch', () => {
 
 	test('no next page after the refetch: fetchNext is a no-op', async () => {
 		const { s, feed, gate } = gated(2);
-		const c = createRivaClient();
+		const c = createRiva();
 		await feed.ensure(c);
 		s.ver = 'new';
 		feed.invalidate(c);
@@ -128,7 +128,7 @@ describe('fetchNext and a refetch', () => {
 
 	test('a refetch during a fetchNext: the stale page is refetched, never mixed', async () => {
 		const { s, feed, gate } = gated();
-		const c = createRivaClient();
+		const c = createRiva();
 		await feed.ensure(c);
 		s.holdWhen = (v) => v.after !== undefined && s.ver === 'old';
 		const open = gate();
@@ -145,7 +145,7 @@ describe('fetchNext and a refetch', () => {
 
 	test('an invalidation made with no run in flight survives a fetchNext', async () => {
 		const { s, feed } = gated();
-		const c = createRivaClient();
+		const c = createRiva();
 		await feed.ensure(c);
 		feed.invalidate(c);
 		await feed.fetchNext(c);
@@ -158,7 +158,7 @@ describe('fetchNext and a refetch', () => {
 describe('flags', () => {
 	test('the page and the flag reset land in one batch', async () => {
 		const { feed } = gated();
-		const c = createRivaClient();
+		const c = createRiva();
 		await feed.ensure(c);
 		const seen: Array<[number, boolean]> = [];
 		const off = c.subscribe(feed, undefined, (st) =>
@@ -172,7 +172,7 @@ describe('flags', () => {
 
 	test('fetchPrevious is deduped', async () => {
 		const { s, feed, answer } = gated();
-		const c = createRivaClient();
+		const c = createRiva();
 		feed.setData(c, undefined, {
 			pages: [answer({ after: '3' }, 'old')],
 			params: [{ after: '3' }],
@@ -190,7 +190,7 @@ describe('flags', () => {
 describe('cancel and retry', () => {
 	test('cancel aborts a fetchNext and a fetchPrevious', async () => {
 		const { s, feed, gate, answer } = gated();
-		const c = createRivaClient();
+		const c = createRiva();
 		feed.setData(c, undefined, {
 			pages: [answer({ after: '1' }, 'old')],
 			params: [{ after: '1' }],
@@ -212,7 +212,7 @@ describe('cancel and retry', () => {
 
 	test('fetchNext retries a failing page', async () => {
 		const { s, feed } = gated(6, { retry: 2 });
-		const c = createRivaClient();
+		const c = createRiva();
 		await feed.ensure(c);
 		s.failures = 2;
 		await feed.fetchNext(c);
@@ -224,7 +224,7 @@ describe('cancel and retry', () => {
 describe('refetch from a first page that has `before`', () => {
 	test('one call when the first page is a backwards one', async () => {
 		const { s, feed, answer } = gated();
-		const c = createRivaClient();
+		const c = createRiva();
 		feed.setData(c, undefined, {
 			pages: [answer({ before: '3' }, 'old')],
 			params: [{ before: '3' }],
@@ -239,7 +239,7 @@ describe('refetch from a first page that has `before`', () => {
 
 	test('continues forward from it', async () => {
 		const { s, feed, answer } = gated();
-		const c = createRivaClient();
+		const c = createRiva();
 		feed.setData(c, undefined, {
 			pages: [answer({ before: '3' }, 'old'), answer({ after: '2' }, 'old')],
 			params: [{ before: '3' }, { after: '2' }],

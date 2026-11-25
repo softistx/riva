@@ -1,7 +1,7 @@
-import { createRivaClient } from '../src/client';
+import { createRiva } from '../src/client';
 import type { Scheduler } from '../src/env';
 
-/** A client over a fake clock (spec helper). */
+/** A riva over a fake clock (spec helper). */
 export function fakeEnv(start = 1_000_000) {
 	let t = start;
 	let id = 0;
@@ -22,7 +22,7 @@ export function fakeEnv(start = 1_000_000) {
 				}
 		},
 	};
-	return { sched, client: () => createRivaClient({ scheduler: sched }) };
+	return { sched, riva: () => createRiva({ scheduler: sched }) };
 }
 
 export const settle = () => new Promise<void>((r) => setImmediate(r));

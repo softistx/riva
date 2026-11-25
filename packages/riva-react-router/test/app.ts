@@ -1,12 +1,12 @@
 /* biome-ignore-all lint/style/useNamingConvention: GraphQL's field names */
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
-import { type RivaClient, signal } from '@softistx/riva';
+import { type Riva, signal } from '@softistx/riva';
 import {
 	type GraphQLTransport,
 	provideGraphQL,
 	query,
 } from '@softistx/riva-graphql';
-import { useClient, useQuery } from '@softistx/riva-react';
+import { useQuery, useRiva } from '@softistx/riva-react';
 import { parse } from 'graphql';
 import { act, createElement as h, type ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
@@ -88,11 +88,11 @@ function Patients(): ReactElement {
 	return h('p', { id: 'patients' }, `${q.data?.label} #${q.data?.rev}`);
 }
 
-/** The client the last page rendered with, for the specs to read. */
-export const seen: { client?: RivaClient } = {};
+/** The riva the last page rendered with, for the specs to read. */
+export const seen: { riva?: Riva } = {};
 
 function PatientPage(): ReactElement {
-	seen.client = useClient();
+	seen.riva = useRiva();
 	const q = useQuery(PATIENT, { id: useParams()['id'] ?? '' });
 	return h('p', { id: 'patient' }, `${q.data?.label} #${q.data?.rev}`);
 }
@@ -118,7 +118,7 @@ export function makeApp({
 		...(setupServer && {
 			middleware: [
 				rivaMiddleware({
-					setup: (client) => provideGraphQL(client, server.transport),
+					setup: (riva) => provideGraphQL(riva, server.transport),
 				}),
 			],
 		}),
@@ -126,10 +126,10 @@ export function makeApp({
 			h(
 				RivaRouterProvider,
 				{
-					setup: (client, env) => {
+					setup: (riva, env) => {
 						envs.push(env.server);
 						provideGraphQL(
-							client,
+							riva,
 							env.server ? server.transport : browser.transport,
 						);
 					},
@@ -137,18 +137,18 @@ export function makeApp({
 				h(Outlet),
 			),
 	});
-	const loadPatients = async (client: RivaClient) => {
-		await PATIENTS.ensure(client, SCHOOL);
+	const loadPatients = async (riva: Riva) => {
+		await PATIENTS.ensure(riva, SCHOOL);
 	};
-	const loadPatient = async (client: RivaClient, id: string) => {
-		await PATIENT.ensure(client, { id });
+	const loadPatient = async (riva: Riva, id: string) => {
+		await PATIENT.ensure(riva, { id });
 		await onPatient?.(id);
 	};
-	/** What the server's loader answers a browser navigation: a fresh request client, then JSON. */
-	const remote = async (load: (c: RivaClient) => Promise<void>) => {
+	/** What the server's loader answers a browser navigation: a fresh request riva, then JSON. */
+	const remote = async (load: (c: Riva) => Promise<void>) => {
 		const context = new RouterContextProvider();
 		await rivaMiddleware({
-			setup: (client) => provideGraphQL(client, server.transport),
+			setup: (riva) => provideGraphQL(riva, server.transport),
 		})(
 			{
 				request: new Request('http://app.test/'),
@@ -241,7 +241,7 @@ export function makeApp({
 		} finally {
 			restoreDocument();
 		}
-		return { html, loaderData, client: context.get(rivaContext) };
+		return { html, loaderData, riva: context.get(rivaContext) };
 	}
 
 	/** The browser: a memory router hydrated with what a document request carried. */

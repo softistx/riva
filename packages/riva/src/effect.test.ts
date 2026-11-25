@@ -1,7 +1,7 @@
 import { afterEach, expect, test } from 'bun:test';
-import { createRivaClient } from './client';
+import { createRiva } from './client';
 import { effect } from './effect';
-import { setDefaultClient } from './scope';
+import { setDefaultRiva } from './scope';
 import { signal } from './signal';
 
 const g = globalThis as { document?: unknown };
@@ -11,7 +11,7 @@ afterEach(() => {
 
 test('re-runs when what it read changes, with cleanup and dispose', () => {
 	const a = signal(0);
-	const c = createRivaClient();
+	const c = createRiva();
 	const log: string[] = [];
 	const stop = c.effect(() => {
 		const v = c.get(a);
@@ -29,7 +29,7 @@ test('re-runs when what it read changes, with cleanup and dispose', () => {
 test('an effect does not track what its cleanup reads', () => {
 	const a = signal(0);
 	const b = signal(0);
-	const c = createRivaClient();
+	const c = createRiva();
 	let runs = 0;
 	c.effect(() => {
 		runs++;
@@ -49,10 +49,10 @@ test('free effect is a no-op on the server', () => {
 	expect(stop()).toBeUndefined();
 });
 
-test('free effect runs through the default client in a browser', () => {
+test('free effect runs through the default riva in a browser', () => {
 	g.document = {};
-	const c = createRivaClient();
-	setDefaultClient(c);
+	const c = createRiva();
+	setDefaultRiva(c);
 	const a = signal(0);
 	const seen: number[] = [];
 	const stop = effect(() => {
@@ -62,5 +62,5 @@ test('free effect runs through the default client in a browser', () => {
 	stop();
 	a.set(2);
 	expect(seen).toEqual([0, 1]);
-	setDefaultClient(undefined);
+	setDefaultRiva(undefined);
 });

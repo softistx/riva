@@ -1,6 +1,6 @@
 /* biome-ignore-all lint/style/useNamingConvention: type names and __typename */
 import { expect, test } from 'bun:test';
-import { createRivaClient, mutation, query } from '@softistx/riva';
+import { createRiva, mutation, query } from '@softistx/riva';
 import { evict, readEntity } from '@softistx/riva/entities';
 import { restEntities } from './index';
 
@@ -27,28 +27,28 @@ const setup = () => {
 		cache,
 		fetch: async () => ({ items: Object.values(db) }),
 	});
-	return { db, cache, one, all, client: createRivaClient() };
+	return { db, cache, one, all, riva: createRiva() };
 };
 
 test('REST responses are keyed by request and their invoices shared as entities', async () => {
-	const { db, one, all, client } = setup();
-	await one.ensure(client, { id: '1' });
-	await all.ensure(client);
-	expect(readEntity(client, 'Invoice:1')).toMatchObject({ total: 10 });
+	const { db, one, all, riva } = setup();
+	await one.ensure(riva, { id: '1' });
+	await all.ensure(riva);
+	expect(readEntity(riva, 'Invoice:1')).toMatchObject({ total: 10 });
 	db['1'] = { id: '1', number: 'F-1', total: 99 };
-	await one.ensure(client, { id: '1' }); // stale: staleTime 0 refetches
-	const list = client.get(all).data as { items: Invoice[] };
+	await one.ensure(riva, { id: '1' }); // stale: staleTime 0 refetches
+	const list = riva.get(all).data as { items: Invoice[] };
 	expect(list.items[0]?.total).toBe(99);
 });
 
 test('what no type recognises stays plain, and the input is not mutated', async () => {
-	const { cache, client } = setup();
+	const { cache, riva } = setup();
 	const raw = {
 		meta: { page: 1 },
 		items: [{ id: '1', number: 'F', total: 1 }],
 	};
 	const q = query({ id: 'q', cache, fetch: async () => raw });
-	const data = (await q.ensure(client)) as typeof raw & {
+	const data = (await q.ensure(riva)) as typeof raw & {
 		items: { __typename?: string }[];
 	};
 	expect(data.meta).toEqual({ page: 1 });
@@ -57,22 +57,22 @@ test('what no type recognises stays plain, and the input is not mutated', async 
 });
 
 test('a mutation result updates every query showing the invoice', async () => {
-	const { cache, one, all, client } = setup();
-	await one.ensure(client, { id: '1' });
-	await all.ensure(client);
+	const { cache, one, all, riva } = setup();
+	await one.ensure(riva, { id: '1' });
+	await all.ensure(riva);
 	const rename = mutation({
 		id: 'rename',
 		cache,
 		run: async () => ({ id: '1', number: 'F-1', total: 5 }),
 	});
-	await rename.run(client);
-	const list = client.get(all).data as { items: Invoice[] };
+	await rename.run(riva);
+	const list = riva.get(all).data as { items: Invoice[] };
 	expect(list.items[0]?.total).toBe(5);
-	evict(client, 'Invoice:1');
+	evict(riva, 'Invoice:1');
 });
 
 test('an object with its own __typename keeps it', async () => {
-	const { cache, client } = setup();
+	const { cache, riva } = setup();
 	const q = query({
 		id: 'typed',
 		cache,
@@ -83,6 +83,6 @@ test('an object with its own __typename keeps it', async () => {
 			__typename: 'Credit',
 		}),
 	});
-	const data = (await q.ensure(client)) as { __typename: string };
+	const data = (await q.ensure(riva)) as { __typename: string };
 	expect(data.__typename).toBe('Credit');
 });

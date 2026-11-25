@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { createRivaClient } from '../client';
+import { createRiva } from '../client';
 import { cursorBeyond, refetchAll } from './refetch';
 import type { Connection, PageParam } from './types';
 
@@ -19,7 +19,7 @@ const conn = (
 });
 const ctx = () => ({
 	signal: new AbortController().signal,
-	client: createRivaClient(),
+	riva: createRiva(),
 });
 
 test('cursorBeyond reads the end cursor forward and the start cursor back', () => {

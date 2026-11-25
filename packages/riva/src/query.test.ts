@@ -1,5 +1,5 @@
 import { expect, expectTypeOf, test } from 'bun:test';
-import { createRivaClient } from './client';
+import { createRiva } from './client';
 import { RivaError } from './errors';
 import { type Query, type QueryState, query } from './query';
 
@@ -36,7 +36,7 @@ test('a bad duration fails at definition time', () => {
 });
 
 test('variables are optional when void', async () => {
-	const c = createRivaClient();
+	const c = createRiva();
 	const q = query({ id: 'q', fetch: async () => 'v' });
 	expect(await q.ensure(c)).toBe('v');
 	expect(c.get(q).data).toBe('v');
@@ -46,7 +46,7 @@ test('variables are optional when void', async () => {
 });
 
 test('types: Vars and Data are inferred; void vars optional; wrong vars rejected', async () => {
-	const c = createRivaClient();
+	const c = createRiva();
 	const q = query({
 		id: 'q',
 		fetch: async (v: { id: string }) => ({ n: v.id.length }),
@@ -89,9 +89,9 @@ test('types: Vars and Data are inferred; void vars optional; wrong vars rejected
 	);
 	off();
 	await v.ensure(c, undefined, { signal: new AbortController().signal });
-	const notAClient = () => {
-		// @ts-expect-error not a client
+	const notARiva = () => {
+		// @ts-expect-error not a riva
 		v.ensure({});
 	};
-	expect(typeof notAClient).toBe('function');
+	expect(typeof notARiva).toBe('function');
 });

@@ -1,4 +1,4 @@
-import type { RivaClient } from '../client';
+import type { Riva } from '../client';
 import { RivaError } from '../errors';
 import type { CachePolicy } from '../query';
 import { denormalize } from './denormalize';
@@ -51,27 +51,27 @@ const plain: EntityCodec = { normalize, denormalize };
 
 const KEY = {};
 
-/** The entity store of a client, created on first use. */
-export function storeOf(client: RivaClient): EntityStore {
-	let s = client.slots.get(KEY) as EntityStore | undefined;
+/** The entity store of a riva, created on first use. */
+export function storeOf(riva: Riva): EntityStore {
+	let s = riva.slots.get(KEY) as EntityStore | undefined;
 	if (!s) {
-		s = new EntityStore(client);
-		client.slots.set(KEY, s);
+		s = new EntityStore(riva);
+		riva.slots.set(KEY, s);
 	}
 	return s;
 }
 
 /**
- * The client's store, bound to the identity rules of `opts`. The first policy
+ * The riva's store, bound to the identity rules of `opts`. The first policy
  * binds it (an unbound store only while it is empty, unless the rules are the
  * default ones); a policy with other rules is refused.
  */
 function bound(
-	client: RivaClient,
+	riva: Riva,
 	opts: EntitiesOptions | undefined,
 	identify: EntityStore['identify'],
 ): EntityStore {
-	const store = storeOf(client);
+	const store = storeOf(riva);
 	const rules = { keys: opts?.keys, identify: opts?.identify };
 	if (store.rules) {
 		if (
@@ -80,13 +80,13 @@ function bound(
 		)
 			throw new RivaError(
 				'RIVA_CACHE',
-				'This client already uses other entity identity rules. Share one entities() (or the same options objects) between its queries.',
+				'This riva already uses other entity identity rules. Share one entities() (or the same options objects) between its queries.',
 			);
 	} else if (rules.keys || rules.identify) {
 		if (!store.empty)
 			throw new RivaError(
 				'RIVA_CACHE',
-				'This client already uses other entity identity rules. Create its entities() policy before its first readEntity or writeEntity.',
+				'This riva already uses other entity identity rules. Create its entities() policy before its first readEntity or writeEntity.',
 			);
 		store.rules = rules;
 		store.identify = identify;
@@ -102,9 +102,9 @@ export function entities(
 	const identify = makeIdentify(opts);
 	return {
 		identify,
-		write(client, data, prev, vars) {
-			const store = bound(client, opts, identify);
-			return client.batch(() => {
+		write(riva, data, prev, vars) {
+			const store = bound(riva, opts, identify);
+			return riva.batch(() => {
 				const { root, pending } = codec.normalize(store, data, vars);
 				for (const [ref, fields] of pending) store.merge(ref, fields);
 				const stored = new EntityRoot(root, refsIn(root));
@@ -116,8 +116,8 @@ export function entities(
 				return stored;
 			});
 		},
-		read(client, stored, committed) {
-			const store = bound(client, opts, identify);
+		read(riva, stored, committed) {
+			const store = bound(riva, opts, identify);
 			store.skip = !!committed;
 			try {
 				const seen = share(
@@ -130,29 +130,27 @@ export function entities(
 				store.skip = false;
 			}
 		},
-		layer(client, data, vars) {
+		layer(riva, data, vars) {
 			const { pending } = codec.normalize(
-				bound(client, opts, identify),
+				bound(riva, opts, identify),
 				data,
 				vars,
 			);
-			client.set(storeOf(client).ov, (ls) => [...ls, pending]);
+			riva.set(storeOf(riva).ov, (ls) => [...ls, pending]);
 			return {
 				drop: () =>
-					client.set(storeOf(client).ov, (ls) =>
-						ls.filter((l) => l !== pending),
-					),
+					riva.set(storeOf(riva).ov, (ls) => ls.filter((l) => l !== pending)),
 			};
 		},
-		commit(client, data, vars) {
-			const store = bound(client, opts, identify);
+		commit(riva, data, vars) {
+			const store = bound(riva, opts, identify);
 			const { pending } = codec.normalize(store, data, vars);
-			client.batch(() => {
+			riva.batch(() => {
 				for (const [ref, fields] of pending) store.merge(ref, fields);
 			});
 		},
-		release(client, stored) {
-			const store = bound(client, opts, identify);
+		release(riva, stored) {
+			const store = bound(riva, opts, identify);
 			store.roots.delete(stored);
 			store.sweep();
 		},

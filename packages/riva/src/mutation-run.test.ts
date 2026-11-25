@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { createRivaClient, type RivaClient } from './client';
+import { createRiva, type Riva } from './client';
 import type { Scheduler } from './env';
 import {
 	RivaAbortError,
@@ -69,41 +69,41 @@ const add = (opts: { run?: (v: string) => Promise<string>; retry?: number }) =>
 		optimistic: (v, tx) => tx.set(list, undefined, (p) => [...(p ?? []), v]),
 	});
 
-function watch(client: RivaClient) {
+function watch(riva: Riva) {
 	const seen: Array<string[] | undefined> = [];
-	const off = client.subscribe(list, (s: QueryState<string[]>) =>
+	const off = riva.subscribe(list, (s: QueryState<string[]>) =>
 		seen.push(s.data),
 	);
 	return { seen, off };
 }
 
 async function seeded(): Promise<{
-	client: RivaClient;
+	riva: Riva;
 	sched: ReturnType<typeof fakeScheduler>;
 }> {
 	server = ['a'];
 	const sched = fakeScheduler();
-	const client = createRivaClient({ scheduler: sched });
-	await list.ensure(client);
-	return { client, sched };
+	const riva = createRiva({ scheduler: sched });
+	await list.ensure(riva);
+	return { riva, sched };
 }
 
 describe('the optimistic layer on a keyed query', () => {
 	test('is visible at once and rolled back on error, status untouched', async () => {
-		const { client } = await seeded();
+		const { riva } = await seeded();
 		const d = deferred<string>();
 		const m = add({ run: () => d.promise });
-		const p = m.run(client, 'b');
-		expect(client.get(list).data).toEqual(['a', 'b']);
-		expect(client.get(list).status).toBe('success');
-		expect(client.get(list).isFetching).toBe(false);
+		const p = m.run(riva, 'b');
+		expect(riva.get(list).data).toEqual(['a', 'b']);
+		expect(riva.get(list).status).toBe('success');
+		expect(riva.get(list).isFetching).toBe(false);
 		d.reject(new RivaHttpError(400));
 		await expect(p).rejects.toBeInstanceOf(RivaHttpError);
-		expect(client.get(list).data).toEqual(['a']);
+		expect(riva.get(list).data).toEqual(['a']);
 	});
 
 	test('success swaps the layer for the server result with no intermediate state', async () => {
-		const { client } = await seeded();
+		const { riva } = await seeded();
 		const d = deferred<string>();
 		const m = mutation<string, string>({
 			id: 'add',
@@ -112,9 +112,9 @@ describe('the optimistic layer on a keyed query', () => {
 			updates: (tx, data) =>
 				tx.set(list, undefined, (p) => [...(p ?? []), data]),
 		});
-		const w = watch(client);
+		const w = watch(riva);
 		w.seen.length = 0;
-		const p = m.run(client, 'tmp');
+		const p = m.run(riva, 'tmp');
 		expect(w.seen).toEqual([['a', 'tmp']]);
 		d.resolve('real');
 		expect(await p).toBe('real');
@@ -122,12 +122,12 @@ describe('the optimistic layer on a keyed query', () => {
 			['a', 'tmp'],
 			['a', 'real'],
 		]);
-		expect(client.get(list).data).toEqual(['a', 'real']);
+		expect(riva.get(list).data).toEqual(['a', 'real']);
 		w.off();
 	});
 
 	test('a plain value layer works and updaters see the value below', async () => {
-		const { client } = await seeded();
+		const { riva } = await seeded();
 		const d = deferred<string>();
 		const m = mutation<void, string>({
 			id: 'm',
@@ -137,33 +137,33 @@ describe('the optimistic layer on a keyed query', () => {
 				tx.set(list, undefined, (p) => [...(p ?? []), 'y']);
 			},
 		});
-		const p = m.run(client);
-		expect(client.get(list).data).toEqual(['x', 'y']);
+		const p = m.run(riva);
+		expect(riva.get(list).data).toEqual(['x', 'y']);
 		d.resolve('');
 		await p;
-		expect(client.get(list).data).toEqual(['a']);
+		expect(riva.get(list).data).toEqual(['a']);
 	});
 
 	test('a refetch during a layer updates the committed value; the layer stays on top', async () => {
-		const { client } = await seeded();
+		const { riva } = await seeded();
 		const d = deferred<string>();
-		const p = add({ run: () => d.promise }).run(client, 'b');
+		const p = add({ run: () => d.promise }).run(riva, 'b');
 		server = ['a', 'z'];
-		await list.ensure(client).catch(() => {});
-		list.invalidate(client);
-		const off = client.subscribe(list, () => {});
+		await list.ensure(riva).catch(() => {});
+		list.invalidate(riva);
+		const off = riva.subscribe(list, () => {});
 		await tick();
-		expect(client.get(list).data).toEqual(['a', 'z', 'b']);
+		expect(riva.get(list).data).toEqual(['a', 'z', 'b']);
 		d.reject(new Error('x'));
 		await p.catch(() => {});
-		expect(client.get(list).data).toEqual(['a', 'z']);
+		expect(riva.get(list).data).toEqual(['a', 'z']);
 		off();
 	});
 });
 
 describe('ordering', () => {
 	test('out-of-order completion commits in start order', async () => {
-		const { client } = await seeded();
+		const { riva } = await seeded();
 		const da = deferred<string>();
 		const db = deferred<string>();
 		const order: string[] = [];
@@ -173,8 +173,8 @@ describe('ordering', () => {
 				run: () => d.promise,
 				updates: () => void order.push(name),
 			});
-		const a = mk('A', da).run(client);
-		const b = mk('B', db).run(client);
+		const a = mk('A', da).run(riva);
+		const b = mk('B', db).run(riva);
 		db.resolve('b');
 		await tick();
 		expect(order).toEqual([]);
@@ -184,31 +184,31 @@ describe('ordering', () => {
 	});
 
 	test('B keeps its layer while A is pending, then both settle in order', async () => {
-		const { client } = await seeded();
+		const { riva } = await seeded();
 		const da = deferred<string>();
 		const db = deferred<string>();
-		const a = add({ run: () => da.promise }).run(client, 'A');
-		const b = add({ run: () => db.promise }).run(client, 'B');
-		expect(client.get(list).data).toEqual(['a', 'A', 'B']);
+		const a = add({ run: () => da.promise }).run(riva, 'A');
+		const b = add({ run: () => db.promise }).run(riva, 'B');
+		expect(riva.get(list).data).toEqual(['a', 'A', 'B']);
 		db.resolve('B');
 		await tick();
-		expect(client.get(list).data).toEqual(['a', 'A', 'B']);
+		expect(riva.get(list).data).toEqual(['a', 'A', 'B']);
 		da.reject(new RivaNetworkError());
 		await expect(a).rejects.toBeInstanceOf(RivaNetworkError);
 		await b;
 		// A's layer is gone at once; B's layer is replaced by its (absent) commit.
-		expect(client.get(list).data).toEqual(['a']);
+		expect(riva.get(list).data).toEqual(['a']);
 	});
 
 	test('A failing drops only its layer while B is still in flight', async () => {
-		const { client } = await seeded();
+		const { riva } = await seeded();
 		const da = deferred<string>();
 		const db = deferred<string>();
-		const a = add({ run: () => da.promise }).run(client, 'A');
-		const b = add({ run: () => db.promise }).run(client, 'B');
+		const a = add({ run: () => da.promise }).run(riva, 'A');
+		const b = add({ run: () => db.promise }).run(riva, 'B');
 		da.reject(new Error('no'));
 		await a.catch(() => {});
-		expect(client.get(list).data).toEqual(['a', 'B']);
+		expect(riva.get(list).data).toEqual(['a', 'B']);
 		db.resolve('B');
 		await b;
 	});
@@ -216,10 +216,10 @@ describe('ordering', () => {
 
 describe('settle', () => {
 	test('invalidates (both forms) marks stale and refetches observed entries', async () => {
-		const { client } = await seeded();
-		const off = client.subscribe(list, () => {});
-		await byId.ensure(client, { id: '1' });
-		const offOne = client.subscribe(byId, { id: '1' }, () => {});
+		const { riva } = await seeded();
+		const off = riva.subscribe(list, () => {});
+		await byId.ensure(riva, { id: '1' });
+		const offOne = riva.subscribe(byId, { id: '1' }, () => {});
 		await tick();
 		const before = fetches;
 		server = ['a', 'b'];
@@ -227,25 +227,25 @@ describe('settle', () => {
 			id: 'm',
 			run: async () => 'ok',
 			invalidates: [list],
-		}).run(client);
+		}).run(riva);
 		await tick();
 		expect(fetches).toBe(before + 1);
-		expect(client.get(list).data).toEqual(['a', 'b']);
+		expect(riva.get(list).data).toEqual(['a', 'b']);
 		server = ['c'];
 		await mutation<void, string>({
 			id: 'm',
 			run: async () => 'ok',
 			invalidates: (data) => [list, at(byId, { id: data })],
-		}).run(client);
+		}).run(riva);
 		await tick();
-		expect(client.get(list).data).toEqual(['c']);
+		expect(riva.get(list).data).toEqual(['c']);
 		off();
 		offOne();
 	});
 
 	test('invalidates after a failure does nothing', async () => {
-		const { client } = await seeded();
-		const off = client.subscribe(list, () => {});
+		const { riva } = await seeded();
+		const off = riva.subscribe(list, () => {});
 		const before = fetches;
 		await mutation<void, string>({
 			id: 'm',
@@ -257,7 +257,7 @@ describe('settle', () => {
 				throw new Error('never');
 			},
 		})
-			.run(client)
+			.run(riva)
 			.catch(() => {});
 		await tick();
 		expect(fetches).toBe(before);
@@ -265,7 +265,7 @@ describe('settle', () => {
 	});
 
 	test('updates writes the committed data with the committed value as prev', async () => {
-		const { client } = await seeded();
+		const { riva } = await seeded();
 		const d = deferred<string>();
 		const m = mutation<string, string>({
 			id: 'm',
@@ -274,15 +274,15 @@ describe('settle', () => {
 			updates: (tx, data) =>
 				tx.set(list, undefined, (p) => [...(p ?? []), data]),
 		});
-		const p = m.run(client, 'tmp');
+		const p = m.run(riva, 'tmp');
 		d.resolve('real');
 		await p;
-		expect(client.get(list).data).toEqual(['a', 'real']);
-		expect(client.get(list).updatedAt).toBeGreaterThan(0);
+		expect(riva.get(list).data).toEqual(['a', 'real']);
+		expect(riva.get(list).updatedAt).toBeGreaterThan(0);
 	});
 
 	test('a refused commit rolls back and rejects with RIVA_CACHE', async () => {
-		const { client } = await seeded();
+		const { riva } = await seeded();
 		const cache: CachePolicy<unknown> = {
 			write: (_c, d) => d,
 			read: (_c, s) => s,
@@ -298,14 +298,14 @@ describe('settle', () => {
 			optimistic: (v, tx) => tx.set(list, undefined, (p) => [...(p ?? []), v]),
 			invalidates: [list],
 		});
-		const p = m.run(client, 'b');
-		expect(client.get(list).data).toEqual(['a', 'b']);
+		const p = m.run(riva, 'b');
+		expect(riva.get(list).data).toEqual(['a', 'b']);
 		await expect(p).rejects.toMatchObject({ code: 'RIVA_CACHE' });
-		expect(client.get(list).data).toEqual(['a']);
+		expect(riva.get(list).data).toEqual(['a']);
 	});
 
 	test('an optimistic function that throws rejects and leaves no layer', async () => {
-		const { client } = await seeded();
+		const { riva } = await seeded();
 		const m = mutation<void, string>({
 			id: 'm',
 			run: async () => 'x',
@@ -314,14 +314,14 @@ describe('settle', () => {
 				throw new Error('boom');
 			},
 		});
-		await expect(m.run(client)).rejects.toThrow('boom');
-		expect(client.get(list).data).toEqual(['a']);
+		await expect(m.run(riva)).rejects.toThrow('boom');
+		expect(riva.get(list).data).toEqual(['a']);
 	});
 });
 
 describe('retry and abort', () => {
 	test('retries with the backoff helper, keeping the layer, then succeeds', async () => {
-		const { client, sched } = await seeded();
+		const { riva, sched } = await seeded();
 		let n = 0;
 		const m = add({
 			retry: 2,
@@ -330,10 +330,10 @@ describe('retry and abort', () => {
 				return v;
 			},
 		});
-		const p = m.run(client, 'b');
+		const p = m.run(riva, 'b');
 		await tick();
 		expect(n).toBe(1);
-		expect(client.get(list).data).toEqual(['a', 'b']);
+		expect(riva.get(list).data).toEqual(['a', 'b']);
 		sched.advance(100);
 		await tick();
 		sched.advance(100);
@@ -342,7 +342,7 @@ describe('retry and abort', () => {
 	});
 
 	test('rolls back after the retries are spent', async () => {
-		const { client, sched } = await seeded();
+		const { riva, sched } = await seeded();
 		let n = 0;
 		const p = add({
 			retry: 1,
@@ -350,16 +350,16 @@ describe('retry and abort', () => {
 				n++;
 				throw new RivaHttpError(503);
 			},
-		}).run(client, 'b');
+		}).run(riva, 'b');
 		await tick();
 		sched.advance(100);
 		await expect(p).rejects.toBeInstanceOf(RivaHttpError);
 		expect(n).toBe(2);
-		expect(client.get(list).data).toEqual(['a']);
+		expect(riva.get(list).data).toEqual(['a']);
 	});
 
 	test('a non-retryable error is not retried; the default is no retry', async () => {
-		const { client } = await seeded();
+		const { riva } = await seeded();
 		let n = 0;
 		await add({
 			retry: 5,
@@ -368,7 +368,7 @@ describe('retry and abort', () => {
 				throw new RivaHttpError(400);
 			},
 		})
-			.run(client, 'b')
+			.run(riva, 'b')
 			.catch(() => {});
 		await add({
 			run: async () => {
@@ -376,29 +376,25 @@ describe('retry and abort', () => {
 				throw new RivaNetworkError();
 			},
 		})
-			.run(client, 'b')
+			.run(riva, 'b')
 			.catch(() => {});
 		expect(n).toBe(2);
 	});
 
 	test('an abort rejects with RivaAbortError and rolls back', async () => {
-		const { client } = await seeded();
+		const { riva } = await seeded();
 		const ctl = new AbortController();
-		const p = add({ run: () => new Promise<string>(() => {}) }).run(
-			client,
-			'b',
-			{
-				signal: ctl.signal,
-			},
-		);
-		expect(client.get(list).data).toEqual(['a', 'b']);
+		const p = add({ run: () => new Promise<string>(() => {}) }).run(riva, 'b', {
+			signal: ctl.signal,
+		});
+		expect(riva.get(list).data).toEqual(['a', 'b']);
 		ctl.abort();
 		await expect(p).rejects.toBeInstanceOf(RivaAbortError);
-		expect(client.get(list).data).toEqual(['a']);
+		expect(riva.get(list).data).toEqual(['a']);
 	});
 
 	test('an already aborted signal rejects before anything runs', async () => {
-		const { client } = await seeded();
+		const { riva } = await seeded();
 		const ctl = new AbortController();
 		ctl.abort();
 		let ran = false;
@@ -408,19 +404,19 @@ describe('retry and abort', () => {
 					ran = true;
 					return 'x';
 				},
-			}).run(client, 'b', {
+			}).run(riva, 'b', {
 				signal: ctl.signal,
 			}),
 		).rejects.toBeInstanceOf(RivaAbortError);
 		expect(ran).toBe(false);
-		expect(client.get(list).data).toEqual(['a']);
+		expect(riva.get(list).data).toEqual(['a']);
 	});
 });
 
-describe('clients and the server', () => {
-	test('two clients never share layers or the order', async () => {
-		const c1 = createRivaClient({ scheduler: fakeScheduler() });
-		const c2 = createRivaClient({ scheduler: fakeScheduler() });
+describe('riva instances and the server', () => {
+	test('two riva instances never share layers or the order', async () => {
+		const c1 = createRiva({ scheduler: fakeScheduler() });
+		const c2 = createRiva({ scheduler: fakeScheduler() });
 		server = ['a'];
 		await list.ensure(c1);
 		await list.ensure(c2);
@@ -437,24 +433,24 @@ describe('clients and the server', () => {
 	test('runs on the server with no timer armed', async () => {
 		expect('document' in globalThis).toBe(false);
 		const sched = fakeScheduler();
-		const client = createRivaClient({ scheduler: sched });
+		const riva = createRiva({ scheduler: sched });
 		server = ['a'];
-		await list.ensure(client);
-		await add({}).run(client, 'b');
+		await list.ensure(riva);
+		await add({}).run(riva, 'b');
 		await add({ run: async () => Promise.reject(new Error('x')) })
-			.run(client, 'c')
+			.run(riva, 'c')
 			.catch(() => {});
 		expect(sched.count()).toBe(0);
-		expect(client.get(list).data).toEqual(['a']);
+		expect(riva.get(list).data).toEqual(['a']);
 	});
 });
 
 describe('review fixes', () => {
 	test('an abort while held behind an earlier mutation drops the layer and never commits', async () => {
-		const { client } = await seeded();
+		const { riva } = await seeded();
 		const da = deferred<string>();
 		const order: string[] = [];
-		const a = add({ run: () => da.promise }).run(client, 'A');
+		const a = add({ run: () => da.promise }).run(riva, 'A');
 		const ctl = new AbortController();
 		const db = deferred<string>();
 		const b = mutation<string, string>({
@@ -462,23 +458,23 @@ describe('review fixes', () => {
 			run: () => db.promise,
 			optimistic: (v, tx) => tx.set(list, undefined, (p) => [...(p ?? []), v]),
 			updates: () => void order.push('B'),
-		}).run(client, 'B', { signal: ctl.signal });
+		}).run(riva, 'B', { signal: ctl.signal });
 		db.resolve('B');
 		await tick();
-		expect(client.get(list).data).toEqual(['a', 'A', 'B']);
+		expect(riva.get(list).data).toEqual(['a', 'A', 'B']);
 		ctl.abort();
 		await expect(b).rejects.toBeInstanceOf(RivaAbortError);
-		expect(client.get(list).data).toEqual(['a', 'A']);
+		expect(riva.get(list).data).toEqual(['a', 'A']);
 		da.resolve('A');
 		await a;
 		await tick();
 		expect(order).toEqual([]);
 		// later mutations are not blocked by the aborted one
-		expect(await add({}).run(client, 'C')).toBe('C');
+		expect(await add({}).run(riva, 'C')).toBe('C');
 	});
 
 	test('a throwing invalidates function rolls back and rejects', async () => {
-		const { client } = await seeded();
+		const { riva } = await seeded();
 		const m = mutation<string, string>({
 			id: 'm',
 			run: async (v) => v,
@@ -487,13 +483,13 @@ describe('review fixes', () => {
 				throw new Error('inv');
 			},
 		});
-		await expect(m.run(client, 'b')).rejects.toThrow('inv');
-		expect(client.get(list).data).toEqual(['a']);
+		await expect(m.run(riva, 'b')).rejects.toThrow('inv');
+		expect(riva.get(list).data).toEqual(['a']);
 	});
 
 	test('a throwing updates keeps the server commit, drops the layers, invalidates, then rejects', async () => {
-		const { client } = await seeded();
-		const off = client.subscribe(list, () => {});
+		const { riva } = await seeded();
+		const off = riva.subscribe(list, () => {});
 		const before = fetches;
 		server = ['a', 'srv'];
 		const m = mutation<string, string>({
@@ -505,10 +501,10 @@ describe('review fixes', () => {
 			},
 			invalidates: [list],
 		});
-		await expect(m.run(client, 'b')).rejects.toThrow('upd');
+		await expect(m.run(riva, 'b')).rejects.toThrow('upd');
 		await tick();
 		expect(fetches).toBe(before + 1);
-		expect(client.get(list).data).toEqual(['a', 'srv']);
+		expect(riva.get(list).data).toEqual(['a', 'srv']);
 		off();
 	});
 });

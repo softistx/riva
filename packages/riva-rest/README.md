@@ -1,6 +1,6 @@
 # @softistx/riva-rest
 
-REST for [riva](https://github.com/softistx/riva/blob/develop/packages/riva/README.md): `query` and `mutation` definitions typed from an OpenAPI spec through [`@softistx/openapi-httpyz`](https://github.com/softistx/nxgt-http/tree/develop/packages/openapi-httpyz) (path parameters, query, body and reply, never annotated), a free-fetcher mode for APIs with no schema, a per-client transport over [`@softistx/httpyz`](https://github.com/softistx/nxgt-http/tree/develop/packages/httpyz), and httpyz's errors mapped to riva's.
+REST for [riva](https://github.com/softistx/riva/blob/develop/packages/riva/README.md): `query` and `mutation` definitions typed from an OpenAPI spec through [`@softistx/openapi-httpyz`](https://github.com/softistx/nxgt-http/tree/develop/packages/openapi-httpyz) (path parameters, query, body and reply, never annotated), a free-fetcher mode for APIs with no schema, a per-riva transport over [`@softistx/httpyz`](https://github.com/softistx/nxgt-http/tree/develop/packages/httpyz), and httpyz's errors mapped to riva's.
 
 Guides and fixes: [docs](./docs/README.md). Work in progress, see the [spec](https://github.com/softistx/riva/blob/develop/docs/spec.md).
 
@@ -13,7 +13,7 @@ Peers: `@softistx/riva` and `@softistx/httpyz`. `@softistx/openapi-httpyz` is op
 
 ## Provide the transport
 
-Definitions are stateless; the transport lives on the `RivaClient` that runs them. Give each client one when you create it (on the server, one per request).
+Definitions are stateless; the transport lives on the `Riva` that runs them. Give each riva one when you create it (on the server, one per request).
 
 The OpenAPI mode reads the operations the spec describes, which `@softistx/openapi-codegen` generates:
 
@@ -26,18 +26,18 @@ Then, in `api.ts`:
 ```ts
 import { createHttpClient } from '@softistx/httpyz';
 import { createOpenApiClient } from '@softistx/openapi-httpyz';
-import { createRivaClient } from '@softistx/riva';
+import { createRiva } from '@softistx/riva';
 import { httpyzTransport, provideRest } from '@softistx/riva-rest';
 import { operations } from './generated/openapi/operations'; // from `nxgt-openapi generate`
 
 const http = createHttpClient({ baseUrl: 'https://api.example.com', timeout: 10_000 });
 export const api = createOpenApiClient(http, operations);
 
-export const client = createRivaClient();
-provideRest(client, httpyzTransport(http, api));
+export const riva = createRiva();
+provideRest(riva, httpyzTransport(http, api));
 ```
 
-`httpyzTransport(http, api?)`: pass `api` for the OpenAPI mode; without it only free fetchers run. A read on a client with no transport throws `RivaScopeError`. [Guide](./docs/guide/transport.md).
+`httpyzTransport(http, api?)`: pass `api` for the OpenAPI mode; without it only free fetchers run. A read on a riva with no transport throws `RivaScopeError`. [Guide](./docs/guide/transport.md).
 
 ## OpenAPI mode
 
@@ -51,9 +51,9 @@ export const invoice = query(api, 'get /invoices/{id}', { staleTime: '30s' });
 export const invoices = query(api, 'get /invoices');
 export const createInvoice = mutation(api, 'post /invoices', { invalidates: [invoices] });
 
-await invoice.ensure(client, { param: { id: '7' } }); // Invoice
-await createInvoice.run(client, { json: { number: 'F-8', total: 120 } });
-client.get(invoices); // an operation whose input is all optional takes no variables
+await invoice.ensure(riva, { param: { id: '7' } }); // Invoice
+await createInvoice.run(riva, { json: { number: 'F-8', total: 120 } });
+riva.get(invoices); // an operation whose input is all optional takes no variables
 ```
 
 The id is the route; any core option works (`staleTime`, `gcTime`, `retry`, `refetchEvery`, `cache`, and for a mutation `optimistic`, `updates`, `invalidates`). `query()` takes every route but `put`, `patch` and `delete`, `mutation()` every one but `get`, `head` and `options`. [Guide](./docs/guide/openapi.md).
@@ -102,9 +102,9 @@ The transport and the free fetcher throw riva's errors, defined once in the core
 
 ## BFF mode
 
-Run the REST calls on the server and keep the browser away from the API: the browser posts `{ id, variables }` to a `dataRoute` (`@softistx/riva-react-router`'s `/_data`), the server runs the operation through the request client's transport (with its session and base URL) and sends the data back.
+Run the REST calls on the server and keep the browser away from the API: the browser posts `{ id, variables }` to a `dataRoute` (`@softistx/riva-react-router`'s `/_data`), the server runs the operation through the request riva's transport (with its session and base URL) and sends the data back.
 
-Server: `rivaMiddleware({ setup })` gives each request client its transport, and `dataRoute({ sources: [operations(api)] })` serves the spec's operations. Browser: the same definitions with `provideRest(client, bffTransport())` in the router provider's `setup`. Ids are `rest:<operationId>`; free fetchers are server-only. [Guide](./docs/guide/bff.md).
+Server: `rivaMiddleware({ setup })` gives each request riva its transport, and `dataRoute({ sources: [operations(api)] })` serves the spec's operations. Browser: the same definitions with `provideRest(riva, bffTransport())` in the router provider's `setup`. Ids are `rest:<operationId>`; free fetchers are server-only. [Guide](./docs/guide/bff.md).
 
 ```tsx
 import { RivaRouterProvider } from '@softistx/riva-react-router';
@@ -114,7 +114,7 @@ import { Outlet } from 'react-router';
 
 export default function Root() {
 	return (
-		<RivaRouterProvider setup={(client) => provideRest(client, bffTransport())}>
+		<RivaRouterProvider setup={(riva) => provideRest(riva, bffTransport())}>
 			<Outlet />
 		</RivaRouterProvider>
 	);
@@ -130,7 +130,7 @@ import { query, mutation } from '@softistx/riva-rest';
 import { restEntities } from '@softistx/riva-rest/entities';
 import { api } from './api';
 
-// One policy for the client's queries and mutations.
+// One policy for the riva's queries and mutations.
 export const cache = restEntities({
 	Invoice: { is: (o) => 'number' in o, key: (o) => o['id'] as string },
 });

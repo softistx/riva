@@ -4,11 +4,11 @@ Entry points: `@softistx/riva-rest/server` (server) and `@softistx/riva-rest/bff
 
 ## What it is for
 
-Run the REST calls on the server and keep the browser away from the API: the browser posts `{ id, variables }` to a `dataRoute` (`@softistx/riva-react-router`'s `/_data`), the server runs the operation through the request client's transport (with its session and base URL) and sends the data back.
+Run the REST calls on the server and keep the browser away from the API: the browser posts `{ id, variables }` to a `dataRoute` (`@softistx/riva-react-router`'s `/_data`), the server runs the operation through the request riva's transport (with its session and base URL) and sends the data back.
 
 ## Server
 
-The middleware gives each request client its transport, and the `/_data` route serves the spec's operations.
+The middleware gives each request riva its transport, and the `/_data` route serves the spec's operations.
 
 ```ts
 // app/api.ts: shared by the definitions and the route
@@ -21,7 +21,7 @@ export const api = createOpenApiClient(createHttpClient({ baseUrl: BASE_URL }), 
 ```
 
 ```ts
-// app/root.tsx: the request client's transport
+// app/root.tsx: the request riva's transport
 import { createHttpClient } from '@softistx/httpyz';
 import { createOpenApiClient } from '@softistx/openapi-httpyz';
 import { rivaMiddleware } from '@softistx/riva-react-router/server';
@@ -32,12 +32,12 @@ import { operations } from './generated/openapi/operations';
 export const middleware = [
 	rivaMiddleware({
 		// the caller port of the request: here its session cookie goes to the API
-		setup: (client, { request }) => {
+		setup: (riva, { request }) => {
 			const http = createHttpClient({
 				baseUrl: BASE_URL,
 				headers: { cookie: request.headers.get('cookie') ?? '' },
 			});
-			provideRest(client, httpyzTransport(http, createOpenApiClient(http, operations)));
+			provideRest(riva, httpyzTransport(http, createOpenApiClient(http, operations)));
 		},
 	}),
 ];
@@ -66,7 +66,7 @@ import { Outlet } from 'react-router';
 
 export default function Root() {
 	return (
-		<RivaRouterProvider setup={(client) => provideRest(client, bffTransport())}>
+		<RivaRouterProvider setup={(riva) => provideRest(riva, bffTransport())}>
 			<Outlet />
 		</RivaRouterProvider>
 	);

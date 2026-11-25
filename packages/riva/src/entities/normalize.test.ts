@@ -1,10 +1,10 @@
 import { describe, expect, test } from 'bun:test';
-import { createRivaClient } from '../client';
+import { createRiva } from '../client';
 import { RivaError } from '../errors';
 import { normalize, normalizeAt } from './normalize';
 import { EntityStore } from './store';
 
-const store = () => new EntityStore(createRivaClient());
+const store = () => new EntityStore(createRiva());
 const patient = { __typename: 'Patient', id: '1', name: 'Ann' };
 
 describe('normalize', () => {

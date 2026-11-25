@@ -1,4 +1,4 @@
-import { type RivaClient, RivaScopeError } from '@softistx/riva';
+import { type Riva, RivaScopeError } from '@softistx/riva';
 import {
 	createContext,
 	createElement,
@@ -6,24 +6,39 @@ import {
 	useContext,
 } from 'react';
 
-const RivaContext = createContext<RivaClient | undefined>(undefined);
+const RivaContext = createContext<Riva | undefined>(undefined);
 
-export interface RivaProviderProps {
-	/** The client of this tree: one per request on the server, one in the browser. */
-	client: RivaClient;
+interface ProviderBase {
 	children?: ReactNode;
 }
 
-/** Puts a `RivaClient` in scope for the hooks below it. Hold one provider (and one client) per server request. */
-export const RivaProvider = ({ client, children }: RivaProviderProps) =>
-	createElement(RivaContext, { value: client }, children);
+export type RivaProviderProps = ProviderBase &
+	(
+		| {
+				/** The riva of this tree: one per request on the server, one in the browser. */
+				riva: Riva;
+				client?: undefined;
+		  }
+		| {
+				riva?: undefined;
+				/** @deprecated Use `riva`. Removed in the next minor. */
+				client: Riva;
+		  }
+	);
 
-/** The client of the nearest `RivaProvider`; throws a `RivaScopeError` when there is none. */
-export function useClient(): RivaClient {
-	const client = useContext(RivaContext);
-	if (!client)
+/** Puts a `Riva` in scope for the hooks below it. Hold one provider (and one riva) per server request. */
+export const RivaProvider = ({ riva, client, children }: RivaProviderProps) =>
+	createElement(RivaContext, { value: riva ?? client }, children);
+
+/** The riva of the nearest `RivaProvider`; throws a `RivaScopeError` when there is none. */
+export function useRiva(): Riva {
+	const riva = useContext(RivaContext);
+	if (!riva)
 		throw new RivaScopeError(
-			'No RivaClient in scope: wrap the tree in <RivaProvider client={client}>. On the server, create one client per request.',
+			'No Riva in scope: wrap the tree in <RivaProvider riva={riva}>. On the server, create one per request.',
 		);
-	return client;
+	return riva;
 }
+
+/** @deprecated Use `useRiva`. Removed in the next minor. */
+export const useClient = useRiva;

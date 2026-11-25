@@ -2,34 +2,34 @@
 
 Each entry is headed by the message you will see.
 
-## No RivaClient in scope
+## No Riva in scope
 
 Code: `RIVA_SCOPE` (`RivaScopeError`).
 
-**When:** `signal.get()`, `.set()`, `.subscribe()` or `computed.get()` ran outside any client, on the server or in a browser with no default client.
+**When:** `signal.get()`, `.set()`, `.subscribe()` or `computed.get()` ran outside any riva, on the server or in a browser with no default riva.
 
-**Why:** definitions are stateless and hold no value; values live in a `RivaClient`. A module-level client on the server would leak between requests, so none is assumed.
+**Why:** definitions are stateless and hold no value; values live in a `Riva`. A module-level riva on the server would leak between requests, so none is assumed.
 
-**Fix:** read through the client, or run the code inside it.
+**Fix:** read through the riva, or run the code inside it.
 
 ```ts
-const client = createRivaClient(); // one per request on the server
-client.get(count);
-client.run(() => count.get());
+const riva = createRiva(); // one per request on the server
+riva.get(count);
+riva.run(() => count.get());
 ```
 
-## setDefaultClient is browser-only
+## setDefaultRiva is browser-only
 
 Code: `RIVA_SCOPE` (`RivaScopeError`).
 
-**When:** `setDefaultClient(client)` ran where there is no `document`, that is on the server.
+**When:** `setDefaultRiva(riva)` ran where there is no `document`, that is on the server.
 
-**Why:** a default client is module-level state; shared between requests it would mix one user's values into another's.
+**Why:** a default riva is module-level state; shared between requests it would mix one user's values into another's.
 
-**Fix:** call it only in browser code. On the server, use the per-request client with `client.run(() => …)`. `setDefaultClient(undefined)` clears the default in a browser.
+**Fix:** call it only in browser code. On the server, use the per-request riva with `riva.run(() => …)`. `setDefaultRiva(undefined)` clears the default in a browser.
 
 ```ts
-if (typeof document !== 'undefined') setDefaultClient(createRivaClient());
+if (typeof document !== 'undefined') setDefaultRiva(createRiva());
 ```
 
 ## Cycle detected
@@ -57,9 +57,9 @@ Code: `RIVA_LOOP`.
 **Fix:** make the write converge (guard it with a condition), write to a different signal, or read the source with `untracked`. Name the node with `{ name }` to find it.
 
 ```ts
-client.effect(() => {
-	const n = client.get(count);
-	if (n < 5) client.set(count, n + 1); // converges
+riva.effect(() => {
+	const n = riva.get(count);
+	if (n < 5) riva.set(count, n + 1); // converges
 });
 ```
 
@@ -69,7 +69,7 @@ Code: `RIVA_STORE`. Thrown by `@softistx/riva/store` and `useStore`. Every messa
 
 ### Store "<name>": "<key>" is written outside an action. Write it in an action of the store.
 
-A state key was written with `Store.key.set(…)` or `client.set(Store.key, …)`, in a component, a listener or a test. Only an action writes. Write it in an action of the store (`s.key = …`), and call the action.
+A state key was written with `Store.key.set(…)` or `riva.set(Store.key, …)`, in a component, a listener or a test. Only an action writes. Write it in an action of the store (`s.key = …`), and call the action.
 
 ```ts
 const Counter = store({
@@ -94,15 +94,15 @@ A computed assigned on its `s`. A computed only reads; move the write to an acti
 
 ### Store "<name>": "<key>" is read-only here; write it in an action.
 
-A write on the view `useStore(Store)` or `Store.bind(client)[0]` returns. Write through the actions (`a.add(…)`), never on `s`.
+A write on the view `useStore(Store)` or `Store.bind(riva)[0]` returns. Write through the actions (`a.add(…)`), never on `s`.
 
 ### Store "<name>": the key "<key>" is taken (a state, computed or action key, or one of kind, name, reset, bind, then).
 
 A state, computed or action key repeats, or is one of `kind`, `name`, `reset`, `bind`, `then`. Rename it. The reserved keys are also a type error.
 
-### Store "<name>": two stores are named "<name>" on this client: give each store a unique name.
+### Store "<name>": two stores are named "<name>" on this riva: give each store a unique name.
 
-Two store definitions with one name were used on one client, on the server. Give each a unique `name`. In a browser the newer definition takes over instead (a hot-reloaded module), so this error does not happen there. A replaced definition that a component still holds (the old module, read again after the new one) resolves to the current instance: it neither takes the name back nor resets the state.
+Two store definitions with one name were used on one riva, on the server. Give each a unique `name`. In a browser the newer definition takes over instead (a hot-reloaded module), so this error does not happen there. A replaced definition that a component still holds (the old module, read again after the new one) resolves to the current instance: it neither takes the name back nor resets the state.
 
 The browser test is `'document' in globalThis`. A server or a test run that defines `document` (happy-dom, jsdom) is taken for a browser, so a second store with the same name takes over there instead of throwing. The fix is one definition per name, or a different name for each; remove the DOM globals from server code.
 
@@ -120,7 +120,7 @@ inc(s, by?: number, ctx?: StoreContext) { s.n += by ?? 1; }
 
 ### Reads after an `await` fail with `RIVA_SCOPE`
 
-`BookStore.total.get()` inside an async action, after the first `await`, has no ambient client. Read `s.total` instead: `s` stays bound to the action's client.
+`BookStore.total.get()` inside an async action, after the first `await`, has no ambient riva. Read `s.total` instead: `s` stays bound to the action's riva.
 
 ## Invalid duration
 
@@ -147,14 +147,14 @@ Code: `RIVA_KEY` (`RivaError`).
 **Fix:** pass plain data; convert before the call (`id.toString()` for a bigint, an ISO string for an odd date), and keep callbacks out of the variables.
 
 ```ts
-user.ensure(client, { id: String(id) });
+user.ensure(riva, { id: String(id) });
 ```
 
 ## Two definitions share the id "<id>": define each query once (a module-level const) and import it, or pass a distinct id.
 
 Code: `RIVA_KEY` (`RivaError`).
 
-**When:** two `query` definitions with the same `id` are read on one client on the server. In a browser a hot reload takes over: the newest definition replaces the old one under that id and nothing is thrown. A replaced definition that comes back (the old one read again after the new one) throws.
+**When:** two `query` definitions with the same `id` are read on one riva on the server. In a browser a hot reload takes over: the newest definition replaces the old one under that id and nothing is thrown. A replaced definition that comes back (the old one read again after the new one) throws.
 
 **Why:** the cache key is the definition id plus the variables, so two definitions with one id would share one entry and the second would silently run the first's `fetch`.
 
@@ -186,15 +186,15 @@ Code: `RIVA_CACHE` (`RivaError`).
 fetch: async () => (await res.json()) as Plain, // not a Map, not a model instance
 ```
 
-## This client already uses other entity identity rules
+## This riva already uses other entity identity rules
 
 Code: `RIVA_CACHE` (`RivaError`).
 
-**When:** two `entities()` policies with different `keys` or `identify` (compared by reference) meet on one client, or a policy with such rules is first used after `readEntity` or `writeEntity` filled the client's store.
+**When:** two `entities()` policies with different `keys` or `identify` (compared by reference) meet on one riva, or a policy with such rules is first used after `readEntity` or `writeEntity` filled the riva's store.
 
-**Why:** a client has one entity store with one identity rule, so the same object cannot be two entities.
+**Why:** a riva has one entity store with one identity rule, so the same object cannot be two entities.
 
-**Fix:** share one policy, or the same options objects, between the client's queries; create it before any `readEntity`/`writeEntity`.
+**Fix:** share one policy, or the same options objects, between the riva's queries; create it before any `readEntity`/`writeEntity`.
 
 ```ts
 const cache = entities({ keys }); // one, module level
@@ -230,7 +230,7 @@ fetch: async () => (await res.json()).items.map((i) => ({ ...i, total: Number(i.
 
 Code: `RIVA_SSR` (`RivaError`).
 
-**When:** `dehydrate` finds two signals with the same `name` that the client has used.
+**When:** `dehydrate` finds two signals with the same `name` that the riva has used.
 
 **Why:** signals travel by name, so a snapshot could not tell which one a value belongs to.
 
@@ -257,7 +257,7 @@ Code: `RIVA_SSR` (`RivaError`).
 ```ts
 import type { Snapshot } from '@softistx/riva/ssr';
 
-hydrate(client, JSON.parse(payload) as Snapshot);
+hydrate(riva, JSON.parse(payload) as Snapshot);
 ```
 
 ## Data refetches right after hydration
@@ -276,7 +276,7 @@ const invoices = query({ id: 'invoices', staleTime: '30s', fetch });
 
 Code: `RIVA_ABORT` (`RivaAbortError`).
 
-**When:** `ensure` rejects with it after the `signal` you passed aborted, or after `cancel` aborted the fetch you were waiting on. A mutation's `run(client, vars, { signal })` rejects with it too, and rolls back its optimistic layers, including while it waits for an earlier mutation to settle (it never commits afterwards).
+**When:** `ensure` rejects with it after the `signal` you passed aborted, or after `cancel` aborted the fetch you were waiting on. A mutation's `run(riva, vars, { signal })` rejects with it too, and rolls back its optimistic layers, including while it waits for an earlier mutation to settle (it never commits afterwards).
 
 **Why:** abort is a decision, not a failure: it is never retried and never stored as the query's error; the entry returns to its previous state.
 
@@ -284,7 +284,7 @@ Code: `RIVA_ABORT` (`RivaAbortError`).
 
 ```ts
 try {
-	await user.ensure(client, { id }, { signal });
+	await user.ensure(riva, { id }, { signal });
 } catch (e) {
 	if (!(e instanceof RivaAbortError)) throw e;
 }

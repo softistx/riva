@@ -1,6 +1,6 @@
-import type { Query, RivaClient } from '@softistx/riva';
+import type { Query, Riva } from '@softistx/riva';
 
-// Held on the client's slots: a request's pending fetches die with its client.
+// Held on the riva's slots: a request's pending fetches die with its riva.
 const SLOT = {};
 
 /**
@@ -9,23 +9,23 @@ const SLOT = {};
  * failure is swallowed here; the next render reads it from the state.
  */
 export function suspend(
-	client: RivaClient,
+	riva: Riva,
 	// biome-ignore lint/suspicious/noExplicitAny: any query definition
 	def: Query<any, any, any>,
 	key: string,
 	vars: unknown,
 ): Promise<void> {
-	let map = client.slots.get(SLOT) as Map<string, Promise<void>> | undefined;
+	let map = riva.slots.get(SLOT) as Map<string, Promise<void>> | undefined;
 	if (!map) {
 		map = new Map();
-		client.slots.set(SLOT, map);
+		riva.slots.set(SLOT, map);
 	}
 	let promise = map.get(key);
 	if (!promise) {
 		const entries = map;
 		const done = () => void entries.delete(key);
-		promise = (def.ensure as (c: RivaClient, v: unknown) => Promise<unknown>)(
-			client,
+		promise = (def.ensure as (c: Riva, v: unknown) => Promise<unknown>)(
+			riva,
 			vars,
 		).then(done, done);
 		entries.set(key, promise);

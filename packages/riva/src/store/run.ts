@@ -1,4 +1,4 @@
-import type { RivaClient } from '../client';
+import type { Riva } from '../client';
 import type { Readable } from '../computed';
 import type { Signal } from '../signal';
 import { freeze, put, type StoreDef } from './def';
@@ -14,16 +14,11 @@ interface Phase {
 }
 
 /** The `s` of one run: writes state through the guard, holds the notifications past an `await`. */
-function writer(
-	def: StoreDef,
-	client: RivaClient,
-	st: Phase,
-	release: () => void,
-) {
+function writer(def: StoreDef, riva: Riva, st: Phase, release: () => void) {
 	const { name, sigs, members } = def;
 	return view(
 		members,
-		(k) => client.get(members[k] as Readable<unknown>),
+		(k) => riva.get(members[k] as Readable<unknown>),
 		(k, v) => {
 			if (!st.live)
 				refuse(`Store "${name}": "${k}" is written after its action settled.`);
@@ -34,16 +29,16 @@ function writer(
 			// Past an `await`, the writes of one segment make one notification.
 			if (!st.sync && !st.held) {
 				st.held = true;
-				client.graph.depth++;
+				riva.graph.depth++;
 				queueMicrotask(release);
 			}
-			put(client, sigs[k] as Signal<unknown>, freeze(v));
+			put(riva, sigs[k] as Signal<unknown>, freeze(v));
 		},
 	);
 }
 
 /**
- * Runs one action on a client: `(s, ...args, ctx)` inside the client's scope,
+ * Runs one action on a riva: `(s, ...args, ctx)` inside the riva's scope,
  * one batch, untracked. `s` writes state until the action settles, then is
  * revoked (reads keep working). After an `await`, the writes of one
  * synchronous segment make one notification, flushed in a microtask; a
@@ -51,28 +46,28 @@ function writer(
  */
 export function run(
 	def: StoreDef,
-	client: RivaClient,
+	riva: Riva,
 	// biome-ignore lint/suspicious/noExplicitAny: any state and computed shape
 	fn: Action<any, any>,
 	args: unknown[],
 ): unknown {
 	const st: Phase = { live: true, sync: true, held: false, failure: undefined };
-	const g = client.graph;
+	const g = riva.graph;
 	const release = () => {
 		if (!st.held) return;
 		st.held = false;
 		g.depth--;
 		try {
-			client.batch(() => {});
+			riva.batch(() => {});
 		} catch (error) {
 			st.failure ??= { error };
 		}
 	};
-	const s = writer(def, client, st, release);
+	const s = writer(def, riva, st, release);
 	const ctx: StoreContext = {
-		client,
-		fetch: (q, ...a) => (q.ensure as (...x: unknown[]) => never)(client, ...a),
-		mutate: (m, ...a) => (m.run as (...x: unknown[]) => never)(client, ...a),
+		riva,
+		fetch: (q, ...a) => (q.ensure as (...x: unknown[]) => never)(riva, ...a),
+		mutate: (m, ...a) => (m.run as (...x: unknown[]) => never)(riva, ...a),
 	};
 	// The context goes after the declared arguments: defaults before it shift it.
 	const given = args.slice();
@@ -83,8 +78,8 @@ export function run(
 	};
 	let result: unknown;
 	try {
-		result = client.run(() =>
-			client.batch(() => client.untracked(() => fn(s, ...given, ctx))),
+		result = riva.run(() =>
+			riva.batch(() => riva.untracked(() => fn(s, ...given, ctx))),
 		);
 	} catch (e) {
 		settle();

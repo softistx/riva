@@ -1,9 +1,5 @@
 import { expect, expectTypeOf, test } from 'bun:test';
-import {
-	createRivaClient,
-	RivaRequestError,
-	RivaScopeError,
-} from '@softistx/riva';
+import { createRiva, RivaRequestError, RivaScopeError } from '@softistx/riva';
 import { routeOf } from '../../test/fixtures';
 import { query } from '../query';
 import { provideRest, type RestTransport } from '../transport';
@@ -94,9 +90,9 @@ test('http throws a RivaScopeError naming server-only use, and a free fetcher re
 		id: 'free',
 		fetch: async (_v: undefined, { http }) => (await http.get('/x')).data,
 	});
-	const client = createRivaClient();
-	provideRest(client, t);
-	await expect(free.ensure(client)).rejects.toBeInstanceOf(RivaScopeError);
+	const riva = createRiva();
+	provideRest(riva, t);
+	await expect(free.ensure(riva)).rejects.toBeInstanceOf(RivaScopeError);
 });
 
 test('types: a RestTransport taking the shared options', () => {

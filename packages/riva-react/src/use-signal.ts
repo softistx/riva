@@ -1,15 +1,15 @@
 import type { Readable, Signal } from '@softistx/riva';
 import { useCallback, useSyncExternalStore } from 'react';
-import { useClient } from './context';
+import { useRiva } from './context';
 
 /** The value of a signal or computed, re-rendering when it changes. */
 export function useValue<T>(def: Readable<T>): T {
-	const client = useClient();
+	const riva = useRiva();
 	const subscribe = useCallback(
-		(notify: () => void) => client.subscribe(def, notify),
-		[client, def],
+		(notify: () => void) => riva.subscribe(def, notify),
+		[riva, def],
 	);
-	const read = () => client.get(def);
+	const read = () => riva.get(def);
 	return useSyncExternalStore(subscribe, read, read);
 }
 
@@ -17,11 +17,11 @@ export function useValue<T>(def: Readable<T>): T {
 export function useSignal<T>(
 	def: Signal<T>,
 ): [value: T, set: (value: T | ((prev: T) => T)) => void] {
-	const client = useClient();
+	const riva = useRiva();
 	const value = useValue(def);
 	const set = useCallback(
-		(next: T | ((prev: T) => T)) => client.set(def, next),
-		[client, def],
+		(next: T | ((prev: T) => T)) => riva.set(def, next),
+		[riva, def],
 	);
 	return [value, set];
 }

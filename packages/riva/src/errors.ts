@@ -8,7 +8,7 @@ export class RivaError extends Error {
 	}
 }
 
-/** A value was read with no `RivaClient` in scope. */
+/** A value was read with no `Riva` in scope. */
 export class RivaScopeError extends RivaError {
 	constructor(message: string) {
 		super('RIVA_SCOPE', message);

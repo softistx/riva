@@ -1,17 +1,17 @@
 # Server rendering
 
-Render each request under its own `RivaProvider` with its own client; no hook holds module-level state, so nothing leaks between requests.
+Render each request under its own `RivaProvider` with its own riva; no hook holds module-level state, so nothing leaks between requests.
 
 ```tsx
-import { createRivaClient } from '@softistx/riva';
+import { createRiva } from '@softistx/riva';
 import { RivaProvider } from '@softistx/riva-react';
 import { renderToReadableStream } from 'react-dom/server';
 
 export async function handle(school: string): Promise<Response> {
-	const client = createRivaClient(); // one per request
-	await patients.ensure(client, { school }); // so the first render has data
+	const riva = createRiva(); // one per request
+	await patients.ensure(riva, { school }); // so the first render has data
 	const stream = await renderToReadableStream(
-		<RivaProvider client={client}>
+		<RivaProvider riva={riva}>
 			<PatientList school={school} />
 		</RivaProvider>,
 	);

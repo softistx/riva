@@ -1,11 +1,11 @@
 import { describe, expect, test } from 'bun:test';
-import { createRivaClient } from '../client';
+import { createRiva } from '../client';
 import { computed } from '../computed';
 import { EntityStore } from './store';
 
 const make = () => {
-	const client = createRivaClient();
-	return { client, store: new EntityStore(client) };
+	const riva = createRiva();
+	return { riva, store: new EntityStore(riva) };
 };
 
 describe('EntityStore (ported from graphql-client store.spec, without selections)', () => {
@@ -29,15 +29,15 @@ describe('EntityStore (ported from graphql-client store.spec, without selections
 	});
 
 	test("a merge notifies only that entity's readers, once", () => {
-		const { client, store } = make();
+		const { riva, store } = make();
 		store.merge('Book:1', { title: 'A' });
 		store.merge('Book:2', { title: 'B' });
 		const seen: string[] = [];
-		const one = computed(() => client.get(store.signalOf('Book:1')));
-		const two = computed(() => client.get(store.signalOf('Book:2')));
-		client.subscribe(one, () => seen.push('1'));
-		client.subscribe(two, () => seen.push('2'));
-		client.batch(() => {
+		const one = computed(() => riva.get(store.signalOf('Book:1')));
+		const two = computed(() => riva.get(store.signalOf('Book:2')));
+		riva.subscribe(one, () => seen.push('1'));
+		riva.subscribe(two, () => seen.push('2'));
+		riva.batch(() => {
 			store.merge('Book:1', { title: 'A2' });
 			store.merge('Book:1', { pages: 3 });
 		});
@@ -97,10 +97,10 @@ describe('EntityStore (ported from graphql-client store.spec, without selections
 	});
 
 	test('an observed signal stays when its entity is removed', () => {
-		const { client, store } = make();
+		const { riva, store } = make();
 		store.merge('Book:1', { title: 'A' });
 		const seen: unknown[] = [];
-		client.subscribe(store.signalOf('Book:1'), (v) => seen.push(v));
+		riva.subscribe(store.signalOf('Book:1'), (v) => seen.push(v));
 		store.sweep();
 		expect(seen).toEqual([undefined]);
 		expect(store.signals.has('Book:1')).toBe(true);

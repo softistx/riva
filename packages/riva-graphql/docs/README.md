@@ -7,7 +7,7 @@ The package's [README](../README.md) is the short path. These pages go deeper.
 | Page | Read it when |
 |---|---|
 | [Documents](./guide/documents.md) | You write the `graphql()` documents a definition is built from, or a document is refused. |
-| [Transport](./guide/transport.md) | You wire a client to the API, or write a transport of your own. |
+| [Transport](./guide/transport.md) | You wire a riva to the API, or write a transport of your own. |
 | [Queries](./guide/queries.md) | You define a query and need its options. |
 | [Mutations](./guide/mutations.md) | You define a write, with optimistic updates or invalidation. |
 | [Infinite lists](./guide/infinite.md) | You paginate a Relay connection. |

@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
-import { createRivaClient } from './client';
-import type { ClientEvents, Scheduler } from './env';
+import { createRiva } from './client';
+import type { RivaEvents, Scheduler } from './env';
 import type { RivaError } from './errors';
 import { mutation } from './mutation';
 import { type CachePolicy, query } from './query';
@@ -21,7 +21,7 @@ function env() {
 	};
 	let focus: (() => void) | undefined;
 	let attached = 0;
-	const events: ClientEvents = {
+	const events: RivaEvents = {
 		onFocus: (cb) => {
 			focus = cb;
 			attached++;
@@ -33,7 +33,7 @@ function env() {
 		onReconnect: () => () => {},
 	};
 	return {
-		client: createRivaClient({ scheduler: sched, events }),
+		riva: createRiva({ scheduler: sched, events }),
 		timers,
 		fireFocus: () => focus?.(),
 		attached: () => attached,
@@ -41,10 +41,10 @@ function env() {
 }
 
 test('the first observer attaches the window events and the last detaches them', () => {
-	const { client, attached } = env();
+	const { riva, attached } = env();
 	const q = query<void, string>({ id: 'q', fetch: async () => 'x' });
-	const a = client.subscribe(q, () => {});
-	const b = client.subscribe(q, () => {});
+	const a = riva.subscribe(q, () => {});
+	const b = riva.subscribe(q, () => {});
 	expect(attached()).toBe(1);
 	a();
 	expect(attached()).toBe(1);
@@ -53,9 +53,9 @@ test('the first observer attaches the window events and the last detaches them',
 });
 
 test('unsubscribe is idempotent', () => {
-	const { client, attached } = env();
+	const { riva, attached } = env();
 	const q = query<void, string>({ id: 'q', fetch: async () => 'x' });
-	const a = client.subscribe(q, () => {});
+	const a = riva.subscribe(q, () => {});
 	a();
 	a();
 	expect(attached()).toBe(0);
@@ -64,7 +64,7 @@ test('unsubscribe is idempotent', () => {
 test('polling runs while observed and stops with the last observer', async () => {
 	(globalThis as { document?: unknown }).document = {};
 	try {
-		const { client, timers } = env();
+		const { riva, timers } = env();
 		let calls = 0;
 		const q = query<void, number>({
 			id: 'q',
@@ -73,7 +73,7 @@ test('polling runs while observed and stops with the last observer', async () =>
 			gcTime: Infinity,
 			staleTime: 0,
 		});
-		const off = client.subscribe(q, () => {});
+		const off = riva.subscribe(q, () => {});
 		await flush();
 		expect(timers.size).toBeGreaterThan(0);
 		for (const [h, fn] of [...timers]) {
@@ -90,14 +90,14 @@ test('polling runs while observed and stops with the last observer', async () =>
 });
 
 test('focus refetches a stale observed entry, unless it opted out', async () => {
-	const { client, fireFocus } = env();
+	const { riva, fireFocus } = env();
 	let calls = 0;
 	const q = query<void, number>({
 		id: 'q',
 		fetch: async () => ++calls,
 		refetchOnFocus: false,
 	});
-	const off = client.subscribe(q, () => {});
+	const off = riva.subscribe(q, () => {});
 	await flush();
 	fireFocus();
 	await flush();
@@ -112,7 +112,7 @@ test('a subscribe staleTime overrides the first fetch decision only', async () =
 		retry: 0,
 		fetch: async () => ++calls,
 	});
-	const a = createRivaClient();
+	const a = createRiva();
 	await q.ensure(a);
 	const off = a.subscribe(q, undefined, () => {}, { staleTime: 1000 });
 	await flush();
@@ -124,7 +124,7 @@ test('a subscribe staleTime overrides the first fetch decision only', async () =
 	await flush();
 	expect(calls).toBe(2);
 	off2();
-	const b = createRivaClient();
+	const b = createRiva();
 	await q.ensure(b);
 	expect(calls).toBe(3);
 	const off3 = b.subscribe(q, undefined, () => {});
@@ -145,19 +145,19 @@ function holey(initial = false) {
 		release: () => {},
 	};
 	let calls = 0;
-	const client = createRivaClient();
+	const riva = createRiva();
 	const q = query<void, unknown>({
 		id: 'miss',
 		cache,
 		fetch: async () => {
 			calls++;
-			client.set(holes, leaveHole);
+			riva.set(holes, leaveHole);
 			return { n: calls };
 		},
 	});
 	return {
 		q,
-		client,
+		riva,
 		holes,
 		calls: () => calls,
 		leave: (v: boolean) => {
@@ -167,30 +167,30 @@ function holey(initial = false) {
 }
 
 test('an observed query whose stored data can no longer be read is refetched, each time', async () => {
-	const { q, client, holes, calls } = holey();
-	const off = client.subscribe(q, () => {});
+	const { q, riva, holes, calls } = holey();
+	const off = riva.subscribe(q, () => {});
 	await flush();
 	expect(calls()).toBe(1);
-	client.set(holes, true);
+	riva.set(holes, true);
 	await flush();
 	expect(calls()).toBe(2);
-	expect(client.get(q)).toMatchObject({ status: 'success', data: { n: 2 } });
-	client.set(holes, true);
+	expect(riva.get(q)).toMatchObject({ status: 'success', data: { n: 2 } });
+	riva.set(holes, true);
 	await flush();
 	expect(calls()).toBe(3);
-	expect(client.get(q).data).toEqual({ n: 3 });
+	expect(riva.get(q).data).toEqual({ n: 3 });
 	off();
 });
 
 test('a fetch the cache cannot read ends in RIVA_CACHE and is not retried', async () => {
-	const { q, client, calls } = holey(true);
+	const { q, riva, calls } = holey(true);
 	const seen: string[] = [];
-	const a = client.subscribe(q, (s) => seen.push(s.status));
-	const b = client.subscribe(q, () => {});
+	const a = riva.subscribe(q, (s) => seen.push(s.status));
+	const b = riva.subscribe(q, () => {});
 	await flush();
 	await flush();
 	expect(calls()).toBe(1);
-	const state = client.get(q);
+	const state = riva.get(q);
 	expect(state.status).toBe('error');
 	expect((state.error as RivaError).code).toBe('RIVA_CACHE');
 	expect((state.error as RivaError).message).toBe(INCOMPLETE);
@@ -200,32 +200,32 @@ test('a fetch the cache cannot read ends in RIVA_CACHE and is not retried', asyn
 });
 
 test('a refetch after an eviction that stays unreadable errors once, without looping', async () => {
-	const { q, client, holes, calls, leave } = holey();
-	const off = client.subscribe(q, () => {});
+	const { q, riva, holes, calls, leave } = holey();
+	const off = riva.subscribe(q, () => {});
 	await flush();
 	leave(true);
-	client.set(holes, true);
+	riva.set(holes, true);
 	await flush();
 	await flush();
 	expect(calls()).toBe(2);
-	expect(client.get(q).status).toBe('error');
+	expect(riva.get(q).status).toBe('error');
 	off();
 });
 
 test('the error clears when the data reads again', async () => {
-	const { q, client, holes } = holey(true);
-	const off = client.subscribe(q, () => {});
+	const { q, riva, holes } = holey(true);
+	const off = riva.subscribe(q, () => {});
 	await flush();
-	expect(client.get(q).status).toBe('error');
-	client.set(holes, false);
+	expect(riva.get(q).status).toBe('error');
+	riva.set(holes, false);
 	await flush();
-	expect(client.get(q)).toMatchObject({ status: 'success', error: undefined });
+	expect(riva.get(q)).toMatchObject({ status: 'success', error: undefined });
 	off();
 });
 
 test('an optimistic layer that hides the data starts no fetch and sets no error', async () => {
-	const { q, client, calls } = holey();
-	const off = client.subscribe(q, () => {});
+	const { q, riva, calls } = holey();
+	const off = riva.subscribe(q, () => {});
 	await flush();
 	let release!: (v: string) => void;
 	const m = mutation<void, string>({
@@ -233,10 +233,10 @@ test('an optimistic layer that hides the data starts no fetch and sets no error'
 		run: () => new Promise<string>((r) => (release = r)),
 		optimistic: (_v, tx) => tx.set(q, undefined, () => undefined as never),
 	});
-	const run = m.run(client);
+	const run = m.run(riva);
 	await flush();
-	expect(client.get(q).data).toBeUndefined();
-	expect(client.get(q).status).toBe('success');
+	expect(riva.get(q).data).toBeUndefined();
+	expect(riva.get(q).status).toBe('success');
 	expect(calls()).toBe(1);
 	release('ok');
 	await run;
@@ -244,16 +244,16 @@ test('an optimistic layer that hides the data starts no fetch and sets no error'
 });
 
 test('ensure refetches after an eviction instead of resolving nothing', async () => {
-	const { q, client, holes, calls } = holey();
-	await q.ensure(client);
-	client.set(holes, true);
-	await expect(q.ensure(client)).resolves.toEqual({ n: 2 });
+	const { q, riva, holes, calls } = holey();
+	await q.ensure(riva);
+	riva.set(holes, true);
+	await expect(q.ensure(riva)).resolves.toEqual({ n: 2 });
 	expect(calls()).toBe(2);
 });
 
 test('ensure rejects with RIVA_CACHE when the fetched data cannot be read', async () => {
-	const { q, client } = holey(true);
-	const err = (await q.ensure(client).catch((x) => x)) as RivaError;
+	const { q, riva } = holey(true);
+	const err = (await q.ensure(riva).catch((x) => x)) as RivaError;
 	expect(err.code).toBe('RIVA_CACHE');
 	expect(err.message).toBe(INCOMPLETE);
 });

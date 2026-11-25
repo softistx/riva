@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { createRivaClient } from '../client';
+import { createRiva } from '../client';
 import type { RivaError } from '../errors';
 import { type Signal, signal } from '../signal';
 import type { StoreDef } from './def';
@@ -19,7 +19,7 @@ const make = () => {
 describe('run', () => {
 	test('runs a sync action in one batch and returns its result', () => {
 		const { n, def } = make();
-		const c = createRivaClient();
+		const c = createRiva();
 		const seen: unknown[] = [];
 		c.subscribe(n, (v) => seen.push(v));
 		const r = run(
@@ -38,7 +38,7 @@ describe('run', () => {
 
 	test('passes the arguments, then the context after the declared ones', () => {
 		const { def } = make();
-		const c = createRivaClient();
+		const c = createRiva();
 		let got: unknown[] = [];
 		run(
 			def,
@@ -48,7 +48,7 @@ describe('run', () => {
 			},
 			[1],
 		);
-		expect(got).toEqual([1, expect.objectContaining({ client: c })]);
+		expect(got).toEqual([1, expect.objectContaining({ riva: c })]);
 		got = [];
 		let ctx: unknown;
 		run(
@@ -59,12 +59,12 @@ describe('run', () => {
 			},
 			[],
 		);
-		expect(ctx).toEqual(expect.objectContaining({ client: c }));
+		expect(ctx).toEqual(expect.objectContaining({ riva: c }));
 	});
 
 	test('revokes s once the action settles, and rethrows its error', async () => {
 		const { def } = make();
-		const c = createRivaClient();
+		const c = createRiva();
 		let kept!: { n: number };
 		expect(() =>
 			run(

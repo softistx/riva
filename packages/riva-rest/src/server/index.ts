@@ -19,7 +19,7 @@ export { PREFIX };
 
 /**
  * The server side of `bffTransport`: runs the operations of an OpenAPI client
- * (`createOpenApiClient`) through the request client's REST transport
+ * (`createOpenApiClient`) through the request riva's REST transport
  * (`provideRest`), under the id `rest:<operationId>`. Only the spec's
  * operations are known; the browser sends an id and its input, never a URL. A
  * GET, HEAD or OPTIONS is a query, any other method a mutation.
@@ -47,8 +47,8 @@ export function operations(api: OperationsOf): DataSource {
 				};
 				op = {
 					kind: SAFE.has(entry.method) ? 'query' : 'mutation',
-					run: async (client, variables, signal) =>
-						transportOf(client).call(route, variables, { signal }),
+					run: async (riva, variables, signal) =>
+						transportOf(riva).call(route, variables, { signal }),
 				};
 				made.set(id, op);
 			}

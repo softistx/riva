@@ -1,11 +1,11 @@
 import {
 	type Query,
 	type QueryState,
-	type RivaClient,
+	type Riva,
 	stableKey,
 } from '@softistx/riva';
 import { useCallback, useRef, useSyncExternalStore } from 'react';
-import { useClient } from './context';
+import { useRiva } from './context';
 
 // biome-ignore lint/suspicious/noExplicitAny: any query definition
 export type AnyQuery = Query<any, any, any>;
@@ -36,7 +36,7 @@ export function useStableVars<V>(
 }
 
 export interface QueryBinding<S> {
-	client: RivaClient;
+	riva: Riva;
 	state: S;
 	key: string;
 	vars: unknown;
@@ -51,12 +51,12 @@ export function useQueryState<S extends QueryState<unknown>>(
 	enabled: boolean,
 	suspense = false,
 ): QueryBinding<S> {
-	const client = useClient();
+	const riva = useRiva();
 	const stable = useStableVars(def.id, vars);
 	const subscribe = useCallback(
 		(notify: () => void) =>
 			enabled
-				? client.subscribe(
+				? riva.subscribe(
 						def,
 						stable.vars,
 						notify,
@@ -64,13 +64,13 @@ export function useQueryState<S extends QueryState<unknown>>(
 						suspense ? { staleTime: SUSPENSE_FRESH } : undefined,
 					)
 				: NOOP,
-		[client, def, stable, enabled, suspense],
+		[riva, def, stable, enabled, suspense],
 	);
-	const read = () => (enabled ? client.get(def, stable.vars) : DISABLED) as S;
+	const read = () => (enabled ? riva.get(def, stable.vars) : DISABLED) as S;
 	const state = useSyncExternalStore(subscribe, read, read);
 	const refetch = useCallback(async () => {
-		def.invalidate(client, stable.vars);
-		await def.ensure(client, stable.vars).catch(NOOP);
-	}, [client, def, stable]);
-	return { client, state, key: stable.key, vars: stable.vars, refetch };
+		def.invalidate(riva, stable.vars);
+		await def.ensure(riva, stable.vars).catch(NOOP);
+	}, [riva, def, stable]);
+	return { riva, state, key: stable.key, vars: stable.vars, refetch };
 }

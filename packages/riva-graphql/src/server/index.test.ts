@@ -1,5 +1,5 @@
 import { expect, expectTypeOf, test } from 'bun:test';
-import { createRivaClient, RivaScopeError } from '@softistx/riva';
+import { createRiva, RivaScopeError } from '@softistx/riva';
 import { buildAllowlist } from '../codegen/index';
 import { type GraphQLTransport, provideGraphQL } from '../transport';
 import { allowlist } from './index';
@@ -32,18 +32,18 @@ function setup() {
 			return { echoed: vars } as never;
 		},
 	};
-	const client = createRivaClient();
-	provideGraphQL(client, transport);
-	return { seen, client };
+	const riva = createRiva();
+	provideGraphQL(riva, transport);
+	return { seen, riva };
 }
 
-test('finds an operation by its persisted hash and runs it through the client transport', async () => {
-	const { seen, client } = setup();
+test('finds an operation by its persisted hash and runs it through the riva transport', async () => {
+	const { seen, riva } = setup();
 	const source = allowlist(buildAllowlist(persisted));
 	const op = source.find('sha256:a');
 	expect(op?.kind).toBe('query');
 	const signal = new AbortController().signal;
-	expect(await op?.run(client, { school: 's' }, signal)).toEqual({
+	expect(await op?.run(riva, { school: 's' }, signal)).toEqual({
 		echoed: { school: 's' },
 	});
 	expect(seen).toEqual([
@@ -59,12 +59,12 @@ test('finds an operation by its persisted hash and runs it through the client tr
 });
 
 test('finds an operation by its name when the manifest is keyed by names', async () => {
-	const { seen, client } = setup();
+	const { seen, riva } = setup();
 	const source = allowlist(buildAllowlist(persisted, { ids: 'name' }));
 	expect(source.find('sha256:a')).toBeUndefined();
 	const op = source.find('RenamePatient');
 	expect(op?.kind).toBe('mutation');
-	await op?.run(client, { id: '1' }, new AbortController().signal);
+	await op?.run(riva, { id: '1' }, new AbortController().signal);
 	expect(seen[0]?.id).toBe('RenamePatient');
 	expect(seen[0]?.kind).toBe('mutation');
 });
@@ -80,13 +80,13 @@ test('the same operation object answers each find of an id', () => {
 	expect(source.find('sha256:a')).toBe(source.find('sha256:a'));
 });
 
-test('a client with no transport throws the scope error of provideGraphQL', async () => {
+test('a riva with no transport throws the scope error of provideGraphQL', async () => {
 	const source = allowlist(buildAllowlist(persisted));
 	await expect(
 		Promise.resolve().then(() =>
 			source
 				.find('sha256:a')
-				?.run(createRivaClient(), {}, new AbortController().signal),
+				?.run(createRiva(), {}, new AbortController().signal),
 		),
 	).rejects.toBeInstanceOf(RivaScopeError);
 });

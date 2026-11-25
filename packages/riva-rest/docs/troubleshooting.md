@@ -2,27 +2,27 @@
 
 Each entry is headed by the message you will see.
 
-## `No REST transport on this RivaClient: call provideRest(client, httpyzTransport(http, api)) when you create it.`
+## `No REST transport on this Riva: call provideRest(riva, httpyzTransport(http, api)) when you create it.`
 
 Code: `RIVA_SCOPE` (`RivaScopeError`).
 
-**When:** a query or mutation ran on a `RivaClient` that was never given a transport.
+**When:** a query or mutation ran on a `Riva` that was never given a transport.
 
-**Why:** definitions are stateless and the transport lives on the client, so two server requests never share one.
+**Why:** definitions are stateless and the transport lives on the riva, so two server requests never share one.
 
-**Fix:** provide it where the client is created, per request on the server.
+**Fix:** provide it where the riva is created, per request on the server.
 
 ```ts
 import { createHttpClient } from '@softistx/httpyz';
-import { createRivaClient } from '@softistx/riva';
+import { createRiva } from '@softistx/riva';
 import { httpyzTransport, provideRest } from '@softistx/riva-rest';
 
 const http = createHttpClient({ baseUrl: 'https://api.example.com' });
-const client = createRivaClient();
-provideRest(client, httpyzTransport(http));
+const riva = createRiva();
+provideRest(riva, httpyzTransport(http));
 ```
 
-## `The REST transport of this RivaClient holds no httpyz client: build it with httpyzTransport(http, api).`
+## `The REST transport of this Riva holds no httpyz client: build it with httpyzTransport(http, api).`
 
 Code: `RIVA_SCOPE` (`RivaScopeError`).
 
@@ -48,7 +48,7 @@ Code: `RIVA_REST_UNWIRED` (`RivaRequestError`, never retried), thrown when the q
 
 ```ts
 export const api = createOpenApiClient(http, operations);
-provideRest(client, httpyzTransport(http, api)); // the api the definitions take
+provideRest(riva, httpyzTransport(http, api)); // the api the definitions take
 ```
 
 ## `riva-rest: the OpenAPI client has no operation at GET /nope; check the path as the spec writes it.`
@@ -95,7 +95,7 @@ query({ id: 'todos', fetch: async () => [] as string[] });
 
 Code: `RIVA_SCOPE` (`RivaScopeError`).
 
-**When:** in the browser, with `provideRest(client, bffTransport())`, a free fetcher (`query({ id, fetch })`) read `http` from its context.
+**When:** in the browser, with `provideRest(riva, bffTransport())`, a free fetcher (`query({ id, fetch })`) read `http` from its context.
 
 **Why:** the BFF transport posts to `/_data` and holds no httpyz client; a free fetcher is arbitrary code against the API, so it only runs on the server.
 
@@ -141,13 +141,13 @@ See the [error table in the README](../README.md#errors). The entries below add 
 
 Entries with no message of their own, or with one the core throws.
 
-## `This client already uses other entity identity rules. Share one entities() (or the same options objects) between its queries.`
+## `This riva already uses other entity identity rules. Share one entities() (or the same options objects) between its queries.`
 
 Code: `RIVA_CACHE`.
 
-**When:** two `restEntities()` calls were used on one client, even with the same `types`: each call makes a policy of its own.
+**When:** two `restEntities()` calls were used on one riva, even with the same `types`: each call makes a policy of its own.
 
-**Fix:** create the policy once and share that very object between the client's definitions.
+**Fix:** create the policy once and share that very object between the riva's definitions.
 
 ```ts
 export const cache = restEntities({ Invoice: { is: (o) => 'number' in o, key: (o) => o['id'] as string } });
@@ -171,9 +171,9 @@ export const cache = restEntities({ Invoice: { is: (o) => 'number' in o, key: (o
 
 **Fix:** drop it before sending: `const { __typename, ...body } = invoice`.
 
-## REST and GraphQL entities on one client
+## REST and GraphQL entities on one riva
 
-**Why:** a client holds one set of identity rules, so a REST policy and a GraphQL one cannot share its store in v1.
+**Why:** a riva holds one set of identity rules, so a REST policy and a GraphQL one cannot share its store in v1.
 
 **Fix:** use the entity policy for one of them, and request-keyed caching (the default) for the other.
 

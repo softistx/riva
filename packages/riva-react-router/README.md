@@ -1,6 +1,6 @@
 # @softistx/riva-react-router
 
-React Router host for riva: one `RivaClient` per request, server-side loading with `dehydrate`, browser hydration and a merge of each navigation's data. Built for React Router 8 framework mode (and `@softistx/alxia-react-router`, which hosts the same routes); it never imports alxia.
+React Router host for riva: one `Riva` per request, server-side loading with `dehydrate`, browser hydration and a merge of each navigation's data. Built for React Router 8 framework mode (and `@softistx/alxia-react-router`, which hosts the same routes); it never imports alxia.
 
 ```sh
 bun add @softistx/riva-react-router @softistx/riva @softistx/riva-react react react-router
@@ -22,9 +22,9 @@ const API_URL = 'https://api.example.com/graphql'; // schematic: your API
 
 export const rivaMw = rivaMiddleware({
 	// the caller port of the request: here its session cookie goes to the API
-	setup: (client, { request }) =>
+	setup: (riva, { request }) =>
 		provideGraphQL(
-			client,
+			riva,
 			graphqlClientTransport(
 				createGraphQLClient({
 					url: API_URL,
@@ -50,9 +50,9 @@ export const middleware = [rivaMw];
 export default function Root() {
 	return (
 		<RivaRouterProvider
-			// the client the render and the browser use; the data itself comes from the loaders
-			setup={(client) =>
-				provideGraphQL(client, graphqlClientTransport(createGraphQLClient({ url: API_URL })))
+			// the riva the render and the browser use; the data itself comes from the loaders
+			setup={(riva) =>
+				provideGraphQL(riva, graphqlClientTransport(createGraphQLClient({ url: API_URL })))
 			}
 		>
 			<Outlet />
@@ -61,7 +61,7 @@ export default function Root() {
 }
 ```
 
-Keep `/server` out of the browser bundle (it imports `node:async_hooks`): build the middleware in a `*.server.ts` module. Declare it once, on the root route; the provider's `client` prop must stay the same object. [Guide](./docs/guide/setup.md).
+Keep `/server` out of the browser bundle (it imports `node:async_hooks`): build the middleware in a `*.server.ts` module. Declare it once, on the root route; the provider's `riva` prop must stay the same object. [Guide](./docs/guide/setup.md).
 
 ## The loader pattern
 
@@ -157,11 +157,11 @@ export default function Patients({ params }: Route.ComponentProps) {
 
 | Export | From | What |
 | --- | --- | --- |
-| `rivaMiddleware(opts?)` | `/server` | Root middleware: creates the client (`create`), awaits `setup`, sets the context, runs the rest of the request in the ambient scope. |
-| `rivaOf(context)` | `.` | The request's client; `RivaScopeError` when the middleware did not run. |
+| `rivaMiddleware(opts?)` | `/server` | Root middleware: creates the riva (`create`), awaits `setup`, sets the context, runs the rest of the request in the ambient scope. |
+| `rivaOf(context)` | `.` | The request's riva; `RivaScopeError` when the middleware did not run. |
 | `riva(context)` | `.` | `{ '~riva': Snapshot }`, to spread into loader data. |
 | `rivaContext` | `.` | The router context key. |
-| `RivaRouterProvider` | `.` | `client?`, `setup?`, `invalidateOnAction?`, `children`. |
+| `RivaRouterProvider` | `.` | `riva?`, `setup?`, `invalidateOnAction?`, `children`. |
 | `useActionResult` | `.` | Writes an action's result into a query entry. |
 | `revalidate` | `.` | Query that re-runs the route loaders when invalidated. |
 | `dataRoute(opts)` | `/server` | The `/_data` action and loader. |

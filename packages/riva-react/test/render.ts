@@ -1,12 +1,12 @@
-import { createRivaClient, type RivaClient } from '@softistx/riva';
+import { createRiva, type Riva } from '@softistx/riva';
 import { act, createElement, type ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RivaProvider } from '../src/context';
 
 export const h = createElement;
 
-/** A client with no retry delay surprises: queries in these tests set `retry: 0` themselves. */
-export const newClient = (): RivaClient => createRivaClient();
+/** A riva with no retry delay surprises: queries in these tests set `retry: 0` themselves. */
+export const newRiva = (): Riva => createRiva();
 
 export interface Mounted {
 	container: HTMLElement;
@@ -14,16 +14,13 @@ export interface Mounted {
 	unmount: () => Promise<void>;
 }
 
-/** Mounts `ui` in a fresh DOM node under a provider (when a client is given) and flushes effects. */
-export async function mount(
-	ui: ReactElement,
-	client?: RivaClient,
-): Promise<Mounted> {
+/** Mounts `ui` in a fresh DOM node under a provider (when a riva is given) and flushes effects. */
+export async function mount(ui: ReactElement, riva?: Riva): Promise<Mounted> {
 	const container = document.createElement('div');
 	document.body.append(container);
 	const root = createRoot(container);
 	await act(async () => {
-		root.render(client ? h(RivaProvider, { client }, ui) : ui);
+		root.render(riva ? h(RivaProvider, { riva }, ui) : ui);
 	});
 	return {
 		container,

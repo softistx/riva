@@ -41,7 +41,7 @@ function tag(types: [string, RestEntity][], value: unknown): unknown {
  * ```
  *
  * Objects `is` recognises get a `__typename`, so the data a reader sees
- * carries it. Share one policy between the queries of a client.
+ * carries it. Share one policy between the queries of a riva.
  */
 export function restEntities(
 	types: RestEntities,
@@ -55,9 +55,9 @@ export function restEntities(
 	const inner = policy as Required<EntityPolicy>;
 	return {
 		...policy,
-		write: (client, data, prev, vars) =>
-			policy.write(client, tag(list, data), prev, vars),
-		layer: (client, data, vars) => inner.layer(client, tag(list, data), vars),
-		commit: (client, data, vars) => inner.commit(client, tag(list, data), vars),
+		write: (riva, data, prev, vars) =>
+			policy.write(riva, tag(list, data), prev, vars),
+		layer: (riva, data, vars) => inner.layer(riva, tag(list, data), vars),
+		commit: (riva, data, vars) => inner.commit(riva, tag(list, data), vars),
 	};
 }

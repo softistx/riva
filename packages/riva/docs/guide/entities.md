@@ -1,9 +1,9 @@
 # The normalized cache: `@softistx/riva/entities`
 
-By default a query keeps its data as is, keyed by id and variables. Pass `cache: entities()` to store each entity (an object with a string `__typename` and an `id` or `_id`) once, shared by every query that returns it. A refetch of one query then updates the others, and a `client.get` inside a computed re-evaluates only when an entity it read changed.
+By default a query keeps its data as is, keyed by id and variables. Pass `cache: entities()` to store each entity (an object with a string `__typename` and an `id` or `_id`) once, shared by every query that returns it. A refetch of one query then updates the others, and a `riva.get` inside a computed re-evaluates only when an entity it read changed.
 
 ```ts
-import { createRivaClient, query } from '@softistx/riva';
+import { createRiva, query } from '@softistx/riva';
 import { entities, evict, invalidateEntity, readEntity, writeEntity } from '@softistx/riva/entities';
 
 type Patient = { __typename: 'Patient'; id: string; name: string };
@@ -24,15 +24,15 @@ const patient = query({
 	fetch: async (v: { id: string }) => (await fetch(`/api/patients/${v.id}`)).json() as Promise<Patient>,
 });
 
-const client = createRivaClient();
-await patients.ensure(client);
-await patient.ensure(client, { id: '1' });
+const riva = createRiva();
+await patients.ensure(riva);
+await patient.ensure(riva, { id: '1' });
 
-writeEntity(client, 'Patient:1', { name: 'Ann' }); // merged; both queries see it
-writeEntity(client, 'Patient:1', (prev) => ({ visits: (prev?.['visits'] as number) + 1 }));
-readEntity(client, 'Patient:1'); // tracked inside a computed; undefined when missing
-invalidateEntity(client, 'Patient:1'); // marks stale every query reaching it, refetches observed ones
-evict(client, 'Patient:1'); // removes it: queries see the field as missing
+writeEntity(riva, 'Patient:1', { name: 'Ann' }); // merged; both queries see it
+writeEntity(riva, 'Patient:1', (prev) => ({ visits: (prev?.['visits'] as number) + 1 }));
+readEntity(riva, 'Patient:1'); // tracked inside a computed; undefined when missing
+invalidateEntity(riva, 'Patient:1'); // marks stale every query reaching it, refetches observed ones
+evict(riva, 'Patient:1'); // removes it: queries see the field as missing
 ```
 
 ## Options of `entities(opts?, codec?)`
@@ -45,7 +45,7 @@ evict(client, 'Patient:1'); // removes it: queries see the field as missing
 
 ## What is stored
 
-- Entities are merged field by field into one store per client (two clients never share). Nested entities, and entities inside arrays, are normalized too; other objects stay inline. An entity unchanged since the last read keeps its identity.
+- Entities are merged field by field into one store per riva (two riva instances never share). Nested entities, and entities inside arrays, are normalized too; other objects stay inline. An entity unchanged since the last read keeps its identity.
 - A query entry holds the entities it reaches. When the entry is replaced or collected (`gcTime`) they are released, and an entity nobody holds is removed. Entities that reference each other are collected too; a cycle is cut where it loops back when read.
 - A ref to a missing entity reads as `undefined`, never throws.
 - Data that is not JSON (a function, a class instance other than `Date`, a bigint, a cycle) throws `RIVA_CACHE`; nothing is written.
@@ -80,11 +80,11 @@ const cache = entities(undefined, codec);
 
 ## The `CachePolicy` hook
 
-`CachePolicy`, exported from the main entry, is the hook behind it: `write(client, data, prev, vars)`, `read(client, stored, committed)`, `release(client, stored)`, and for mutations the optional `layer(client, data, vars)` (an optimistic layer, `{ drop() }`) and `commit(client, data, vars)`. `vars` are the variables of the query or mutation that gave `data`.
+`CachePolicy`, exported from the main entry, is the hook behind it: `write(riva, data, prev, vars)`, `read(riva, stored, committed)`, `release(riva, stored)`, and for mutations the optional `layer(riva, data, vars)` (an optimistic layer, `{ drop() }`) and `commit(riva, data, vars)`. `vars` are the variables of the query or mutation that gave `data`.
 
 ## Traps
 
-- The store follows the identity rules (`keys`, `identify`) of the first policy used on a client. A later policy with other rules, or with rules after `readEntity` or `writeEntity` filled the store, throws `RIVA_CACHE`. Share one `entities()` (or the same options objects) between a client's queries.
+- The store follows the identity rules (`keys`, `identify`) of the first policy used on a riva. A later policy with other rules, or with rules after `readEntity` or `writeEntity` filled the store, throws `RIVA_CACHE`. Share one `entities()` (or the same options objects) between a riva's queries.
 - Entity refs are `Type:id` strings: `Patient:1`.
 
 Exports: `entities`, `readEntity`, `writeEntity`, `invalidateEntity`, `evict`, `identifyOf`, `isPlain`, `isRef`; types `EntityPolicy`, `EntitiesOptions`, `Identify`, `Fields`, `EntityCodec`, `EntityReader`, `Normalized`, `Ref`.

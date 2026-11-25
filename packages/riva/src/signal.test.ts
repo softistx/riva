@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { createRivaClient } from './client';
+import { createRiva } from './client';
 import { signal } from './signal';
 
 test('is a frozen stateless definition with its initial value', () => {
@@ -10,12 +10,12 @@ test('is a frozen stateless definition with its initial value', () => {
 	expect(a.name).toBe('n');
 	expect(a.ssr).toBe(false);
 	expect(signal(1, { ssr: true }).ssr).toBe(true);
-	expect(createRivaClient().get(a)).toBe(3);
+	expect(createRiva().get(a)).toBe(3);
 });
 
 test('set with a value and with an updater', () => {
 	const a = signal(1);
-	const c = createRivaClient();
+	const c = createRiva();
 	c.set(a, 5);
 	expect(c.get(a)).toBe(5);
 	c.set(a, (p) => p + 1);
@@ -24,7 +24,7 @@ test('set with a value and with an updater', () => {
 
 test('equals suppresses notifications', () => {
 	const a = signal({ id: 1 }, { equals: (x, y) => x.id === y.id });
-	const c = createRivaClient();
+	const c = createRiva();
 	const seen: number[] = [];
 	c.subscribe(a, (v) => seen.push(v.id));
 	c.set(a, { id: 1 });
@@ -39,7 +39,7 @@ test('equals suppresses notifications', () => {
 
 test('subscribe notifies synchronously and unsubscribes', () => {
 	const a = signal(0);
-	const c = createRivaClient();
+	const c = createRiva();
 	const seen: number[] = [];
 	const off = c.subscribe(a, (v) => seen.push(v));
 	c.set(a, 1);
@@ -49,9 +49,9 @@ test('subscribe notifies synchronously and unsubscribes', () => {
 	expect(seen).toEqual([1]);
 });
 
-test('ambient methods go through the client in scope', () => {
+test('ambient methods go through the riva in scope', () => {
 	const a = signal(0);
-	const c = createRivaClient();
+	const c = createRiva();
 	const seen: number[] = [];
 	c.run(() => {
 		a.subscribe((v) => seen.push(v));
@@ -61,10 +61,10 @@ test('ambient methods go through the client in scope', () => {
 	expect(seen).toEqual([1, 2]);
 });
 
-test('two clients never share values', () => {
+test('two riva instances never share values', () => {
 	const a = signal(0);
-	const c1 = createRivaClient();
-	const c2 = createRivaClient();
+	const c1 = createRiva();
+	const c2 = createRiva();
 	c1.set(a, 10);
 	expect(c1.get(a)).toBe(10);
 	expect(c2.get(a)).toBe(0);

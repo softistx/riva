@@ -1,6 +1,6 @@
-import type { RivaClient } from './client';
+import type { Riva } from './client';
 import { computed, type Readable } from './computed';
-import type { ClientEvents, Scheduler } from './env';
+import type { RivaEvents, Scheduler } from './env';
 import { RivaError } from './errors';
 import { nodeOf } from './graph';
 import { stableKey } from './key';
@@ -59,11 +59,11 @@ export type SeedEntry = SnapshotEntry & {
 	defer?: SnapshotEntry[];
 };
 
-/** What one client's query cache shares between its files. */
+/** What one riva's query cache shares between its files. */
 export interface Ctx {
-	client: RivaClient;
+	riva: Riva;
 	sched: Scheduler;
-	events: ClientEvents;
+	events: RivaEvents;
 	entries: Map<string, Entry>;
 	/** Observers over every entry, to attach the window events once. */
 	observed: number;
@@ -84,18 +84,18 @@ const IDLE: State = Object.freeze({
 
 /** The current state, untracked. */
 export const peek = (c: Ctx, e: Entry): State =>
-	nodeOf(c.client.graph, e.signal).value as State;
+	nodeOf(c.riva.graph, e.signal).value as State;
 
 /** The state as readers see it (data read through the cache policy), untracked. */
 export const view = (c: Ctx, e: Entry): State =>
-	c.client.untracked(() => c.client.get(e.out));
+	c.riva.untracked(() => c.riva.get(e.out));
 
 /** The data without the entry's own layers, untracked. */
 export const committed = (c: Ctx, e: Entry): unknown =>
-	c.client.untracked(() => {
+	c.riva.untracked(() => {
 		const d = peek(c, e).data;
 		const cache = e.def.options.cache;
-		return cache && d !== undefined ? cache.read(c.client, d, true) : d;
+		return cache && d !== undefined ? cache.read(c.riva, d, true) : d;
 	});
 
 /** Data is stored that the cache policy cannot read: an evicted entity, a field the server left out. */
@@ -110,7 +110,7 @@ export const INCOMPLETE =
 export const toStored = (c: Ctx, e: Entry, data: unknown): unknown => {
 	const cache = e.def.options.cache;
 	return cache && data !== undefined
-		? cache.write(c.client, data, peek(c, e).data, e.vars)
+		? cache.write(c.riva, data, peek(c, e).data, e.vars)
 		: data;
 };
 
@@ -120,7 +120,7 @@ export function putStored(c: Ctx, e: Entry, patch: Partial<State>): void {
 	const prev = peek(c, e).data;
 	put(c, e, patch);
 	if (cache && 'data' in patch && prev !== undefined && prev !== patch.data)
-		cache.release(c.client, prev);
+		cache.release(c.riva, prev);
 }
 
 /**
@@ -131,7 +131,7 @@ export function putStored(c: Ctx, e: Entry, patch: Partial<State>): void {
 export function putData(c: Ctx, e: Entry, patch: Partial<State>): unknown {
 	if (!e.def.options.cache || !('data' in patch)) return void put(c, e, patch);
 	let error: unknown;
-	c.client.batch(() => {
+	c.riva.batch(() => {
 		try {
 			putStored(c, e, { ...patch, data: toStored(c, e, patch.data) });
 		} catch (x) {
@@ -145,7 +145,7 @@ export function putData(c: Ctx, e: Entry, patch: Partial<State>): unknown {
 
 /** Writes a patch over the current state (one notification). */
 export const put = (c: Ctx, e: Entry, patch: Partial<State>): void =>
-	c.client.set(e.signal, { ...peek(c, e), ...patch });
+	c.riva.set(e.signal, { ...peek(c, e), ...patch });
 
 /** Whether the entry must be fetched: not a success, invalidated, or older than `staleTime`. */
 export const stale = (
@@ -170,14 +170,14 @@ export function armGc(c: Ctx, e: Entry): void {
 		if (
 			e.observers ||
 			e.run ||
-			nodeOf(c.client.graph, e.signal).refs ||
-			(nodeOf(c.client.graph, e.lay).value as Lay[]).length
+			nodeOf(c.riva.graph, e.signal).refs ||
+			(nodeOf(c.riva.graph, e.lay).value as Lay[]).length
 		)
 			return armGc(c, e);
 		if (c.entries.get(e.key) !== e) return;
 		c.entries.delete(e.key);
 		const stored = peek(c, e).data;
-		if (stored !== undefined) e.def.options.cache?.release(c.client, stored);
+		if (stored !== undefined) e.def.options.cache?.release(c.riva, stored);
 	}, ms);
 }
 
@@ -188,7 +188,7 @@ const sameState = (a: State, b: State): boolean => {
 };
 
 export function entryOf(c: Ctx, def: AnyQuery, vars: unknown): Entry {
-	const { client } = c;
+	const { riva } = c;
 	const key = stableKey(def.id, vars);
 	let e = c.entries.get(key);
 	if (e && e.def.options !== def.options) {
@@ -202,7 +202,7 @@ export function entryOf(c: Ctx, def: AnyQuery, vars: unknown): Entry {
 			);
 		// Drop what the old policy stored: the new one reads only its own data.
 		const d = peek(c, e).data;
-		if (d !== undefined) e.def.options.cache?.release(client, d);
+		if (d !== undefined) e.def.options.cache?.release(riva, d);
 		e.was = e.def.options;
 		e.def = def;
 		put(c, e, IDLE);
@@ -223,10 +223,10 @@ export function entryOf(c: Ctx, def: AnyQuery, vars: unknown): Entry {
 					const { cache, derive } = n.def.options;
 					if (!cache && !ls.length && !derive) return s;
 					let data =
-						cache && s.data !== undefined ? cache.read(client, s.data) : s.data;
+						cache && s.data !== undefined ? cache.read(riva, s.data) : s.data;
 					for (const l of ls) data = l(data);
 					const out = { ...s, data };
-					return derive ? (derive(client, out, vars) as State) : out;
+					return derive ? (derive(riva, out, vars) as State) : out;
 				},
 				{ equals: sameState, name: key },
 			),

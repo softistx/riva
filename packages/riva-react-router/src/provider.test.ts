@@ -1,6 +1,6 @@
 import { expect, spyOn, test } from 'bun:test';
-import { createRivaClient, type RivaClient } from '@softistx/riva';
-import { useClient } from '@softistx/riva-react';
+import { createRiva, type Riva } from '@softistx/riva';
+import { useRiva } from '@softistx/riva-react';
 import { act, createElement as h, StrictMode } from 'react';
 import { createRoot, hydrateRoot } from 'react-dom/client';
 import { createMemoryRouter, RouterProvider } from 'react-router';
@@ -58,14 +58,14 @@ test('a named signal is seeded once and a local signal survives a navigation', a
 	const app = makeApp({ onPatient: (id) => counter.set(Number(id) + 3) });
 	const { loaderData } = await app.serve('/patients/2');
 	const page = await app.boot('/patients/2', loaderData);
-	const client = seen.client as RivaClient;
-	expect(client.get(counter)).toBe(5);
-	client.set(counter, 9);
-	client.set(local, 'typed');
+	const riva = seen.riva as Riva;
+	expect(riva.get(counter)).toBe(5);
+	riva.set(counter, 9);
+	riva.set(local, 'typed');
 	await page.go('/patients/3');
 	expect(page.text('#patient')).toBe('Patient:3 #2');
-	expect(client.get(counter)).toBe(9);
-	expect(client.get(local)).toBe('typed');
+	expect(riva.get(counter)).toBe(9);
+	expect(riva.get(local)).toBe('typed');
 	await page.unmount();
 });
 
@@ -148,11 +148,11 @@ test('hydrating the server HTML reports no mismatch', async () => {
 	container.remove();
 });
 
-test('a given client is used, and setup runs once with the environment', async () => {
-	const given = createRivaClient();
+test('a given riva is used, and setup runs once with the environment', async () => {
+	const given = createRiva();
 	const envs: boolean[] = [];
 	const Probe = () => {
-		seen.client = useClient();
+		seen.riva = useRiva();
 		return null;
 	};
 	const container = document.createElement('div');
@@ -165,13 +165,13 @@ test('a given client is used, and setup runs once with the environment', async (
 			Component: () =>
 				h(
 					RivaRouterProvider,
-					{ client: given, setup: (_c, env) => envs.push(env.server) },
+					{ riva: given, setup: (_c, env) => envs.push(env.server) },
 					h(Probe),
 				),
 		},
 	]);
 	await act(async () => dom.render(h(RouterProvider, { router })));
-	expect(seen.client).toBe(given);
+	expect(seen.riva).toBe(given);
 	expect(envs).toEqual([false]);
 	await act(async () => dom.unmount());
 	container.remove();

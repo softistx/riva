@@ -44,4 +44,4 @@ export const rename = mutation(RENAME_PATIENT_MUTATION, {
 - **Selections must include `__typename`** below the operation's root, selected directly (or in an inline fragment with no type condition). Otherwise `query()` or `mutation()` throws a `RivaError` (`RIVA_DEFINITION`); the document is never rewritten, since a persisted id is the hash of its text. The client preset's `addTypenameSelectionDocumentTransform` adds it.
 - A fetch result that is itself missing a selected field ends the query in the error status with code `RIVA_CACHE` (`ensure` rejects with it) instead of looping.
 - The cache holds JSON: a `Date`, a function or a `NaN` in a result throws a `RivaError` with code `RIVA_CACHE`.
-- Share one `normalized()` between a client's definitions: a second one with other identity rules is refused by the core ([troubleshooting](../../../riva/docs/troubleshooting.md#this-client-already-uses-other-entity-identity-rules)).
+- Share one `normalized()` between a riva's definitions: a second one with other identity rules is refused by the core ([troubleshooting](../../../riva/docs/troubleshooting.md#this-client-already-uses-other-entity-identity-rules)).

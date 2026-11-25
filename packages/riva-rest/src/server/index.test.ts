@@ -1,5 +1,5 @@
 import { expect, expectTypeOf, test } from 'bun:test';
-import { createRivaClient, RivaScopeError } from '@softistx/riva';
+import { createRiva, RivaScopeError } from '@softistx/riva';
 import { operations as table } from '../../test/fixtures';
 import { provideRest, type Route } from '../transport';
 import {
@@ -11,23 +11,23 @@ import {
 
 function setup() {
 	const seen: Array<{ route: Route; input: unknown; signal: AbortSignal }> = [];
-	const client = createRivaClient();
-	provideRest(client, {
+	const riva = createRiva();
+	provideRest(riva, {
 		async call(route, input, { signal }) {
 			seen.push({ route, input, signal });
 			return { echoed: input };
 		},
 	});
-	return { seen, client, source: operations({ operations: table }) };
+	return { seen, riva, source: operations({ operations: table }) };
 }
 
-test('finds an operation by rest:<operationId> and runs it through the client transport', async () => {
-	const { seen, client, source } = setup();
+test('finds an operation by rest:<operationId> and runs it through the riva transport', async () => {
+	const { seen, riva, source } = setup();
 	const op = source.find('rest:getInvoice');
 	expect(op?.kind).toBe('query');
 	const signal = new AbortController().signal;
 	const input = { param: { id: '7' } };
-	expect(await op?.run(client, input, signal)).toEqual({ echoed: input });
+	expect(await op?.run(riva, input, signal)).toEqual({ echoed: input });
 	expect(seen[0]?.route).toEqual({
 		method: 'get',
 		path: '/invoices/{id}',
@@ -46,10 +46,10 @@ test('reads are queries, other methods mutations; hasInput follows the spec', ()
 });
 
 test('an operation with no input is called with none', async () => {
-	const { seen, client, source } = setup();
+	const { seen, riva, source } = setup();
 	await source
 		.find('rest:health')
-		?.run(client, undefined, new AbortController().signal);
+		?.run(riva, undefined, new AbortController().signal);
 	expect(seen[0]?.route.hasInput).toBe(false);
 });
 
@@ -67,12 +67,12 @@ test('an unknown id is not found: no prefix, unknown operation, inherited names'
 		expect(source.find(id)).toBeUndefined();
 });
 
-test('running on a client with no REST transport throws RivaScopeError', async () => {
+test('running on a riva with no REST transport throws RivaScopeError', async () => {
 	const { source } = setup();
 	await expect(
 		source
 			.find('rest:health')
-			?.run(createRivaClient(), undefined, new AbortController().signal),
+			?.run(createRiva(), undefined, new AbortController().signal),
 	).rejects.toBeInstanceOf(RivaScopeError);
 });
 

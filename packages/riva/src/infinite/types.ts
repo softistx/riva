@@ -1,4 +1,4 @@
-import type { RivaClient } from '../client';
+import type { Riva } from '../client';
 import type {
 	EnsureOptions,
 	FetchContext,
@@ -93,11 +93,11 @@ export interface Infinite<Vars, Page, Node>
 	> {
 	/** Loads the first page when missing or stale (every loaded page when stale). */
 	ensure(
-		client: RivaClient,
+		riva: Riva,
 		...args: VarsArgs<Vars, [opts?: EnsureOptions]>
 	): Promise<InfiniteList<Page, Node>>;
 	/** Appends the page after the last one. Deduped while in flight; a no-op without a next page. */
-	fetchNext(client: RivaClient, ...args: VarsArgs<Vars>): Promise<void>;
+	fetchNext(riva: Riva, ...args: VarsArgs<Vars>): Promise<void>;
 	/** Prepends the page before the first one. Deduped while in flight; a no-op without a previous page. */
-	fetchPrevious(client: RivaClient, ...args: VarsArgs<Vars>): Promise<void>;
+	fetchPrevious(riva: Riva, ...args: VarsArgs<Vars>): Promise<void>;
 }

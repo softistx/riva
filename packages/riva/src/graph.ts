@@ -1,13 +1,13 @@
-import type { RivaClient } from './client';
+import type { Riva } from './client';
 import type { Computed, Readable } from './computed';
 import { RivaError } from './errors';
 import { collect, flush } from './flush';
-import { withClient } from './scope';
+import { withRiva } from './scope';
 import type { Listener, Signal } from './signal';
 
 type Def = Signal<unknown> | Computed<unknown>;
 
-/** The per-client node of a definition: its value and its links. */
+/** The per-riva node of a definition: its value and its links. */
 export interface Node {
 	def: Def;
 	value: unknown;
@@ -27,7 +27,7 @@ export interface Node {
 }
 
 export interface Graph {
-	client: RivaClient;
+	riva: Riva;
 	nodes: WeakMap<Def, Node>;
 	/** Bumped on every write: a computed verified at this epoch is fresh. */
 	epoch: number;
@@ -41,8 +41,8 @@ export interface Graph {
 	seeds?: Map<string, unknown>;
 }
 
-export const createGraph = (client: RivaClient): Graph => ({
-	client,
+export const createGraph = (riva: Riva): Graph => ({
+	riva,
 	nodes: new WeakMap(),
 	epoch: 0,
 	track: undefined,
@@ -117,7 +117,7 @@ function recompute(g: Graph, n: Node): void {
 	g.track = next;
 	let value: unknown;
 	try {
-		value = withClient(g.client, () =>
+		value = withRiva(g.riva, () =>
 			def.fn((d) => read(g, d as Readable<never>)),
 		);
 	} finally {

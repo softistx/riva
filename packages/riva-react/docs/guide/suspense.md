@@ -5,7 +5,7 @@ With `suspense: true`, `useQuery` suspends while there is no data, and `data` is
 ```tsx
 import { Suspense } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
-import { useClient, useQuery } from '@softistx/riva-react';
+import { useRiva, useQuery } from '@softistx/riva-react';
 
 function PatientList({ school }: { school: string }) {
 	const { data } = useQuery(patients, { school }, { suspense: true });
@@ -13,9 +13,9 @@ function PatientList({ school }: { school: string }) {
 }
 
 export function Page({ school }: { school: string }) {
-	const client = useClient();
+	const riva = useRiva();
 	return (
-		<ErrorBoundary fallback={<p>Failed</p>} onReset={() => patients.prefetch(client, { school })}>
+		<ErrorBoundary fallback={<p>Failed</p>} onReset={() => patients.prefetch(riva, { school })}>
 			<Suspense fallback={<p>Loading…</p>}>
 				<PatientList school={school} />
 			</Suspense>
@@ -34,5 +34,5 @@ export function Page({ school }: { school: string }) {
 
 ## Traps
 
-- To retry after an error, start the fetch again **before** resetting the boundary (`onReset={() => def.prefetch(client, vars)}`), or the boundary re-renders the cached error: see [troubleshooting](../troubleshooting.md).
+- To retry after an error, start the fetch again **before** resetting the boundary (`onReset={() => def.prefetch(riva, vars)}`), or the boundary re-renders the cached error: see [troubleshooting](../troubleshooting.md).
 - A suspending query with no `staleTime` can fetch twice around the Suspense boundary: see [troubleshooting](../troubleshooting.md).

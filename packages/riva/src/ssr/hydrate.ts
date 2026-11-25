@@ -1,4 +1,4 @@
-import type { RivaClient } from '../client';
+import type { Riva } from '../client';
 import {
 	RivaAbortError,
 	RivaError,
@@ -59,7 +59,7 @@ function seed(c: Ctx, e: Entry): void {
 }
 
 /**
- * Loads a snapshot into a client. Entries and signals the client does not have
+ * Loads a snapshot into a riva. Entries and signals the riva does not have
  * yet are seeded the moment their definition is first used; an entry it has
  * is overwritten only by a newer snapshot, and never while it fetches or
  * carries optimistic layers. With `deferObserved` (a render), nothing
@@ -68,7 +68,7 @@ function seed(c: Ctx, e: Entry): void {
  * as a snapshot to hand to `hydrate` later, outside the render.
  */
 export function hydrate(
-	client: RivaClient,
+	riva: Riva,
 	snapshot: Snapshot,
 	opts?: { deferObserved?: boolean },
 ): Snapshot | undefined {
@@ -77,15 +77,15 @@ export function hydrate(
 		throw ssrError(
 			`Cannot hydrate: this is not a snapshot dehydrate() made (version ${v}).`,
 		);
-	const c = client.queries.ctx;
-	const { graph: g } = client;
+	const c = riva.queries.ctx;
+	const { graph: g } = riva;
 	c.pending ??= new Map();
 	const { pending } = c;
 	c.seed = seed;
 	const now = c.sched.now();
 	const defer = opts?.deferObserved;
 	const deferred: SnapshotEntry[] = [];
-	client.batch(() => {
+	riva.batch(() => {
 		for (const se of snapshot.q) {
 			// A deferred snapshot is applied later, so its ages are understated by the delay.
 			const p: SeedEntry = {

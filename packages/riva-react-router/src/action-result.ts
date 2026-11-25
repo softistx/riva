@@ -1,5 +1,5 @@
 import type { Query } from '@softistx/riva';
-import { useClient } from '@softistx/riva-react';
+import { useRiva } from '@softistx/riva-react';
 import { useEffect, useRef } from 'react';
 
 /**
@@ -31,7 +31,7 @@ export function useActionResult<R, V, D>(
 		select?: ((result: R) => D | undefined) | undefined;
 	},
 ): void {
-	const client = useClient();
+	const riva = useRiva();
 	const last = useRef<unknown>(undefined);
 	const latest = useRef(opts);
 	latest.current = opts;
@@ -40,6 +40,6 @@ export function useActionResult<R, V, D>(
 		last.current = result;
 		const { select, into, vars } = latest.current;
 		const data = select ? select(result) : (result as unknown as D);
-		if (data !== undefined) into.setData(client, vars, data);
-	}, [result, client]);
+		if (data !== undefined) into.setData(riva, vars, data);
+	}, [result, riva]);
 }

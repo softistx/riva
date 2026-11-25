@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { infinite } from '@softistx/riva/infinite';
 import { act } from 'react';
-import { flush, h, mount, newClient } from '../../test/render';
+import { flush, h, mount, newRiva } from '../../test/render';
 import { type InfiniteResult, useInfiniteQuery } from './use-infinite-query';
 
 type Item = { id: string };
@@ -52,7 +52,7 @@ test('loads the first page, then fetchNext appends the next', async () => {
 			`${q.data?.nodes.map((n) => n.id).join(',') ?? '-'}|${q.hasNext}|${q.isFetchingNext}`,
 		);
 	}
-	const m = await mount(h(C), newClient());
+	const m = await mount(h(C), newRiva());
 	await flush();
 	expect(m.text()).toBe('0,1|true|false');
 	await flush(() => void box.fetchNext());
@@ -72,7 +72,7 @@ test('the actions keep their identity, and enabled: false stays idle', async () 
 		seen.push(q as unknown as InfiniteResult<unknown, Item>);
 		return h('p', null, q.status);
 	}
-	const m = await mount(h(C, { on: false }), newClient());
+	const m = await mount(h(C, { on: false }), newRiva());
 	await flush();
 	expect(m.text()).toBe('idle');
 	await act(async () => {});

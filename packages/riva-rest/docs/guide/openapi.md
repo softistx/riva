@@ -14,9 +14,9 @@ export const invoice = query(api, 'get /invoices/{id}', { staleTime: '30s' });
 export const invoices = query(api, 'get /invoices');
 export const createInvoice = mutation(api, 'post /invoices', { invalidates: [invoices] });
 
-await invoice.ensure(client, { param: { id: '7' } }); // Invoice
-await createInvoice.run(client, { json: { number: 'F-8', total: 120 } });
-client.get(invoices); // an operation whose input is all optional takes no variables
+await invoice.ensure(riva, { param: { id: '7' } }); // Invoice
+await createInvoice.run(riva, { json: { number: 'F-8', total: 120 } });
+riva.get(invoices); // an operation whose input is all optional takes no variables
 ```
 
 ## Options
@@ -33,7 +33,7 @@ client.get(invoices); // an operation whose input is all optional takes no varia
 
 ## Cancel
 
-`ensure(client, vars, { signal })`: the signal reaches the request, and an abort is a `RivaAbortError`.
+`ensure(riva, vars, { signal })`: the signal reaches the request, and an abort is a `RivaAbortError`.
 
 `rest.query` and `rest.mutation` are the same functions, for the `rest.query(api, 'get /invoices/{id}')` spelling.
 

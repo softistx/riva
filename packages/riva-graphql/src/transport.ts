@@ -1,4 +1,4 @@
-import { type RivaClient, RivaScopeError } from '@softistx/riva';
+import { type Riva, RivaScopeError } from '@softistx/riva';
 import type { Operation } from './operation';
 
 /**
@@ -14,23 +14,20 @@ export interface GraphQLTransport {
 	): Promise<Data>;
 }
 
-// Held on the client's slots: the transport of a request dies with its client.
+// Held on the riva's slots: the transport of a request dies with its riva.
 const SLOT = {};
 
-/** Gives `client` the transport its GraphQL definitions fetch through. */
-export function provideGraphQL(
-	client: RivaClient,
-	transport: GraphQLTransport,
-): void {
-	client.slots.set(SLOT, transport);
+/** Gives `riva` the transport its GraphQL definitions fetch through. */
+export function provideGraphQL(riva: Riva, transport: GraphQLTransport): void {
+	riva.slots.set(SLOT, transport);
 }
 
-/** The transport `provideGraphQL` gave `client`; throws `RivaScopeError` when none. */
-export function transportOf(client: RivaClient): GraphQLTransport {
-	const transport = client.slots.get(SLOT) as GraphQLTransport | undefined;
+/** The transport `provideGraphQL` gave `riva`; throws `RivaScopeError` when none. */
+export function transportOf(riva: Riva): GraphQLTransport {
+	const transport = riva.slots.get(SLOT) as GraphQLTransport | undefined;
 	if (!transport)
 		throw new RivaScopeError(
-			'No GraphQL transport on this RivaClient: call provideGraphQL(client, graphqlClientTransport(gqlClient)) when you create it.',
+			'No GraphQL transport on this Riva: call provideGraphQL(riva, graphqlClientTransport(gqlClient)) when you create it.',
 		);
 	return transport;
 }

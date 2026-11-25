@@ -1,7 +1,7 @@
 import { expect, spyOn, test } from 'bun:test';
 import { mutation } from '@softistx/riva';
 import { act } from 'react';
-import { deferred, h, mount, newClient } from '../test/render';
+import { deferred, h, mount, newRiva } from '../test/render';
 import { type MutationResult, useMutation } from './use-mutation';
 
 type Rename = MutationResult<{ id: string; name: string }, string>;
@@ -24,7 +24,7 @@ function setup(run: (v: { id: string; name: string }) => Promise<string>) {
 test('status flows idle, pending, success with the data', async () => {
 	const gate = deferred<string>();
 	const [box, C] = setup(() => gate.promise);
-	const m = await mount(h(C), newClient());
+	const m = await mount(h(C), newRiva());
 	expect(m.text()).toBe('idle:-:false');
 	let result!: Promise<string>;
 	await act(async () => {
@@ -41,7 +41,7 @@ test('status flows idle, pending, success with the data', async () => {
 
 test('a rejection sets the error and rejects the run', async () => {
 	const [box, C] = setup(() => Promise.reject(new Error('refused')));
-	const m = await mount(h(C), newClient());
+	const m = await mount(h(C), newRiva());
 	let caught: unknown;
 	await act(async () => {
 		await box.m?.run({ id: '1', name: 'a' }).catch((e) => {
@@ -60,7 +60,7 @@ test('the latest run owns the state', async () => {
 	const [box, C] = setup(
 		() => (gates[n++] as ReturnType<typeof deferred<string>>).promise,
 	);
-	const m = await mount(h(C), newClient());
+	const m = await mount(h(C), newRiva());
 	await act(async () => {
 		void box.m?.run({ id: '1', name: 'a' });
 		void box.m?.run({ id: '1', name: 'b' });
@@ -80,7 +80,7 @@ test('a run finishes after unmount with no state update and no warning', async (
 		return v;
 	});
 	const error = spyOn(console, 'error').mockImplementation(() => {});
-	const m = await mount(h(C), newClient());
+	const m = await mount(h(C), newRiva());
 	const rendersBefore = box.renders;
 	let result!: Promise<string>;
 	await act(async () => {
@@ -99,7 +99,7 @@ test('a run finishes after unmount with no state update and no warning', async (
 
 test('run and reset keep their identity across renders', async () => {
 	const [box, C] = setup(async () => 'x');
-	const m = await mount(h(C), newClient());
+	const m = await mount(h(C), newRiva());
 	const { run, reset } = box.m as Rename;
 	await act(async () => void box.m?.run({ id: '1', name: 'a' }));
 	expect(box.m?.run).toBe(run);

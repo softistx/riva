@@ -1,6 +1,6 @@
 import { expectTypeOf, test } from 'bun:test';
-import type { RivaClient } from '../client';
-import { createRivaClient } from '../client';
+import type { Riva } from '../client';
+import { createRiva } from '../client';
 import { mutation } from '../mutation';
 import { infinite } from './infinite';
 import type {
@@ -22,7 +22,7 @@ const feed = infinite({
 });
 
 test('Page and Node are inferred from fetch and connection', () => {
-	const c = createRivaClient();
+	const c = createRiva();
 	const st = c.get(feed, { search: 'a' });
 	expectTypeOf(st).toEqualTypeOf<InfiniteState<Page, Node>>();
 	expectTypeOf(st.data?.nodes).toEqualTypeOf<Node[] | undefined>();
@@ -33,7 +33,7 @@ test('Page and Node are inferred from fetch and connection', () => {
 
 test('the cursor variables are not asked from the caller', () => {
 	expectTypeOf(feed.fetchNext).parameters.toEqualTypeOf<
-		[RivaClient, { search: string }]
+		[Riva, { search: string }]
 	>();
 	expectTypeOf(feed.ensure).returns.toEqualTypeOf<
 		Promise<InfiniteList<Page, Node>>
@@ -53,7 +53,7 @@ test('a feed with no variables takes none', () => {
 		connection: (p) => p.patients,
 	});
 	// biome-ignore lint/suspicious/noConfusingVoidType: no variables is `void`
-	expectTypeOf(bare.fetchNext).parameters.toEqualTypeOf<[RivaClient, void?]>();
+	expectTypeOf(bare.fetchNext).parameters.toEqualTypeOf<[Riva, void?]>();
 });
 
 test('a feed is a query for mutations', () => {
@@ -70,7 +70,7 @@ test('a feed is a query for mutations', () => {
 });
 
 test('the subscribe listener gets the feed state', () => {
-	createRivaClient().subscribe(feed, { search: 'a' }, (s) => {
+	createRiva().subscribe(feed, { search: 'a' }, (s) => {
 		expectTypeOf(s.isFetchingNext).toBeBoolean();
 	});
 });
@@ -89,7 +89,7 @@ test('custom cursor names leave the caller variables', () => {
 			} & { v?: typeof v },
 		connection: (p) => p,
 	});
-	const c = createRivaClient();
+	const c = createRiva();
 	void custom.ensure(c, { search: 'a' });
 	// @ts-expect-error a cursor variable is not the caller's
 	void custom.ensure(c, { search: 'a', afterId: 'x' });

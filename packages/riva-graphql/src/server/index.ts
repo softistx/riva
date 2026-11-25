@@ -21,7 +21,7 @@ export type AllowlistInput = Readonly<
 
 /**
  * The server side of `bffTransport`: runs the operations of `buildAllowlist`'s
- * manifest through the request client's transport (`provideGraphQL`). Only the
+ * manifest through the request riva's transport (`provideGraphQL`). Only the
  * manifest's ids are known, and the text executed is the manifest's, never the
  * browser's. Each document is parsed once, on first use.
  */
@@ -45,12 +45,12 @@ export function allowlist(manifest: AllowlistInput): DataSource {
 				let operation: Operation | undefined;
 				op = {
 					kind: entry.kind as DataOperation['kind'],
-					run(client, variables, signal) {
+					run(riva, variables, signal) {
 						operation ??= {
 							...operationOf(parse(entry.document) as DocumentNode),
 							id: entry.id,
 						};
-						return transportOf(client).execute(operation, variables, {
+						return transportOf(riva).execute(operation, variables, {
 							signal,
 						});
 					},

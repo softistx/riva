@@ -1,10 +1,10 @@
 /* biome-ignore-all lint/style/useNamingConvention: GraphQL's field names */
-import type { RivaClient } from '@softistx/riva';
+import type { Riva } from '@softistx/riva';
 import { type GraphQLTransport, provideGraphQL } from '@softistx/riva-graphql';
 import { bffTransport } from '@softistx/riva-graphql/bff';
 import { buildAllowlist } from '@softistx/riva-graphql/codegen';
 import { allowlist } from '@softistx/riva-graphql/server';
-import { useClient, useQuery } from '@softistx/riva-react';
+import { useQuery, useRiva } from '@softistx/riva-react';
 import { act, createElement as h, type ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import {
@@ -42,7 +42,7 @@ export interface ApiCall {
 /**
  * A browser and its server in one process: the browser's `bffTransport` posts
  * to a `dataRoute` mounted behind `rivaMiddleware` (reached through the static
- * handler's `queryRoute`), whose `setup` gives the request client a fake API
+ * handler's `queryRoute`), whose `setup` gives the request riva a fake API
  * stamped with the `x-session` header the browser sent.
  */
 export function makeDataApp(
@@ -74,11 +74,8 @@ export function makeDataApp(
 			path: '/',
 			middleware: [
 				rivaMiddleware({
-					setup: (client, { request }) =>
-						provideGraphQL(
-							client,
-							sessionApi(request.headers.get('x-session')),
-						),
+					setup: (riva, { request }) =>
+						provideGraphQL(riva, sessionApi(request.headers.get('x-session'))),
 				}),
 			],
 			children: [
@@ -103,7 +100,7 @@ export function makeDataApp(
 		} as never) as Promise<Response>;
 	}) as typeof fetch;
 
-	const seen: { client?: RivaClient } = {};
+	const seen: { riva?: Riva } = {};
 	let Page: () => ReactElement = () => h('p');
 	const routes = [
 		{
@@ -114,9 +111,9 @@ export function makeDataApp(
 				h(
 					RivaRouterProvider,
 					{
-						setup: (client: RivaClient) =>
+						setup: (riva: Riva) =>
 							provideGraphQL(
-								client,
+								riva,
 								bffTransport({
 									fetch: serverFetch,
 									headers: () => ({ 'x-session': 'abc' }),
@@ -182,14 +179,14 @@ export function makeDataApp(
 		boot,
 		loads: () => loads,
 		seen,
-		/** The client the page rendered with. */
-		client: (): RivaClient => {
-			if (!seen.client) throw new Error('No page rendered yet.');
-			return seen.client;
+		/** The riva the page rendered with. */
+		riva: (): Riva => {
+			if (!seen.riva) throw new Error('No page rendered yet.');
+			return seen.riva;
 		},
-		/** A page that shows `PATIENTS` and keeps its client for the spec. */
+		/** A page that shows `PATIENTS` and keeps its riva for the spec. */
 		Patients: (): ReactElement => {
-			seen.client = useClient();
+			seen.riva = useRiva();
 			const q = useQuery(PATIENTS, SCHOOL);
 			return h('p', { id: 'patients' }, `${q.data?.label} #${q.data?.rev}`);
 		},

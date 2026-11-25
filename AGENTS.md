@@ -21,8 +21,8 @@ departure.
   adapter.
 - Errors are defined once, in the core, and thrown by the adapters, so
   `instanceof` holds.
-- Definitions are stateless; values live per `RivaClient`. No module-level
-  state; a server read with no client in scope throws (the SSR leak guard).
+- Definitions are stateless; values live per `Riva`. No module-level
+  state; a server read with no riva in scope throws (the SSR leak guard).
 - Keys are derived (definition id + stable-serialized variables), never
   handwritten.
 - Size budget: core <= 6 kB gzipped, core + react <= 9 kB.

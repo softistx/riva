@@ -1,5 +1,5 @@
-import type { RivaClient } from './client';
-import type { ClientEvents, Scheduler } from './env';
+import type { Riva } from './client';
+import type { RivaEvents, Scheduler } from './env';
 import { RivaAbortError } from './errors';
 import { stableKey } from './key';
 import type { EnsureOptions, Query, QueryState } from './query';
@@ -30,14 +30,14 @@ function mark(c: Ctx, e: Entry): void {
 	else if (e.observers) join(c, e);
 }
 
-/** The query entries of one client: the operations the definitions and the client call. */
+/** The query entries of one riva: the operations the definitions and the riva call. */
 export function createQueryCache(
-	client: RivaClient,
+	riva: Riva,
 	sched: Scheduler,
-	events: ClientEvents,
+	events: RivaEvents,
 ) {
 	const c: Ctx = {
-		client,
+		riva,
 		sched,
 		events,
 		entries: new Map(),
@@ -51,13 +51,13 @@ export function createQueryCache(
 		/** An optimistic layer over an entry; returns its drop. @internal */
 		lay(def: AnyQuery, vars: unknown, l: Lay): () => void {
 			const e = entryOf(c, def, vars);
-			client.set(e.lay, (ls) => [...ls, l]);
-			return () => client.set(e.lay, (ls) => ls.filter((x) => x !== l));
+			riva.set(e.lay, (ls) => [...ls, l]);
+			return () => riva.set(e.lay, (ls) => ls.filter((x) => x !== l));
 		},
 		/** A pure, tracked read: creates an idle entry, never fetches. */
 		// biome-ignore lint/suspicious/noExplicitAny: variables are typed by the caller
 		state: <D>(def: Query<any, D>, vars: unknown): QueryState<D> =>
-			client.get(entryOf(c, def, vars).out) as QueryState<D>,
+			riva.get(entryOf(c, def, vars).out) as QueryState<D>,
 
 		ensure<V, D>(def: Query<V, D>, vars: V, opts?: EnsureOptions): Promise<D> {
 			const signal = opts?.signal;
@@ -108,7 +108,7 @@ export function createQueryCache(
 		): void {
 			const e = entryOf(c, def, vars);
 			const f = e.run;
-			client.batch(() => {
+			riva.batch(() => {
 				const value =
 					typeof data === 'function'
 						? (data as (prev: D | undefined) => D)(committed(c, e) as D)

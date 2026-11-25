@@ -10,14 +10,14 @@ export interface SignalOptions<T> {
 	ssr?: boolean;
 }
 
-/** A stateless definition: it holds no value, a `RivaClient` does. */
+/** A stateless definition: it holds no value, a `Riva` does. */
 export interface Signal<T> {
 	readonly kind: 'signal';
 	readonly initial: T;
 	readonly name: string | undefined;
 	readonly ssr: boolean;
 	equals(a: T, b: T): boolean;
-	/** Reads through the ambient client. */
+	/** Reads through the ambient riva. */
 	get(): T;
 	set(value: NoInfer<T> | ((prev: T) => T)): void;
 	subscribe(listener: Listener<T>): Unsubscribe;

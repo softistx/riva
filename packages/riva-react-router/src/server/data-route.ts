@@ -160,7 +160,7 @@ function failure(
 
 /**
  * The route behind `bffTransport`: it runs the allowlisted operations the
- * browser names, on the request's client (so with the session `setup` gave
+ * browser names, on the request's riva (so with the session `setup` gave
  * it). The id picks an operation from the `sources`; the browser never sends
  * a document. Refusals come back as `{ error: { code, message, status } }` in
  * this order: method, same-site, media type, size, shape, unknown id.

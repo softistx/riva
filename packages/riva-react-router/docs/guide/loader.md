@@ -31,7 +31,7 @@ export default function Patients({ params }: Route.ComponentProps) {
 
 | Export | What |
 |---|---|
-| `rivaOf(context)` | The request's client; throws `RivaScopeError` when the middleware did not run. |
+| `rivaOf(context)` | The request's riva; throws `RivaScopeError` when the middleware did not run. |
 | `riva(context)` | `{ '~riva': Snapshot }`, to return from the loader (or spread into its data). |
 | `rivaContext` | The router context key. |
 
@@ -46,8 +46,8 @@ The provider hydrates each match's `~riva` once. The first render is seeded befo
 ## Traps
 
 - `rivaOf` and `riva` are for server loaders and actions only; `clientLoader` is not supported.
-- Every `riva(context)` call dehydrates the whole request client: return it from one loader per request (usually the root's), and let the others only `ensure` their data.
+- Every `riva(context)` call dehydrates the whole request riva: return it from one loader per request (usually the root's), and let the others only `ensure` their data.
 - Only loaders that return `riva(context)` feed the provider.
-- The ambient scope (`mySignal.get()` resolving to the request's client, also after an `await`) works only inside the `next` that `rivaMiddleware` runs: loaders, actions and the code they call. Outside it (an earlier middleware, a module scope), use `rivaOf(context)`.
+- The ambient scope (`mySignal.get()` resolving to the request's riva, also after an `await`) works only inside the `next` that `rivaMiddleware` runs: loaders, actions and the code they call. Outside it (an earlier middleware, a module scope), use `rivaOf(context)`.
 - Errors travel as codes: a failed query rehydrates as its class (`instanceof RivaRequestError` holds) with an empty message.
 - Data that refetches right after hydration: see [troubleshooting](../troubleshooting.md).

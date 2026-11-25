@@ -24,7 +24,7 @@ binding until the owner changes it.
 | D9 | **BFF client data path**: one generic resource route (`/_data`) in `riva-react-router` executes, on the server, the persisted operations of a codegen allowlist with the session caller. The browser sends an operation id and variables only. |
 | D10 | **Definitions first**: `query(DOC, opts)` / `mutation(DOC, opts)` are typed objects reused by loaders, hooks, prefetch and invalidation. Keys are derived, never written by hand. |
 | D11 | v1 features beyond the base: **optimistic updates with rollback**, **cursor pagination and infinite lists**. |
-| D12 | **One client per request** on the server, one in the browser. Definitions are stateless; values live in a `RivaClient`. Reading a value outside a client on the server throws. |
+| D12 | **One client per request** on the server, one in the browser. Definitions are stateless; values live in a `Riva`. Reading a value outside a client on the server throws. (Renamed from `RivaClient` by the owner on 2026-11-25: the instance holds local state too, so it is not a client.) |
 | D13 | **Mutations in a BFF** go through `/_data` (allowlisted, same-origin JSON, session). React Router actions stay for forms, with a helper that writes their result into the cache. |
 | D14 | **REST typed by OpenAPI** through `openapi-httpyz`; a free-fetcher mode for schema-less APIs. |
 | D15 | **Pilot: one of our BFF apps.** Subscriptions and SSE in v1.1, devtools in v1.2, persistence/offline in v2. |
@@ -34,7 +34,7 @@ binding until the owner changes it.
 
 | Package | Role | Depends on |
 |---------|------|------------|
-| `@softistx/riva` | Core: signals, `RivaClient`, query/mutation engine, normalized + keyed cache, pagination, optimistic layer, dehydrate/hydrate. Pure TS, no DOM, no React. | nothing |
+| `@softistx/riva` | Core: signals, `Riva`, query/mutation engine, normalized + keyed cache, pagination, optimistic layer, dehydrate/hydrate. Pure TS, no DOM, no React. | nothing |
 | `@softistx/riva-react` | `RivaProvider`, hooks, Suspense support. | peer `react`, `@softistx/riva` |
 | `@softistx/riva-graphql` | GraphQL transport over `@softistx/graphql-client`, `TypedDocumentNode` / persisted ids, codegen plugin emitting the allowlist manifest. | peers `@softistx/riva`, `@softistx/graphql-client` |
 | `@softistx/riva-rest` | REST transport over `openapi-httpyz` + free fetcher. | peers `@softistx/riva`, `httpyz`/`openapi-httpyz` |
@@ -115,7 +115,7 @@ Rules of the API:
 ### 4.1 Signals
 - `signal(initial, opts)`, `computed(fn)`, `effect(fn)` (client-only), `batch(fn)`,
   `untracked(fn)`. Glitch-free, lazy computeds, synchronous propagation.
-- Values are stored per `RivaClient` (D12). A server-side read with no client in
+- Values are stored per `Riva` (D12). A server-side read with no client in
   scope throws `RivaScopeError` with a message naming the fix.
 - D16: a store's state keys are signals whose
   `equals` refuses any write made outside an action or `reset()` with
@@ -156,7 +156,7 @@ Rules of the API:
 
 ## 5. BFF integration (`riva-react-router`)
 
-- A middleware creates one `RivaClient` per request and puts it in the
+- A middleware creates one `Riva` per request and puts it in the
   router context (alxia's context when alxia-react-router is the host).
 - The loader payload carries the dehydrated snapshot; `RivaRouterProvider`
   hydrates it, and on navigation merges each new loader's snapshot.
@@ -198,7 +198,7 @@ Integration branch `feat/v1` off `develop`; one PR per slice into it; one PR
 `feat/v1` → `develop` at the end (base:large-feature-branch-workflow).
 
 1. Skeleton (this PR): monorepo, five empty packages that build, green bar, docs.
-2. Core signals + `RivaClient` scoping + SSR guard.
+2. Core signals + `Riva` scoping + SSR guard.
 3. Query engine (dedupe, stale/gc, retry, ensure/prefetch/invalidate, abort).
 4. Normalized cache + keyed REST cache (port graphql-client's normalizedCache tests).
 5. Mutations + optimistic layer with rollback.

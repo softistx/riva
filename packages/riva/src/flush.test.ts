@@ -1,15 +1,15 @@
 import { expect, test } from 'bun:test';
-import { createRivaClient } from './client';
+import { createRiva } from './client';
 import { computed } from './computed';
 import { RivaError } from './errors';
 import { collect } from './flush';
 import { nodeOf, subscribe } from './graph';
 import { signal } from './signal';
 
-test('listeners run in their own client, not the ambient one', () => {
+test('listeners run in their own riva, not the ambient one', () => {
 	const x = signal(0);
-	const a = createRivaClient();
-	const b = createRivaClient();
+	const a = createRiva();
+	const b = createRiva();
 	b.set(x, 99);
 	const seen: number[] = [];
 	a.subscribe(x, () => seen.push(x.get()));
@@ -17,10 +17,10 @@ test('listeners run in their own client, not the ambient one', () => {
 	expect(seen).toEqual([1]);
 });
 
-test('an effect cleanup disposed under another client runs in its own', () => {
+test('an effect cleanup disposed under another riva runs in its own', () => {
 	const x = signal(0);
-	const a = createRivaClient();
-	const b = createRivaClient();
+	const a = createRiva();
+	const b = createRiva();
 	b.set(x, 99);
 	const seen: number[] = [];
 	const stop = a.effect(() => () => {
@@ -32,7 +32,7 @@ test('an effect cleanup disposed under another client runs in its own', () => {
 
 test('a self-incrementing effect converges up to its bound', () => {
 	const x = signal(0);
-	const c = createRivaClient();
+	const c = createRiva();
 	c.effect(() => {
 		const v = c.get(x);
 		if (v < 5) c.set(x, v + 1);
@@ -43,7 +43,7 @@ test('a self-incrementing effect converges up to its bound', () => {
 test('an unbounded effect throws RIVA_LOOP and leaves no stuck state', () => {
 	const on = signal(false);
 	const x = signal(0);
-	const c = createRivaClient();
+	const c = createRiva();
 	c.effect(() => {
 		if (c.get(on)) c.set(x, c.get(x) + 1);
 	});
@@ -66,7 +66,7 @@ test('an unbounded effect throws RIVA_LOOP and leaves no stuck state', () => {
 
 test('an unbounded effect at creation throws and is disposed', () => {
 	const x = signal(0);
-	const c = createRivaClient();
+	const c = createRiva();
 	expect(() => c.effect(() => c.set(x, c.get(x) + 1))).toThrow(RivaError);
 	expect(nodeOf(c.graph, x).observers.size).toBe(0);
 });
@@ -80,7 +80,7 @@ test('stacked diamonds notify once and collect each node once', () => {
 		const r = computed((get) => get(prev) + 2);
 		top = computed((get) => get(l) + get(r));
 	}
-	const c = createRivaClient();
+	const c = createRiva();
 	const seen: number[] = [];
 	c.subscribe(top, (v) => seen.push(v));
 	const start = performance.now();
@@ -97,7 +97,7 @@ test('stacked diamonds notify once and collect each node once', () => {
 test('a named looping node is named in the message, without the hint', () => {
 	const on = signal(false);
 	const x = signal(0, { name: 'counter' });
-	const c = createRivaClient();
+	const c = createRiva();
 	const d = computed((get) => get(x), { name: 'counter-view' });
 	c.subscribe(d, () => c.set(x, c.get(x) + 1));
 	let thrown: unknown;

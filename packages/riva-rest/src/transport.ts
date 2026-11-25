@@ -1,9 +1,5 @@
 import type { HttpClient } from '@softistx/httpyz';
-import {
-	type FetchContext,
-	type RivaClient,
-	RivaScopeError,
-} from '@softistx/riva';
+import { type FetchContext, type Riva, RivaScopeError } from '@softistx/riva';
 
 /** Which operation to call, as found in the client's table when the definition was made. */
 export interface Route {
@@ -33,42 +29,39 @@ export interface RestTransport {
 	): Promise<unknown>;
 }
 
-// Held on the client's slots: the transport of a request dies with its client.
+// Held on the riva's slots: the transport of a request dies with its riva.
 const SLOT = {};
 
-/** Gives `client` the transport its REST definitions fetch through. */
-export function provideRest(
-	client: RivaClient,
-	transport: RestTransport,
-): void {
-	client.slots.set(SLOT, transport);
+/** Gives `riva` the transport its REST definitions fetch through. */
+export function provideRest(riva: Riva, transport: RestTransport): void {
+	riva.slots.set(SLOT, transport);
 }
 
-/** The transport `provideRest` gave `client`; throws `RivaScopeError` when none. */
-export function transportOf(client: RivaClient): RestTransport {
-	const transport = client.slots.get(SLOT) as RestTransport | undefined;
+/** The transport `provideRest` gave `riva`; throws `RivaScopeError` when none. */
+export function transportOf(riva: Riva): RestTransport {
+	const transport = riva.slots.get(SLOT) as RestTransport | undefined;
 	if (!transport)
 		throw new RivaScopeError(
-			'No REST transport on this RivaClient: call provideRest(client, httpyzTransport(http, api)) when you create it.',
+			'No REST transport on this Riva: call provideRest(riva, httpyzTransport(http, api)) when you create it.',
 		);
 	return transport;
 }
 
-/** What a free fetcher receives: the core's context, and the client's httpyz instance. */
+/** What a free fetcher receives: the core's context, and the riva's httpyz instance. */
 export interface RestContext extends FetchContext {
 	/** The httpyz client of the transport; reading it with none provided throws `RivaScopeError`. */
 	readonly http: HttpClient;
 }
 
-/** The core's context, with `http` read from the client's transport when the fetcher asks for it. */
+/** The core's context, with `http` read from the riva's transport when the fetcher asks for it. */
 export const restContext = (ctx: FetchContext): RestContext =>
 	Object.defineProperty({ ...ctx }, 'http', {
 		enumerable: true,
 		get(): HttpClient {
-			const { http } = transportOf(ctx.client);
+			const { http } = transportOf(ctx.riva);
 			if (!http)
 				throw new RivaScopeError(
-					'The REST transport of this RivaClient holds no httpyz client: build it with httpyzTransport(http, api).',
+					'The REST transport of this Riva holds no httpyz client: build it with httpyzTransport(http, api).',
 				);
 			return http;
 		},

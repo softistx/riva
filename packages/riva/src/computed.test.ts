@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { createRivaClient } from './client';
+import { createRiva } from './client';
 import { computed } from './computed';
 import { RivaError } from './errors';
 import { signal } from './signal';
@@ -11,7 +11,7 @@ test('is lazy and cached', () => {
 		calls++;
 		return get(a) * 2;
 	});
-	const c = createRivaClient();
+	const c = createRiva();
 	expect(calls).toBe(0);
 	expect(c.get(d)).toBe(2);
 	expect(c.get(d)).toBe(2);
@@ -22,11 +22,11 @@ test('is lazy and cached', () => {
 	expect(calls).toBe(2);
 });
 
-test('is cached per client', () => {
+test('is cached per riva', () => {
 	const a = signal(1);
 	const d = computed((get) => get(a) + 1);
-	const c1 = createRivaClient();
-	const c2 = createRivaClient();
+	const c1 = createRiva();
+	const c2 = createRiva();
 	c1.set(a, 10);
 	expect(c1.get(d)).toBe(11);
 	expect(c2.get(d)).toBe(2);
@@ -39,7 +39,7 @@ test('does not re-evaluate when a dependency is set to an equal value', () => {
 		calls++;
 		return get(a);
 	});
-	const c = createRivaClient();
+	const c = createRiva();
 	c.get(d);
 	c.set(a, 1);
 	c.get(d);
@@ -54,7 +54,7 @@ test('a computed whose value is unchanged does not recompute dependents', () => 
 		calls++;
 		return get(parity) ? 'odd' : 'even';
 	});
-	const c = createRivaClient();
+	const c = createRiva();
 	c.get(label);
 	c.set(a, 3);
 	expect(c.get(label)).toBe('odd');
@@ -70,7 +70,7 @@ test('tracks dependencies dynamically', () => {
 		calls++;
 		return get(flag) ? get(x) : get(y);
 	});
-	const c = createRivaClient();
+	const c = createRiva();
 	const seen: number[] = [];
 	c.subscribe(d, (v) => seen.push(v));
 	c.set(y, 20);
@@ -86,7 +86,7 @@ test('tracks dependencies dynamically', () => {
 test('implicit tracking through ambient get()', () => {
 	const a = signal(1);
 	const d = computed(() => a.get() + 1);
-	const c = createRivaClient();
+	const c = createRiva();
 	const seen: number[] = [];
 	c.subscribe(d, (v) => seen.push(v));
 	c.set(a, 5);
@@ -103,7 +103,7 @@ test('diamond: evaluates once per change and never sees a mix', () => {
 		calls.push(r);
 		return r[0] + r[1];
 	});
-	const c = createRivaClient();
+	const c = createRiva();
 	const seen: number[] = [];
 	c.subscribe(d, (v) => seen.push(v));
 	expect(calls.length).toBe(1);
@@ -122,7 +122,7 @@ test('unsubscribing the last listener releases links, then re-evaluates lazily',
 		calls++;
 		return get(a);
 	});
-	const c = createRivaClient();
+	const c = createRiva();
 	const off = c.subscribe(d, () => {});
 	const an = c.graph.nodes.get(a);
 	expect(an?.observers.size).toBe(1);
@@ -137,7 +137,7 @@ test('unsubscribing the last listener releases links, then re-evaluates lazily',
 test('detects a cycle', () => {
 	const self: { d: ReturnType<typeof computed<number>> } = {} as never;
 	self.d = computed((get) => get(self.d) + 1);
-	const c = createRivaClient();
+	const c = createRiva();
 	try {
 		c.get(self.d);
 		throw new Error('expected a cycle');
@@ -153,7 +153,7 @@ test('a throwing computed can be read again', () => {
 		if (get(a) === 0) throw new Error('zero');
 		return get(a);
 	});
-	const c = createRivaClient();
+	const c = createRiva();
 	expect(() => c.get(d)).toThrow('zero');
 	c.set(a, 2);
 	expect(c.get(d)).toBe(2);

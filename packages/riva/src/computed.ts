@@ -12,7 +12,7 @@ export interface ComputedOptions<T> {
 	equals?: (a: T, b: T) => boolean;
 }
 
-/** A stateless derived value: lazy, cached per client, tracked dynamically. */
+/** A stateless derived value: lazy, cached per riva, tracked dynamically. */
 export interface Computed<T> {
 	readonly kind: 'computed';
 	readonly name: string | undefined;

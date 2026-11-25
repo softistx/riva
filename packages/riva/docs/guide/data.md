@@ -1,4 +1,4 @@
-# The data route client: `@softistx/riva/data`
+# The data route riva: `@softistx/riva/data`
 
 The browser's side of a `/_data` route, shared by the adapters' `bffTransport` (`@softistx/riva-graphql/bff`, `@softistx/riva-rest/bff`). Import it only to write a transport of your own.
 

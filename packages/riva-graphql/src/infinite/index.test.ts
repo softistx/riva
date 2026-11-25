@@ -1,5 +1,5 @@
 import { expect, expectTypeOf, test } from 'bun:test';
-import { createRivaClient } from '@softistx/riva';
+import { createRiva } from '@softistx/riva';
 import {
 	fakeTransport,
 	PATIENTS_QUERY,
@@ -22,8 +22,8 @@ test('infers the vars (without the cursors) and the node type', () => {
 		school: string;
 		first?: number | null;
 	}>();
-	const client = createRivaClient();
-	const state = client.get(feed, { school: 's' });
+	const riva = createRiva();
+	const state = riva.get(feed, { school: 's' });
 	expectTypeOf(state.data?.nodes).toEqualTypeOf<Patient[] | undefined>();
 });
 
@@ -36,24 +36,24 @@ test('has its own id, apart from a query of the same document', () => {
 });
 
 test('pages through the transport with the cursor merged into the variables', async () => {
-	const client = createRivaClient();
+	const riva = createRiva();
 	const t = fakeTransport(({ variables }) => ({
 		patients: (variables as { after?: string }).after
 			? page(['3', '4'], null)
 			: page(['1', '2'], 'c2'),
 	}));
-	provideGraphQL(client, t);
-	const first = await feed.ensure(client, { school: 's', first: 2 });
+	provideGraphQL(riva, t);
+	const first = await feed.ensure(riva, { school: 's', first: 2 });
 	expect(first.nodes.map((n) => n.id)).toEqual(['1', '2']);
-	await feed.fetchNext(client, { school: 's', first: 2 });
+	await feed.fetchNext(riva, { school: 's', first: 2 });
 	expect(
-		client.get(feed, { school: 's', first: 2 }).data?.nodes.map((n) => n.id),
+		riva.get(feed, { school: 's', first: 2 }).data?.nodes.map((n) => n.id),
 	).toEqual(['1', '2', '3', '4']);
 	expect(t.calls.map((c) => c.variables)).toEqual([
 		{ school: 's', first: 2 },
 		{ school: 's', first: 2, after: 'c2' },
 	]);
-	expect(client.get(feed, { school: 's', first: 2 }).hasNext).toBe(false);
+	expect(riva.get(feed, { school: 's', first: 2 }).hasNext).toBe(false);
 });
 
 test('a document of two operations is refused at definition time', () => {

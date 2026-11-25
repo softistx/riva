@@ -1,15 +1,15 @@
 # Stores: `@softistx/riva/store`
 
-One definition per domain groups its state, computeds and actions. Every state key is a signal named `<name>.<key>` and every computed a riva computed, so both are read as definitions (`.get()`, `client.get()`, `useValue()`). Like any definition, a store is stateless: its values live per `RivaClient`, one instance per client.
+One definition per domain groups its state, computeds and actions. Every state key is a signal named `<name>.<key>` and every computed a riva computed, so both are read as definitions (`.get()`, `riva.get()`, `useValue()`). Like any definition, a store is stateless: its values live per `Riva`, one instance per riva.
 
 ```ts
-import { createRivaClient, mutation } from '@softistx/riva';
+import { createRiva, mutation } from '@softistx/riva';
 import { store, type StoreContext } from '@softistx/riva/store';
 
 const saveBook = mutation<{ book: Book }, Book>({ id: 'saveBook', run: postBook });
 
 export const BookStore = store({
-	name: 'books', // required, unique on a client; prefixes the signal names
+	name: 'books', // required, unique on a riva; prefixes the signal names
 	ssr: true, // every state key travels in an SSR snapshot (default false)
 	state: { items: [] as Book[], filter: '', saving: false },
 	computed: {
@@ -33,22 +33,22 @@ export const BookStore = store({
 	},
 });
 
-const client = createRivaClient();
-client.get(BookStore.visible); // explicit client
-client.run(() => {
+const riva = createRiva();
+riva.get(BookStore.visible); // explicit riva
+riva.run(() => {
 	BookStore.total.get(); // ambient read
-	BookStore.add(book); // an action, on the ambient client
+	BookStore.add(book); // an action, on the ambient riva
 	BookStore.reset(); // every state key back to its initial value
 });
-const [s, a] = BookStore.bind(client); // a read-only view of state and computeds, and the actions
-await a.save(book); // `s` stays bound to `client` across the await
+const [s, a] = BookStore.bind(riva); // a read-only view of state and computeds, and the actions
+await a.save(book); // `s` stays bound to `riva` across the await
 ```
 
 ## Options of `store(opts)`
 
 | Option | Default | Effect |
 | --- | --- | --- |
-| `name` | required | Unique on a client; prefixes the signal names. |
+| `name` | required | Unique on a riva; prefixes the signal names. |
 | `ssr` | `false` | Every state key travels as `<name>.<key>` in an SSR snapshot (computeds never do). |
 | `state` | required | The initial state, by key. |
 | `computed` | none | `{ key: (s, get) => value }`. |
@@ -56,14 +56,14 @@ await a.save(book); // `s` stays bound to `client` across the await
 
 ## Writing
 
-- **Only actions write**, by top-level assignment on `s`. A state key is typed `ReadonlySignal` (no `set`), and a write made any other way (`BookStore.items.set(…)`, `client.set(BookStore.items, …)`, a computed, an unknown key) throws `RIVA_STORE`. The exceptions are `hydrate` and `reset()`.
+- **Only actions write**, by top-level assignment on `s`. A state key is typed `ReadonlySignal` (no `set`), and a write made any other way (`BookStore.items.set(…)`, `riva.set(BookStore.items, …)`, a computed, an unknown key) throws `RIVA_STORE`. The exceptions are `hydrate` and `reset()`.
 - Values are immutable: replace them (`s.items = [...s.items, b]`). In development (`process.env.NODE_ENV` not `production`) a stored value is deep-frozen, so `s.items.push(b)` throws, a hydrated value too.
-- **Batched.** Every action runs in a batch: one call, one notification. After an `await`, the writes of one synchronous segment make one notification at its end; unrelated writes made on that client in that segment are held until then.
+- **Batched.** Every action runs in a batch: one call, one notification. After an `await`, the writes of one synchronous segment make one notification at its end; unrelated writes made on that riva in that segment are held until then.
 - `s` is revoked once the action settles: a later write throws `RIVA_STORE`, reads still work.
 
 ## The context
 
-An action is `(s, ...args, ctx)`; callers pass only `args`. Annotating `ctx: StoreContext` is mandatory: it types the context and removes it from the callers' signature. `StoreContext` is `{ client, fetch, mutate }`, where `fetch(query, vars?)` is `query.ensure(client, …)` and `mutate(mutation, vars?)` is `mutation.run(client, …)`.
+An action is `(s, ...args, ctx)`; callers pass only `args`. Annotating `ctx: StoreContext` is mandatory: it types the context and removes it from the callers' signature. `StoreContext` is `{ riva, fetch, mutate }`, where `fetch(query, vars?)` is `query.ensure(riva, …)` and `mutate(mutation, vars?)` is `mutation.run(riva, …)`.
 
 The context goes right after the declared arguments: a default value before it moves it. **An action whose last parameter is optional or defaulted must also declare `ctx?: StoreContext` last** (`inc(s, by?: number, ctx?: StoreContext)`): without it the context lands in that parameter, and the action fails to type.
 
@@ -73,11 +73,11 @@ They receive `(s, get)`: `s` holds the state only (no other computed), `get(def)
 
 ## Names
 
-`name` is required. A state, computed or action key cannot repeat, nor be `kind`, `name`, `reset`, `bind` or `then` (refused at definition, and a type error). Two stores with one name on a client are refused with `RIVA_STORE` on the server when the second is first used; in a browser the newer definition takes over (hot reload) and the older one is dropped from that client.
+`name` is required. A state, computed or action key cannot repeat, nor be `kind`, `name`, `reset`, `bind` or `then` (refused at definition, and a type error). Two stores with one name on a riva are refused with `RIVA_STORE` on the server when the second is first used; in a browser the newer definition takes over (hot reload) and the older one is dropped from that riva.
 
 ## `reset` and SSR
 
-- `reset(client?)` puts every state key back to its initial value (the same reference, so the key no longer travels in a snapshot) in one notification. A write an async action makes after the reset still applies.
+- `reset(riva?)` puts every state key back to its initial value (the same reference, so the key no longer travels in a snapshot) in one notification. A write an async action makes after the reset still applies.
 - With `ssr: true` every state key travels; by default nothing does. A snapshot seeds a store first used after `hydrate` (see [ssr](./ssr.md)).
 
 ## Traps

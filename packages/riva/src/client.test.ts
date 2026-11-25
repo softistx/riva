@@ -1,16 +1,16 @@
 import { expect, test } from 'bun:test';
-import { createRivaClient, RivaClient } from './client';
+import { createRiva, Riva } from './client';
 import { computed } from './computed';
 import { signal } from './signal';
 
-test('createRivaClient returns a RivaClient', () => {
-	expect(createRivaClient()).toBeInstanceOf(RivaClient);
+test('createRiva returns a Riva', () => {
+	expect(createRiva()).toBeInstanceOf(Riva);
 });
 
 test('get, set and subscribe', () => {
 	const a = signal(1);
 	const d = computed((get) => get(a) + 1);
-	const c = createRivaClient();
+	const c = createRiva();
 	const seen: number[] = [];
 	const off = c.subscribe(d, (v) => seen.push(v));
 	c.set(a, 2);
@@ -23,7 +23,7 @@ test('get, set and subscribe', () => {
 
 test('effect re-runs, cleans up and disposes', () => {
 	const a = signal(0);
-	const c = createRivaClient();
+	const c = createRiva();
 	const log: string[] = [];
 	const stop = c.effect(() => {
 		const v = c.get(a);
@@ -38,7 +38,7 @@ test('effect re-runs, cleans up and disposes', () => {
 test('run, batch and untracked', () => {
 	const a = signal(0);
 	const b = signal(0);
-	const c = createRivaClient();
+	const c = createRiva();
 	const seen: number[] = [];
 	c.subscribe(a, (v) => seen.push(v));
 	expect(
@@ -66,7 +66,7 @@ test('run, batch and untracked', () => {
 
 test('a throwing listener does not drop the others; the single error is rethrown as is', () => {
 	const a = signal(0);
-	const c = createRivaClient();
+	const c = createRiva();
 	const boom = new Error('boom');
 	const seen: number[] = [];
 	c.subscribe(a, () => {
@@ -92,7 +92,7 @@ test('a throwing listener does not drop the others; the single error is rethrown
 
 test('several errors become an AggregateError, and a throwing effect is isolated', () => {
 	const a = signal(0);
-	const c = createRivaClient();
+	const c = createRiva();
 	const seen: number[] = [];
 	c.subscribe(a, () => {
 		throw new Error('one');

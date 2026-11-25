@@ -1,4 +1,4 @@
-import type { RivaClient } from '../client';
+import type { Riva } from '../client';
 import type { Getter } from '../computed';
 import { resolve } from '../scope';
 import type { Signal } from '../signal';
@@ -47,16 +47,16 @@ export function store<
 	return Object.freeze({
 		kind: 'store',
 		name,
-		reset: (client: RivaClient = resolve()) => {
-			instance(data, client);
-			client.batch(() => {
+		reset: (riva: Riva = resolve()) => {
+			instance(data, riva);
+			riva.batch(() => {
 				for (const k in sigs) {
 					const sig = sigs[k] as Signal<unknown>;
-					put(client, sig, sig.initial);
+					put(riva, sig, sig.initial);
 				}
 			});
 		},
-		bind: (client: RivaClient) => instance(data, client),
+		bind: (riva: Riva) => instance(data, riva),
 		...ambient,
 		...members,
 	}) as unknown as Store<N, S, C, A>;

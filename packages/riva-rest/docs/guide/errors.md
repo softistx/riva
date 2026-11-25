@@ -19,7 +19,7 @@ The transport and the free fetcher throw riva's errors, defined once in the core
 ```ts
 import { RivaHttpError } from '@softistx/riva';
 
-const state = client.get(invoice, { param: { id: '7' } });
+const state = riva.get(invoice, { param: { id: '7' } });
 if (state.error instanceof RivaHttpError && state.error.status === 404) {
 	// not found
 }

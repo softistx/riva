@@ -5,7 +5,7 @@ Every error riva throws is defined once here, so `instanceof` holds across packa
 ```ts
 import { RivaError, RivaHttpError, RivaRequestError } from '@softistx/riva';
 
-const state = client.get(user, { id: '1' });
+const state = riva.get(user, { id: '1' });
 if (state.error instanceof RivaHttpError && state.error.status === 404) {
 	// not found
 } else if (state.error instanceof RivaRequestError && state.error.retryable) {
@@ -18,7 +18,7 @@ if (state.error instanceof RivaHttpError && state.error.status === 404) {
 | Class | `code` | Notes |
 | --- | --- | --- |
 | `RivaError` | any | Base class; has `code`. |
-| `RivaScopeError` | `RIVA_SCOPE` | A read with no client in scope. |
+| `RivaScopeError` | `RIVA_SCOPE` | A read with no riva in scope. |
 | `RivaRequestError` | any | `status?`, `retryable`, `cause`. A failed request. |
 | `RivaHttpError(status)` | `HTTP_<status>` | Retryable for 5xx, 408 and 429. |
 | `RivaNetworkError` | `RIVA_NETWORK` | Retryable. |

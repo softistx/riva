@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { NetworkError } from '@softistx/httpyz';
 import {
-	createRivaClient,
+	createRiva,
 	RivaAbortError,
 	RivaError,
 	RivaNetworkError,
@@ -15,24 +15,24 @@ import { provideRest } from './transport';
 const wire = (handle: Parameters<typeof httpWith>[0]) => {
 	const http = httpWith(handle);
 	const api = apiOver(http);
-	const client = createRivaClient();
-	provideRest(client, httpyzTransport(http, api));
-	return { client, api, http };
+	const riva = createRiva();
+	provideRest(riva, httpyzTransport(http, api));
+	return { riva, api, http };
 };
 
 test('a query runs end to end over a real httpyz client, and is cached by its variables', async () => {
 	const seen: string[] = [];
-	const { client, api } = wire((r) => {
+	const { riva, api } = wire((r) => {
 		seen.push(r.url);
 		return json({ id: '7', number: 'F-7', total: 12 });
 	});
 	const invoice = query(api, 'get /invoices/{id}', { staleTime: '30s' });
 	expect(invoice.id).toBe('get /invoices/{id}');
 	expect(invoice.options.staleTime).toBe(30_000);
-	const first = await invoice.ensure(client, { param: { id: '7' } });
+	const first = await invoice.ensure(riva, { param: { id: '7' } });
 	expect(first).toEqual({ id: '7', number: 'F-7', total: 12 });
-	await invoice.ensure(client, { param: { id: '7' } });
-	await invoice.ensure(client, { param: { id: '8' } });
+	await invoice.ensure(riva, { param: { id: '7' } });
+	await invoice.ensure(riva, { param: { id: '8' } });
 	expect(seen).toEqual([
 		'http://api.test/invoices/7',
 		'http://api.test/invoices/8',
@@ -42,7 +42,7 @@ test('a query runs end to end over a real httpyz client, and is cached by its va
 test('a mutation posts its body and invalidates a query', async () => {
 	let listCalls = 0;
 	let posted: unknown;
-	const { client, api } = wire(async (r) => {
+	const { riva, api } = wire(async (r) => {
 		if (r.method === 'POST') {
 			posted = await r.json();
 			return json({ id: '1', number: 'F-1', total: 5 }, 201);
@@ -53,19 +53,19 @@ test('a mutation posts its body and invalidates a query', async () => {
 	const list = query(api, 'get /invoices');
 	const create = mutation(api, 'post /invoices', { invalidates: [list] });
 	expect(create.id).toBe('post /invoices');
-	await list.ensure(client, undefined);
-	const created = await create.run(client, {
+	await list.ensure(riva, undefined);
+	const created = await create.run(riva, {
 		json: { number: 'F-1', total: 5 },
 	});
 	expect(created).toEqual({ id: '1', number: 'F-1', total: 5 });
 	expect(posted).toEqual({ number: 'F-1', total: 5 });
-	await list.ensure(client, undefined);
+	await list.ensure(riva, undefined);
 	expect(listCalls).toBe(2);
 });
 
 test('aborting through a definition cancels the httpyz request', async () => {
 	let reqSignal: AbortSignal | undefined;
-	const { client, api } = wire(
+	const { riva, api } = wire(
 		(r) =>
 			new Promise<Response>((_, reject) => {
 				reqSignal = r.signal;
@@ -76,7 +76,7 @@ test('aborting through a definition cancels the httpyz request', async () => {
 	);
 	const health = query(api, 'get /health', { retry: 0 });
 	const ctl = new AbortController();
-	const p = health.ensure(client, undefined, { signal: ctl.signal });
+	const p = health.ensure(riva, undefined, { signal: ctl.signal });
 	await Bun.sleep(5);
 	ctl.abort();
 	await expect(p).rejects.toBeInstanceOf(RivaAbortError);
@@ -108,25 +108,25 @@ test('a route the spec lacks, or of the wrong kind, is refused at definition tim
 test('a definition with no provideRest rejects naming it', async () => {
 	const { api } = wire(() => json({}));
 	await expect(
-		query(api, 'get /health', { retry: 0 }).ensure(createRivaClient()),
+		query(api, 'get /health', { retry: 0 }).ensure(createRiva()),
 	).rejects.toBeInstanceOf(RivaScopeError);
 	await expect(
-		query(api, 'get /health', { retry: 0 }).ensure(createRivaClient()),
+		query(api, 'get /health', { retry: 0 }).ensure(createRiva()),
 	).rejects.toThrow(/provideRest/);
 });
 
 test('the fake transport receives the route, the variables and the signal', async () => {
 	const { api } = wire(() => json({}));
 	const calls: unknown[][] = [];
-	const client = createRivaClient();
+	const riva = createRiva();
 	provideRest(
-		client,
+		riva,
 		fakeTransport(async (route, input, init) => {
 			calls.push([route, input, init.signal.aborted]);
 			return { id: '1', number: 'F', total: 1 };
 		}),
 	);
-	await query(api, 'get /invoices/{id}').ensure(client, {
+	await query(api, 'get /invoices/{id}').ensure(riva, {
 		param: { id: '1' },
 	});
 	expect(calls[0]?.[0]).toMatchObject({
@@ -140,7 +140,7 @@ test('the fake transport receives the route, the variables and the signal', asyn
 });
 
 test('a free fetcher is typed by its function, gets ctx.http, and has its httpyz errors mapped', async () => {
-	const { client, http } = wire(() => json({ q: 'x' }));
+	const { riva, http } = wire(() => json({ q: 'x' }));
 	const search = query({
 		id: 'search',
 		retry: 0,
@@ -151,7 +151,7 @@ test('a free fetcher is typed by its function, gets ctx.http, and has its httpyz
 		},
 	});
 	expect(search.id).toBe('search');
-	expect(await search.ensure(client, { q: 'x' })).toEqual({ q: 'x' });
+	expect(await search.ensure(riva, { q: 'x' })).toEqual({ q: 'x' });
 	const broken = query({
 		id: 'broken',
 		retry: 0,
@@ -159,25 +159,25 @@ test('a free fetcher is typed by its function, gets ctx.http, and has its httpyz
 			throw new NetworkError({ method: 'get', path: '/broken' });
 		},
 	});
-	await expect(broken.ensure(client)).rejects.toBeInstanceOf(RivaNetworkError);
+	await expect(broken.ensure(riva)).rejects.toBeInstanceOf(RivaNetworkError);
 	const down = mutation({
 		id: 'down',
 		run: async () => {
 			throw new NetworkError({ method: 'post', path: '/down' });
 		},
 	});
-	await expect(down.run(client)).rejects.toBeInstanceOf(RivaNetworkError);
+	await expect(down.run(riva)).rejects.toBeInstanceOf(RivaNetworkError);
 });
 
-test('a free definition with no ctx.http client says how to build the transport', async () => {
-	const client = createRivaClient();
-	provideRest(client, fakeTransport());
+test('a free definition with no ctx.http riva says how to build the transport', async () => {
+	const riva = createRiva();
+	provideRest(riva, fakeTransport());
 	const q = query({
 		id: 'nohttp',
 		retry: 0,
 		fetch: async (_, ctx) => ctx.http,
 	});
-	await expect(q.ensure(client)).rejects.toThrow(
+	await expect(q.ensure(riva)).rejects.toThrow(
 		'holds no httpyz client: build it with httpyzTransport(http, api)',
 	);
 });

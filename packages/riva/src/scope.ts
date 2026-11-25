@@ -1,40 +1,40 @@
-import type { RivaClient } from './client';
+import type { Riva } from './client';
 import { RivaScopeError } from './errors';
 
-// Transient execution context (the client of the running `client.run`) and the
-// browser's default client. The server never holds a default: it would leak
+// Transient execution context (the riva of the running `riva.run`) and the
+// browser's default riva. The server never holds a default: it would leak
 // between requests.
-let current: RivaClient | undefined;
-let fallback: RivaClient | undefined;
+let current: Riva | undefined;
+let fallback: Riva | undefined;
 
 /** Browser detection, in one place so tests can drive it through `globalThis.document`. */
 export const isBrowser = (): boolean => 'document' in globalThis;
 
-/** The client in scope, if any. */
-export const active = (): RivaClient | undefined =>
+/** The riva in scope, if any. */
+export const active = (): Riva | undefined =>
 	current ?? resolver?.() ?? (isBrowser() ? fallback : undefined);
 
-let resolver: (() => RivaClient | undefined) | undefined;
+let resolver: (() => Riva | undefined) | undefined;
 
 /** Sets the ambient resolver `@softistx/riva/ssr` exposes. @internal */
 export const setResolver = (fn: typeof resolver): void => {
 	resolver = fn;
 };
 
-/** The client in scope, or a `RivaScopeError` naming the fix. */
-export function resolve(): RivaClient {
-	const client = active();
-	if (!client)
+/** The riva in scope, or a `RivaScopeError` naming the fix. */
+export function resolve(): Riva {
+	const riva = active();
+	if (!riva)
 		throw new RivaScopeError(
-			'No RivaClient in scope: read through client.get(def), or wrap the code in client.run(() => …). On the server, use the per-request client.',
+			'No Riva in scope: read through riva.get(def), or wrap the code in riva.run(() => …). On the server, use the per-request riva.',
 		);
-	return client;
+	return riva;
 }
 
-/** Runs `fn` with `client` as the ambient scope, restoring the previous one after. */
-export function withClient<R>(client: RivaClient, fn: () => R): R {
+/** Runs `fn` with `riva` as the ambient scope, restoring the previous one after. */
+export function withRiva<R>(riva: Riva, fn: () => R): R {
 	const previous = current;
-	current = client;
+	current = riva;
 	try {
 		return fn();
 	} finally {
@@ -42,11 +42,11 @@ export function withClient<R>(client: RivaClient, fn: () => R): R {
 	}
 }
 
-/** Sets the browser's default client. Throws on the server. */
-export function setDefaultClient(client: RivaClient | undefined): void {
+/** Sets the browser's default riva. Throws on the server. */
+export function setDefaultRiva(riva: Riva | undefined): void {
 	if (!isBrowser())
 		throw new RivaScopeError(
-			'setDefaultClient is browser-only: a module-level client on the server would leak state between requests. Use the per-request client with client.run(() => …).',
+			'setDefaultRiva is browser-only: a module-level riva on the server would leak state between requests. Use the per-request riva with riva.run(() => …).',
 		);
-	fallback = client;
+	fallback = riva;
 }

@@ -1,5 +1,5 @@
 import { expectTypeOf, test } from 'bun:test';
-import type { CachePolicy, RivaClient } from '../index';
+import type { CachePolicy, Riva } from '../index';
 import {
 	type EntityCodec,
 	type EntityPolicy,
@@ -18,13 +18,13 @@ test('entities() is a cache policy with an identity', () => {
 	expectTypeOf(entities()).toExtend<CachePolicy>();
 });
 
-test('CachePolicy methods take the client', () => {
+test('CachePolicy methods take the riva', () => {
 	expectTypeOf<CachePolicy<number>['write']>().parameters.toEqualTypeOf<
-		[RivaClient, unknown, (number | undefined)?, unknown?]
+		[Riva, unknown, (number | undefined)?, unknown?]
 	>();
 	expectTypeOf<CachePolicy<number>['write']>().returns.toBeNumber();
 	expectTypeOf<CachePolicy<number>['read']>().parameters.toEqualTypeOf<
-		[RivaClient, number, (boolean | undefined)?]
+		[Riva, number, (boolean | undefined)?]
 	>();
 	expectTypeOf<CachePolicy<number>['release']>().returns.toBeVoid();
 });

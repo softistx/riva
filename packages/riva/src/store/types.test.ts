@@ -1,6 +1,6 @@
 import { expectTypeOf, test } from 'bun:test';
-import type { RivaClient } from '../client';
-import { createRivaClient } from '../client';
+import type { Riva } from '../client';
+import { createRiva } from '../client';
 import type { Computed, ReadonlySignal } from '../computed';
 import { mutation } from '../mutation';
 import { query } from '../query';
@@ -47,8 +47,8 @@ const Books = store({
 		clear(s) {
 			s.items = [];
 		},
-		async save(s, book: Book, { mutate, fetch, client }: StoreContext) {
-			expectTypeOf(client).toEqualTypeOf<RivaClient>();
+		async save(s, book: Book, { mutate, fetch, riva }: StoreContext) {
+			expectTypeOf(riva).toEqualTypeOf<Riva>();
 			const saved = await mutate(saveBook, { book });
 			expectTypeOf(saved).toEqualTypeOf<Book>();
 			expectTypeOf(await fetch(find, { id: 1 })).toEqualTypeOf<Book>();
@@ -68,8 +68,8 @@ test('state keys are read-only signals, computeds are computeds', () => {
 	expectTypeOf<ReturnType<typeof Books.items.get>>().toEqualTypeOf<Book[]>();
 });
 
-test('a state key is read with client.get and cannot be set', () => {
-	const c = createRivaClient();
+test('a state key is read with riva.get and cannot be set', () => {
+	const c = createRiva();
 	expectTypeOf(c.get(Books.items)).toEqualTypeOf<Book[]>();
 	expectTypeOf(c.get(Books.total)).toEqualTypeOf<number>();
 	const never = () => {
@@ -95,7 +95,7 @@ test('actions are called without s and without the context', () => {
 });
 
 test('bind gives a read-only view of state and computeds, and the actions', () => {
-	const [s, a] = Books.bind(createRivaClient());
+	const [s, a] = Books.bind(createRiva());
 	expectTypeOf(s.items).toEqualTypeOf<Book[]>();
 	expectTypeOf(s.total).toEqualTypeOf<number>();
 	expectTypeOf(a.add).toEqualTypeOf<(book: Book) => void>();

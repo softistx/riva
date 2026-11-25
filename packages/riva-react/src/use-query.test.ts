@@ -6,7 +6,7 @@ import {
 	signal,
 } from '@softistx/riva';
 import { Component, type ReactNode, Suspense } from 'react';
-import { deferred, flush, h, mount, newClient } from '../test/render';
+import { deferred, flush, h, mount, newRiva } from '../test/render';
 import { RivaProvider } from './context';
 import { useQuery } from './use-query';
 
@@ -43,7 +43,7 @@ test('goes pending then success, and refetch marks it stale and fetches', async 
 		refetch = q.refetch;
 		return h('p', null, `${q.status}:${q.data ?? '-'}`);
 	}
-	const m = await mount(h(C), newClient());
+	const m = await mount(h(C), newRiva());
 	expect(m.text()).toBe('pending:-');
 	await flush(() => gates[0]?.resolve('a'));
 	expect(m.text()).toBe('success:a');
@@ -62,7 +62,7 @@ test('an error with no data lands in the state', async () => {
 		error = q.error;
 		return h('p', null, q.status);
 	}
-	const m = await mount(h(C), newClient());
+	const m = await mount(h(C), newRiva());
 	await flush();
 	expect(m.text()).toBe('error');
 	expect((error as Error).message).toBe('nope');
@@ -75,13 +75,13 @@ test('new variables fetch another entry', async () => {
 		seen.push(school);
 		return `data-${school}`;
 	});
-	const client = newClient();
+	const riva = newRiva();
 	const container = document.createElement('div');
 	const { createRoot } = await import('react-dom/client');
 	const { act } = await import('react');
 	const root = createRoot(container);
 	const ui = (s: string) =>
-		h(RivaProvider, { client }, h(Show, { def, school: s }));
+		h(RivaProvider, { riva }, h(Show, { def, school: s }));
 	await act(async () => root.render(ui('a')));
 	await flush();
 	expect(container.textContent).toBe('success:data-a:false');
@@ -104,7 +104,7 @@ test('inline variables do not refetch in a loop', async () => {
 		const q = useQuery(def, { school: 's' });
 		return h('p', null, q.status);
 	}
-	const m = await mount(h(C), newClient());
+	const m = await mount(h(C), newRiva());
 	await flush();
 	await flush();
 	expect(calls).toBe(1);
@@ -118,17 +118,13 @@ test('enabled: false observes nothing and reads idle, then fetches once enabled'
 		calls++;
 		return 'x';
 	});
-	const client = newClient();
+	const riva = newRiva();
 	const { createRoot } = await import('react-dom/client');
 	const { act } = await import('react');
 	const container = document.createElement('div');
 	const root = createRoot(container);
 	const ui = (enabled: boolean) =>
-		h(
-			RivaProvider,
-			{ client },
-			h(Show, { def, school: 's', opts: { enabled } }),
-		);
+		h(RivaProvider, { riva }, h(Show, { def, school: 's', opts: { enabled } }));
 	await act(async () => root.render(ui(false)));
 	await flush();
 	expect(container.textContent).toBe('idle:-:false');
@@ -150,12 +146,12 @@ test('unmounting stops observing', async () => {
 	function C() {
 		return h('p', null, String(useQuery(def).data));
 	}
-	const client = newClient();
-	const m = await mount(h(C), client);
+	const riva = newRiva();
+	const m = await mount(h(C), riva);
 	await flush();
 	expect(m.text()).toBe('1');
 	await m.unmount();
-	expect(client.queries.state(def, undefined).data).toBe(1);
+	expect(riva.queries.state(def, undefined).data).toBe(1);
 });
 
 class Boundary extends Component<
@@ -186,7 +182,7 @@ test('suspense shows the fallback then the content, with one fetch', async () =>
 	}
 	const m = await mount(
 		h(Suspense, { fallback: h('p', null, 'loading') }, h(C)),
-		newClient(),
+		newRiva(),
 	);
 	expect(m.text()).toBe('loading');
 	await flush(() => gate.resolve('abc'));
@@ -204,7 +200,7 @@ test('suspense throws an error with no data to the error boundary', async () => 
 	}
 	const m = await mount(
 		h(Boundary, null, h(Suspense, { fallback: h('p', null, 'loading') }, h(C))),
-		newClient(),
+		newRiva(),
 	);
 	await flush();
 	expect(m.text()).toBe('caught:bad');
@@ -214,8 +210,8 @@ test('suspense throws an error with no data to the error boundary', async () => 
 
 test('suspense with data already cached renders at once', async () => {
 	const def = users('uq/suspense-hot', async () => 'cold');
-	const client = newClient();
-	def.setData(client, { school: 's' }, 'hot');
+	const riva = newRiva();
+	def.setData(riva, { school: 's' }, 'hot');
 	function C() {
 		return h(
 			'p',
@@ -225,7 +221,7 @@ test('suspense with data already cached renders at once', async () => {
 	}
 	const m = await mount(
 		h(Suspense, { fallback: h('p', null, 'loading') }, h(C)),
-		client,
+		riva,
 	);
 	expect(m.text()).toBe('hot');
 	await m.unmount();
@@ -238,7 +234,7 @@ test('suspense suspends again while an observed hidden entity is refetched', asy
 		read: (c, stored) => (c.get(holes) ? undefined : stored),
 		release: () => {},
 	};
-	const client = newClient();
+	const riva = newRiva();
 	let calls = 0;
 	const def = query<{ school: string }, string>({
 		id: 'uq/suspense-evict',
@@ -246,7 +242,7 @@ test('suspense suspends again while an observed hidden entity is refetched', asy
 		cache,
 		fetch: async () => {
 			calls++;
-			client.set(holes, false);
+			riva.set(holes, false);
 			return `v${calls}`;
 		},
 	});
@@ -256,11 +252,11 @@ test('suspense suspends again while an observed hidden entity is refetched', asy
 	}
 	const m = await mount(
 		h(Suspense, { fallback: h('p', null, 'loading') }, h(C)),
-		client,
+		riva,
 	);
 	await flush();
 	expect(m.text()).toBe('got:V1');
-	await flush(() => client.set(holes, true));
+	await flush(() => riva.set(holes, true));
 	await flush();
 	expect(calls).toBe(2);
 	expect(m.text()).toBe('got:V2');
@@ -274,7 +270,7 @@ test('a fresh suspense mount after an eviction never renders undefined data', as
 		read: (c, stored) => (c.get(holes) ? undefined : stored),
 		release: () => {},
 	};
-	const client = newClient();
+	const riva = newRiva();
 	let calls = 0;
 	const def = query<{ school: string }, string>({
 		id: 'uq/suspense-fresh',
@@ -282,12 +278,12 @@ test('a fresh suspense mount after an eviction never renders undefined data', as
 		cache,
 		fetch: async () => {
 			calls++;
-			client.set(holes, false);
+			riva.set(holes, false);
 			return `v${calls}`;
 		},
 	});
-	await def.ensure(client, { school: 's' });
-	client.set(holes, true);
+	await def.ensure(riva, { school: 's' });
+	riva.set(holes, true);
 	const seen: unknown[] = [];
 	function C() {
 		const q = useQuery(def, { school: 's' }, { suspense: true });
@@ -296,7 +292,7 @@ test('a fresh suspense mount after an eviction never renders undefined data', as
 	}
 	const m = await mount(
 		h(Suspense, { fallback: h('p', null, 'loading') }, h(C)),
-		client,
+		riva,
 	);
 	await flush();
 	expect(seen).not.toContain(undefined);
@@ -332,7 +328,7 @@ test('a Suspense mount fetches once at the default staleTime', async () => {
 	}
 	const m = await mount(
 		h(Suspense, { fallback: h('p', null, 'loading') }, h(C)),
-		newClient(),
+		newRiva(),
 	);
 	await flush();
 	await flush();
@@ -342,7 +338,7 @@ test('a Suspense mount fetches once at the default staleTime', async () => {
 });
 
 test('a suspense query that resolves undefined fetches once, with no loop', async () => {
-	const client = newClient();
+	const riva = newRiva();
 	let calls = 0;
 	const def = query<{ school: string }, string | undefined>({
 		id: 'uq/suspense-undefined',
@@ -360,7 +356,7 @@ test('a suspense query that resolves undefined fetches once, with no loop', asyn
 	}
 	const m = await mount(
 		h(Suspense, { fallback: h('p', null, 'loading') }, h(C)),
-		client,
+		riva,
 	);
 	await flush();
 	await flush();

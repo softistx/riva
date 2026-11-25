@@ -59,15 +59,15 @@ export function useQuery(
 		if (state.status === 'success' && !state.isFetching) {
 			// Stored data the cache cannot read (evicted): start its fetch now,
 			// not in the mount effect, so the first render never shows undefined.
-			q.client.queries.missing(def, q.vars);
-			state = (q.client.get as (d: AnyQuery, v: unknown) => typeof state)(
+			q.riva.queries.missing(def, q.vars);
+			state = (q.riva.get as (d: AnyQuery, v: unknown) => typeof state)(
 				def,
 				q.vars,
 			);
 		}
 		if (state.status === 'error') throw state.error;
 		if (state.status !== 'success' || state.isFetching)
-			throw suspend(q.client, def, q.key, q.vars);
+			throw suspend(q.riva, def, q.key, q.vars);
 	}
 	return result;
 }

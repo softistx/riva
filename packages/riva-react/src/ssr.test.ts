@@ -2,7 +2,7 @@ import { expect, test } from 'bun:test';
 import { query } from '@softistx/riva';
 import { type ReactNode, Suspense } from 'react';
 import { renderToReadableStream } from 'react-dom/server';
-import { h, newClient } from '../test/render';
+import { h, newRiva } from '../test/render';
 import { RivaProvider } from './context';
 import { useQuery } from './use-query';
 
@@ -11,15 +11,15 @@ const users = (
 	fetch: (vars: { school: string }) => Promise<string>,
 ) => query<{ school: string }, string>({ id, retry: 0, fetch });
 
-async function html(client: ReturnType<typeof newClient>, ui: ReactNode) {
-	const stream = await renderToReadableStream(h(RivaProvider, { client }, ui));
+async function html(riva: ReturnType<typeof newRiva>, ui: ReactNode) {
+	const stream = await renderToReadableStream(h(RivaProvider, { riva }, ui));
 	await stream.allReady;
 	const text = await new Response(stream).text();
 	// Test-only workaround: react-dom/server leaves its renderer marker on the
 	// shared context, and the DOM specs that follow in this Bun process would
 	// warn about "multiple renderers". Clearing it changes nothing in the code
 	// under test.
-	const context = RivaProvider({ client }).type as unknown as Record<
+	const context = RivaProvider({ riva }).type as unknown as Record<
 		string,
 		unknown
 	>;
@@ -39,8 +39,8 @@ test('streaming SSR keeps two requests apart', async () => {
 	}
 	const page = (school: string) =>
 		h(Suspense, { fallback: h('p', null, 'loading') }, h(Page, { school }));
-	const ca = newClient();
-	const cb = newClient();
+	const ca = newRiva();
+	const cb = newRiva();
 	const [a, b] = await Promise.all([html(ca, page('a')), html(cb, page('b'))]);
 	expect(a).toContain('data-a');
 	expect(a).not.toContain('data-b');
@@ -58,6 +58,6 @@ test('a server render without suspense starts no fetch', async () => {
 	function Page() {
 		return h('p', null, useQuery(def, { school: 's' }).status);
 	}
-	expect(await html(newClient(), h(Page))).toContain('idle');
+	expect(await html(newRiva(), h(Page))).toContain('idle');
 	expect(calls).toBe(0);
 });

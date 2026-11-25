@@ -2,23 +2,23 @@
 
 Each entry is headed by the message you will see.
 
-## `No GraphQL transport on this RivaClient: call provideGraphQL(client, graphqlClientTransport(gqlClient)) when you create it.`
+## `No GraphQL transport on this Riva: call provideGraphQL(riva, graphqlClientTransport(gqlClient)) when you create it.`
 
 Code: `RIVA_SCOPE` (`RivaScopeError`).
 
-**When:** a query, mutation or infinite list ran on a `RivaClient` that was never given a transport.
+**When:** a query, mutation or infinite list ran on a `Riva` that was never given a transport.
 
-**Why:** definitions are stateless and the transport lives on the client, so two server requests never share one.
+**Why:** definitions are stateless and the transport lives on the riva, so two server requests never share one.
 
-**Fix:** provide it where the client is created, per request on the server.
+**Fix:** provide it where the riva is created, per request on the server.
 
 ```ts
 import { createGraphQLClient } from '@softistx/graphql-client';
-import { createRivaClient } from '@softistx/riva';
+import { createRiva } from '@softistx/riva';
 import { graphqlClientTransport, provideGraphQL } from '@softistx/riva-graphql';
 
-const client = createRivaClient();
-provideGraphQL(client, graphqlClientTransport(createGraphQLClient({ url: 'https://api.example.com/graphql' })));
+const riva = createRiva();
+provideGraphQL(riva, graphqlClientTransport(createGraphQLClient({ url: 'https://api.example.com/graphql' })));
 ```
 
 ## `riva-graphql: the operation has no name; name it (query Patients { ... }) so it has an id.`
@@ -53,7 +53,7 @@ Code: `RIVA_DEFINITION` (`RivaError`), thrown when the definition is created.
 
 ```ts
 // codegen.ts
-generates: { 'app/generated/': { preset: 'client', presetConfig: { persistedDocuments: true } } }
+generates: { 'app/generated/': { preset: 'riva', presetConfig: { persistedDocuments: true } } }
 ```
 
 ## `@softistx/riva-graphql/codegen: the operation "X" is defined twice (sha256:a… and sha256:b…); operation names must be unique.`
@@ -116,7 +116,7 @@ Code: `RIVA_INVALID_RESPONSE` (`RivaRequestError`), or `RivaHttpError` (`HTTP_<s
 
 Code: `RIVA_KEY` (`RivaError`).
 
-**Why:** a definition's `id` is the document's persisted id, else its operation name. Two definitions with the same `id` read on one client on the server throw `RIVA_KEY`; in a browser a hot reload takes over instead.
+**Why:** a definition's `id` is the document's persisted id, else its operation name. Two definitions with the same `id` read on one riva on the server throw `RIVA_KEY`; in a browser a hot reload takes over instead.
 
 **Fix:** define each query once, as a module-level const, and import it. Pass a distinct `id` when you define one document twice with different options. See the [core entry](../../riva/docs/troubleshooting.md).
 
@@ -170,7 +170,7 @@ import { addTypenameSelectionDocumentTransform } from '@graphql-codegen/client-p
 
 generates: {
 	'app/generated/': {
-		preset: 'client',
+		preset: 'riva',
 		presetConfig: { persistedDocuments: true },
 		documentTransforms: [addTypenameSelectionDocumentTransform], // beside `preset`, not inside presetConfig
 	},
@@ -187,11 +187,11 @@ Code: `RIVA_CACHE` (`RivaError`), shown as the query's error status; `ensure` re
 
 **Fix:** have the API return every selected field (`null` for an empty one), or remove it from the selection. The generic explanation is on the [core page](../../riva/docs/troubleshooting.md).
 
-## `This client already uses other entity identity rules…`
+## `This riva already uses other entity identity rules…`
 
 Code: `RIVA_CACHE` (`RivaError`).
 
-**Why:** two `normalized()` (or `entities()`) policies with different `keys` or `identify` were used on one client.
+**Why:** two `normalized()` (or `entities()`) policies with different `keys` or `identify` were used on one riva.
 
 **Fix:** create one `normalized(options)` and pass it to every definition. The core explains it in [its troubleshooting page](../../riva/docs/troubleshooting.md#this-client-already-uses-other-entity-identity-rules).
 

@@ -28,11 +28,11 @@ export function fieldsOf(store: EntityStore, ref: string) {
 	const a = store.signals.get(ref);
 	// A missing entity is only given a signal when the read is tracked.
 	let fields = a
-		? store.client.get(a)
-		: store.client.graph.track
-			? store.client.get(store.signalOf(ref))
+		? store.riva.get(a)
+		: store.riva.graph.track
+			? store.riva.get(store.signalOf(ref))
 			: undefined;
-	for (const layer of store.skip ? [] : store.client.get(store.ov)) {
+	for (const layer of store.skip ? [] : store.riva.get(store.ov)) {
 		const patch = layer.get(ref);
 		if (patch) fields = { ...fields, ...patch };
 	}

@@ -25,7 +25,7 @@ async function loop(c: Ctx, e: Entry, f: Inflight): Promise<unknown> {
 		let v: unknown;
 		try {
 			v = await raceAbort(
-				fetch(e.vars, { signal: ctl.signal, client: c.client }),
+				fetch(e.vars, { signal: ctl.signal, riva: c.riva }),
 				ctl.signal,
 			);
 			ok = true;
@@ -73,7 +73,7 @@ function start(c: Ctx, e: Entry): Inflight {
 		(data) => {
 			// One change for readers: the data and, when the cache cannot read it, the error.
 			let refused: unknown;
-			c.client.batch(() => {
+			c.riva.batch(() => {
 				const mine = e.run === f;
 				refused = done({
 					status: 'success',

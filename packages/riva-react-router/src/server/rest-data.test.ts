@@ -1,9 +1,5 @@
 import { expect, test } from 'bun:test';
-import {
-	createRivaClient,
-	RivaHttpError,
-	RivaRequestError,
-} from '@softistx/riva';
+import { createRiva, RivaHttpError, RivaRequestError } from '@softistx/riva';
 import {
 	provideRest,
 	type RestTransport,
@@ -24,10 +20,10 @@ const api = {
 	},
 };
 
-/** The server: a request client whose REST transport is the API, behind the /_data route; the browser's client posts to it. */
+/** The server: a request riva whose REST transport is the API, behind the /_data route; the browser's riva posts to it. */
 function setup() {
 	const calls: Array<{ route: Route; input: unknown }> = [];
-	const server = createRivaClient();
+	const server = createRiva();
 	provideRest(server, {
 		async call(route, input) {
 			calls.push({ route, input });

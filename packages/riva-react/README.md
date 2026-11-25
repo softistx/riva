@@ -14,22 +14,22 @@ The examples are schematic: `Patient`, `fetchPatients`, `sendRename` and `fetchP
 
 ## Provider
 
-One `RivaClient` per tree: one in the browser, one per request on the server. A hook with no provider above it throws a `RivaScopeError` that names the fix.
+One `Riva` per tree: one in the browser, one per request on the server. A hook with no provider above it throws a `RivaScopeError` that names the fix.
 
 ```tsx
-import { createRivaClient } from '@softistx/riva';
+import { createRiva } from '@softistx/riva';
 import { RivaProvider } from '@softistx/riva-react';
 
-const client = createRivaClient(); // per request on the server
+const riva = createRiva(); // per request on the server
 
 export const App = () => (
-	<RivaProvider client={client}>
+	<RivaProvider riva={riva}>
 		<Patients />
 	</RivaProvider>
 );
 ```
 
-`useClient()` returns the client, to call `def.invalidate(client, vars)` or `def.ensure(client, vars)` from an event handler. [Guide](./docs/guide/provider.md).
+`useRiva()` returns the riva, to call `def.invalidate(riva, vars)` or `def.ensure(riva, vars)` from an event handler. [Guide](./docs/guide/provider.md).
 
 ## Signals and computeds
 
@@ -94,7 +94,7 @@ export const Page = ({ school }: { school: string }) => (
 );
 ```
 
-To retry after an error, start the fetch again before resetting the boundary (`onReset={() => patients.prefetch(client, { school })}`). [Guide](./docs/guide/suspense.md).
+To retry after an error, start the fetch again before resetting the boundary (`onReset={() => patients.prefetch(riva, { school })}`). [Guide](./docs/guide/suspense.md).
 
 ## Mutations
 
@@ -151,7 +151,7 @@ It also returns `fetchPrevious`, `hasPrevious`, `isFetchingPrevious` and `refetc
 
 ## Stores
 
-`@softistx/riva-react/store` binds a store built with `store()` from `@softistx/riva/store` (see the core README). `useStore(def)` returns `[s, a]`: `s` is the state and the computeds, `a` the actions bound to the provider's client (stable for that client).
+`@softistx/riva-react/store` binds a store built with `store()` from `@softistx/riva/store` (see the core README). `useStore(def)` returns `[s, a]`: `s` is the state and the computeds, `a` the actions bound to the provider's riva (stable for that riva).
 
 ```tsx
 import { useStore } from '@softistx/riva-react/store';
@@ -186,18 +186,18 @@ function PatientName({ id }: { id: string }) {
 
 ## Server rendering
 
-Render each request under its own `RivaProvider` with its own client; no hook holds module-level state, so nothing leaks between requests.
+Render each request under its own `RivaProvider` with its own riva; no hook holds module-level state, so nothing leaks between requests.
 
 ```tsx
-import { createRivaClient } from '@softistx/riva';
+import { createRiva } from '@softistx/riva';
 import { RivaProvider } from '@softistx/riva-react';
 import { renderToReadableStream } from 'react-dom/server';
 
 export async function handle(school: string): Promise<Response> {
-	const client = createRivaClient(); // one per request
-	await patients.ensure(client, { school }); // so the first render has data
+	const riva = createRiva(); // one per request
+	await patients.ensure(riva, { school }); // so the first render has data
 	const stream = await renderToReadableStream(
-		<RivaProvider client={client}>
+		<RivaProvider riva={riva}>
 			<PatientList school={school} />
 		</RivaProvider>,
 	);
@@ -211,7 +211,7 @@ A hook never starts a fetch during a server render, except through `suspense: tr
 
 | Import | Adds |
 | --- | --- |
-| `@softistx/riva-react` | `RivaProvider`, `useClient`, `useSignal`, `useValue`, `useQuery`, `useMutation` |
+| `@softistx/riva-react` | `RivaProvider`, `useRiva`, `useSignal`, `useValue`, `useQuery`, `useMutation` |
 | `@softistx/riva-react/infinite` | `useInfiniteQuery` |
 | `@softistx/riva-react/entities` | `useFragment` |
 | `@softistx/riva-react/store` | `useStore` |

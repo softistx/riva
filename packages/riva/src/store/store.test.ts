@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { fakeEnv, settle } from '../../test/ssr';
-import { createRivaClient } from '../client';
+import { createRiva } from '../client';
 import { computed } from '../computed';
 import { effect } from '../effect';
 import { RivaError, RivaScopeError } from '../errors';
@@ -92,15 +92,15 @@ describe('definitions', () => {
 
 	test('a store with only state works', () => {
 		const S = store({ name: 'only', state: { n: 1 } });
-		expect(createRivaClient().get(S.n)).toBe(1);
+		expect(createRiva().get(S.n)).toBe(1);
 	});
 });
 
 describe('reads', () => {
-	test('state and computeds are read as definitions, per client', () => {
+	test('state and computeds are read as definitions, per riva', () => {
 		const Books = make();
-		const a = createRivaClient();
-		const b = createRivaClient();
+		const a = createRiva();
+		const b = createRiva();
 		a.run(() => Books.add({ title: 'x' }));
 		expect(a.get(Books.items)).toEqual([{ title: 'x' }]);
 		expect(a.get(Books.total)).toBe(1);
@@ -111,7 +111,7 @@ describe('reads', () => {
 
 	test('a computed tracks the state keys it reads and nothing else', () => {
 		const Books = make();
-		const c = createRivaClient();
+		const c = createRiva();
 		const runs: number[] = [];
 		const off = c.subscribe(Books.total, (n) => runs.push(n));
 		c.run(() => Books.filterBy('a'));
@@ -136,7 +136,7 @@ describe('reads', () => {
 			state: { price: 100 },
 			computed: { due: (s, get) => s.price * (get(Users.vip) ? 0.9 : 1) },
 		});
-		const c = createRivaClient();
+		const c = createRiva();
 		const seen: number[] = [];
 		c.subscribe(Cart.due, (n) => seen.push(n));
 		expect(c.get(Cart.due)).toBe(100);
@@ -155,7 +155,7 @@ describe('reads', () => {
 				},
 			},
 		});
-		refusal(() => createRivaClient().get(S.bad), /computed cannot write "a"/);
+		refusal(() => createRiva().get(S.bad), /computed cannot write "a"/);
 	});
 
 	test('a cycle across stores is refused with RIVA_CYCLE', () => {
@@ -176,7 +176,7 @@ describe('reads', () => {
 			},
 		}) as never;
 		try {
-			createRivaClient().get(A.x);
+			createRiva().get(A.x);
 			throw new Error('did not throw');
 		} catch (e) {
 			expect((e as RivaError).code).toBe('RIVA_CYCLE');
@@ -185,9 +185,9 @@ describe('reads', () => {
 });
 
 describe('writes', () => {
-	test('only actions write: set, client.set and a computed key are refused', () => {
+	test('only actions write: set, riva.set and a computed key are refused', () => {
 		const Books = make();
-		const c = createRivaClient();
+		const c = createRiva();
 		// @ts-expect-error a state key has no setter in the types
 		refusal(() => c.run(() => Books.items.set([])), /outside an action/);
 		refusal(
@@ -200,7 +200,7 @@ describe('writes', () => {
 
 	test('a refused write notifies nobody and leaves the epoch alone', () => {
 		const Books = make();
-		const c = createRivaClient();
+		const c = createRiva();
 		const seen: unknown[] = [];
 		c.subscribe(Books.filter, (v) => seen.push(v));
 		const epoch = c.graph.epoch;
@@ -223,14 +223,14 @@ describe('writes', () => {
 				},
 			},
 		});
-		const c = createRivaClient();
+		const c = createRiva();
 		refusal(() => S.bind(c)[1].setB(), /"b" is not a state key/);
 		refusal(() => S.bind(c)[1].setZ(), /"z" is not a state key/);
 	});
 
 	test('the read view of bind is read-only', () => {
 		const Books = make();
-		const [s] = Books.bind(createRivaClient());
+		const [s] = Books.bind(createRiva());
 		expect(s.total).toBe(0);
 		refusal(() => {
 			(s as { filter: string }).filter = 'x';
@@ -248,14 +248,14 @@ describe('writes', () => {
 				},
 			},
 		});
-		const c = createRivaClient();
+		const c = createRiva();
 		S.bind(c)[1].put();
 		expect(c.get(S.f)).toBe(fn);
 	});
 
 	test('a nested mutation is refused in dev: stored values are frozen', () => {
 		const Books = make();
-		const c = createRivaClient();
+		const c = createRiva();
 		Books.bind(c)[1].add({ title: 'a' });
 		const items = c.get(Books.items);
 		expect(Object.isFrozen(items)).toBe(true);
@@ -275,7 +275,7 @@ describe('writes', () => {
 describe('actions', () => {
 	test('one call gives one notification, however many writes', () => {
 		const Books = make();
-		const c = createRivaClient();
+		const c = createRiva();
 		const seen: number[] = [];
 		c.subscribe(Books.total, (n) => seen.push(n));
 		const [, a] = Books.bind(c);
@@ -283,18 +283,18 @@ describe('actions', () => {
 		expect(seen).toEqual([2]);
 	});
 
-	test('the ambient form resolves the client, and throws RIVA_SCOPE on the server with none', () => {
+	test('the ambient form resolves the riva, and throws RIVA_SCOPE on the server with none', () => {
 		const Books = make();
 		expect(() => Books.add({ title: 'a' })).toThrow(RivaScopeError);
-		const c = createRivaClient();
+		const c = createRiva();
 		c.run(() => Books.add({ title: 'a' }));
 		expect(c.get(Books.total)).toBe(1);
 	});
 
-	test('bind caches the instance: the actions keep their identity per client', () => {
+	test('bind caches the instance: the actions keep their identity per riva', () => {
 		const Books = make();
-		const c = createRivaClient();
-		const d = createRivaClient();
+		const c = createRiva();
+		const d = createRiva();
 		expect(Books.bind(c)[1]).toBe(Books.bind(c)[1]);
 		expect(Books.bind(c)[0]).toBe(Books.bind(c)[0]);
 		expect(Books.bind(d)[1]).not.toBe(Books.bind(c)[1]);
@@ -315,7 +315,7 @@ describe('actions', () => {
 				},
 			},
 		});
-		const c = createRivaClient();
+		const c = createRiva();
 		const [, a] = S.bind(c);
 		expect(a.next()).toBe(1);
 		expect(() => a.boom()).toThrow('boom');
@@ -334,14 +334,14 @@ describe('actions', () => {
 				},
 			},
 		});
-		const c = createRivaClient();
+		const c = createRiva();
 		S.bind(c)[1].grow();
 		expect(c.get(S.n)).toBe(4);
 	});
 
 	test('a read made through s is not tracked by an outer effect', () => {
 		const Books = make();
-		const c = createRivaClient();
+		const c = createRiva();
 		let runs = 0;
 		const off = c.effect(() => {
 			runs++;
@@ -377,9 +377,9 @@ describe('async actions', () => {
 					s.items = [...s.items, saved];
 					s.saving = false;
 				},
-				async load(s, id: number, { fetch, client }: StoreContext) {
+				async load(s, id: number, { fetch, riva }: StoreContext) {
 					s.got = await fetch(ping, { id });
-					return client;
+					return riva;
 				},
 				async slow(s, _ctx?: StoreContext) {
 					await gate;
@@ -389,26 +389,26 @@ describe('async actions', () => {
 			},
 		});
 
-	test('s stays bound to its client across await, with no ambient scope', async () => {
+	test('s stays bound to its riva across await, with no ambient scope', async () => {
 		const S = make2();
-		const c = createRivaClient();
+		const c = createRiva();
 		await S.bind(c)[1].save('x');
 		expect(c.get(S.items)).toEqual([{ title: 'x' }]);
 		expect(c.get(S.saving)).toBe(false);
 		expect(() => S.items.get()).toThrow(RivaScopeError);
 	});
 
-	test('ctx carries the client, fetch and mutate; ctx.fetch uses the cache', async () => {
+	test('ctx carries the riva, fetch and mutate; ctx.fetch uses the cache', async () => {
 		const S = make2();
-		const c = createRivaClient();
-		const client = await S.bind(c)[1].load(3);
-		expect(client).toBe(c);
+		const c = createRiva();
+		const riva = await S.bind(c)[1].load(3);
+		expect(riva).toBe(c);
 		expect(c.get(S.got)).toBe('v3');
 	});
 
 	test('each synchronous segment is one notification', async () => {
 		const S = make2();
-		const c = createRivaClient();
+		const c = createRiva();
 		const seen: string[] = [];
 		c.subscribe(S.saving, (v) => seen.push(`saving=${v}`));
 		c.subscribe(S.items, (v) => seen.push(`items=${v.length}`));
@@ -425,7 +425,7 @@ describe('async actions', () => {
 			release = r;
 		});
 		const S = make2(gate);
-		const c = createRivaClient();
+		const c = createRiva();
 		const total = computed((get) => `${get(S.got)}/${get(S.saving)}`);
 		const seen: string[] = [];
 		c.subscribe(total, (v) => seen.push(v));
@@ -453,7 +453,7 @@ describe('async actions', () => {
 				},
 			},
 		});
-		const c = createRivaClient();
+		const c = createRiva();
 		c.subscribe(S.n, () => {
 			throw new Error('boom');
 		});
@@ -477,7 +477,7 @@ describe('async actions', () => {
 				},
 			},
 		});
-		const c = createRivaClient();
+		const c = createRiva();
 		await S.bind(c)[1].run();
 		expect(kept.got).toBe('b');
 		refusal(() => {
@@ -498,7 +498,7 @@ describe('async actions', () => {
 				},
 			},
 		});
-		const c = createRivaClient();
+		const c = createRiva();
 		await expect(S.bind(c)[1].fail()).rejects.toThrow('nope');
 		refusal(() => {
 			kept.n = 1;
@@ -512,11 +512,11 @@ describe('async actions', () => {
 			state: {},
 			actions: {
 				act(_s, a?: number, b?: number, ctx?: StoreContext) {
-					seen.push([a, b, ctx?.client]);
+					seen.push([a, b, ctx?.riva]);
 				},
 			},
 		});
-		const c = createRivaClient();
+		const c = createRiva();
 		const [, a] = S.bind(c);
 		a.act();
 		a.act(1);
@@ -530,7 +530,7 @@ describe('async actions', () => {
 
 	test('reset during an async action: its later writes still apply', async () => {
 		const S = make2();
-		const c = createRivaClient();
+		const c = createRiva();
 		const p = S.bind(c)[1].save('x');
 		S.reset(c);
 		await p;
@@ -541,7 +541,7 @@ describe('async actions', () => {
 describe('reset', () => {
 	test('puts every state key back to its initial value, in one notification', () => {
 		const Books = make();
-		const c = createRivaClient();
+		const c = createRiva();
 		const [, a] = Books.bind(c);
 		a.add({ title: 'a' });
 		a.filterBy('a');
@@ -557,10 +557,10 @@ describe('reset', () => {
 		expect(bs).toEqual(['0']);
 	});
 
-	test('the ambient reset needs a client, an explicit one does not', () => {
+	test('the ambient reset needs a riva, an explicit one does not', () => {
 		const Books = make();
 		expect(() => Books.reset()).toThrow(RivaScopeError);
-		const c = createRivaClient();
+		const c = createRiva();
 		Books.bind(c)[1].filterBy('z');
 		Books.reset(c);
 		expect(c.get(Books.filter)).toBe('');
@@ -577,7 +577,7 @@ describe('reset', () => {
 				},
 			},
 		});
-		const c = createRivaClient();
+		const c = createRiva();
 		S.bind(c)[1].clear();
 		S.reset(c);
 		expect(c.get(S.f)).toBe(f);
@@ -585,25 +585,25 @@ describe('reset', () => {
 });
 
 describe('isolation and names', () => {
-	test('two clients keep their own values', () => {
+	test('two riva instances keep their own values', () => {
 		const Books = make();
-		const a = createRivaClient();
-		const b = createRivaClient();
+		const a = createRiva();
+		const b = createRiva();
 		Books.bind(a)[1].filterBy('a');
 		expect(a.get(Books.filter)).toBe('a');
 		expect(b.get(Books.filter)).toBe('');
 	});
 
-	test('a second store with a name on a client is refused, in another client it is fine', () => {
+	test('a second store with a name on a riva is refused, in another riva it is fine', () => {
 		const one = store({ name: 'dup', state: { a: 1 } });
 		const two = store({ name: 'dup', state: { b: 1 } });
-		const c = createRivaClient();
+		const c = createRiva();
 		one.bind(c);
 		refusal(
 			() => two.bind(c),
-			/Store "dup": two stores are named "dup" on this client/,
+			/Store "dup": two stores are named "dup" on this riva/,
 		);
-		two.bind(createRivaClient());
+		two.bind(createRiva());
 		one.bind(c);
 	});
 
@@ -611,7 +611,7 @@ describe('isolation and names', () => {
 		const g = globalThis as { document?: unknown };
 		const one = store({ name: 'hmr', state: { a: 1 } });
 		const two = store({ name: 'hmr', state: { b: 2 } });
-		const c = createRivaClient();
+		const c = createRiva();
 		one.bind(c);
 		g.document = {};
 		try {
@@ -627,7 +627,7 @@ describe('isolation and names', () => {
 
 	test('effects see the store like any signal', () => {
 		const Books = make();
-		const c = createRivaClient();
+		const c = createRiva();
 		const seen: number[] = [];
 		const off = c.effect(() => {
 			seen.push(c.get(Books.total));
@@ -655,7 +655,7 @@ describe('ssr', () => {
 
 	test('with ssr: true every state key travels as <name>.<key>, computeds do not', () => {
 		const S = build(true);
-		const server = createRivaClient();
+		const server = createRiva();
 		S.bind(server)[1].add({ title: 'a' });
 		server.get(S.filter);
 		server.get(S.total);
@@ -665,14 +665,14 @@ describe('ssr', () => {
 
 	test('by default nothing travels', () => {
 		const S = build();
-		const server = createRivaClient();
+		const server = createRiva();
 		S.bind(server)[1].add({ title: 'a' });
 		expect(dehydrate(server).a).toEqual({});
 	});
 
 	test('a reset store does not travel', () => {
 		const S = build(true);
-		const server = createRivaClient();
+		const server = createRiva();
 		S.bind(server)[1].add({ title: 'a' });
 		S.reset(server);
 		expect(dehydrate(server).a).toEqual({});
@@ -680,10 +680,10 @@ describe('ssr', () => {
 
 	test('the snapshot seeds a store first used after hydrate, with no write', () => {
 		const S = build(true);
-		const server = createRivaClient();
+		const server = createRiva();
 		S.bind(server)[1].add({ title: 'a' });
 		const snap = JSON.parse(JSON.stringify(dehydrate(server)));
-		const browser = createRivaClient();
+		const browser = createRiva();
 		hydrate(browser, snap);
 		expect(browser.get(S.items)).toEqual([{ title: 'a' }]);
 		expect(browser.get(S.total)).toBe(1);
@@ -692,9 +692,9 @@ describe('ssr', () => {
 
 	test('a hydrated value is frozen once the store is used (dev)', () => {
 		const S = build(true);
-		const server = createRivaClient();
+		const server = createRiva();
 		S.bind(server)[1].add({ title: 'a' });
-		const browser = createRivaClient();
+		const browser = createRiva();
 		hydrate(browser, JSON.parse(JSON.stringify(dehydrate(server))));
 		S.bind(browser);
 		const items = browser.get(S.items);
@@ -704,10 +704,10 @@ describe('ssr', () => {
 
 	test('a store already in use on the browser is not overwritten by hydrate', () => {
 		const S = build(true);
-		const server = createRivaClient();
+		const server = createRiva();
 		S.bind(server)[1].add({ title: 'a' });
 		const snap = dehydrate(server);
-		const browser = createRivaClient();
+		const browser = createRiva();
 		browser.get(S.items);
 		hydrate(browser, snap);
 		expect(browser.get(S.items)).toEqual([]);
@@ -716,7 +716,7 @@ describe('ssr', () => {
 
 describe('with a fake clock', () => {
 	test('ctx.fetch goes through the query cache', async () => {
-		const { client: mk } = fakeEnv();
+		const { riva: mk } = fakeEnv();
 		const calls: number[] = [];
 		const q = query<void, number>({
 			id: 'store/cached',

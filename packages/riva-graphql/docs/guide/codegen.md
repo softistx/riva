@@ -18,7 +18,7 @@ export default {
 	documents: ['app/**/*.{ts,tsx}'],
 	generates: {
 		'app/generated/': {
-			preset: 'client',
+			preset: 'riva',
 			presetConfig: { persistedDocuments: true },
 			// Needed by `normalized()`: it adds __typename to every selection set.
 			documentTransforms: [addTypenameSelectionDocumentTransform],

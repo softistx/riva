@@ -1,4 +1,4 @@
-import type { RivaClient } from '../client';
+import type { Riva } from '../client';
 import { nodeOf } from '../graph';
 import { type Signal, signal } from '../signal';
 import { fieldsOf } from './denormalize';
@@ -13,7 +13,7 @@ export interface Rules {
 	identify: unknown;
 }
 
-/** The entities of one client: one signal per entity, kept alive by roots. */
+/** The entities of one riva: one signal per entity, kept alive by roots. */
 export class EntityStore {
 	readonly signals = new Map<string, Signal<Stored | undefined>>();
 	/** The stored data of every live query entry (anything with `refs`). */
@@ -32,7 +32,7 @@ export class EntityStore {
 	/** Set by the first policy that uses the store. */
 	rules: Rules | undefined;
 
-	constructor(readonly client: RivaClient) {}
+	constructor(readonly riva: Riva) {}
 
 	/** The signal of an entity (created empty when missing, so a tracked read of it is notified). */
 	signalOf(ref: string): Signal<Stored | undefined> {
@@ -47,7 +47,7 @@ export class EntityStore {
 	/** The stored fields, untracked; creates nothing. */
 	peek(ref: string): Stored | undefined {
 		const a = this.signals.get(ref);
-		return a && this.client.untracked(() => this.client.get(a));
+		return a && this.riva.untracked(() => this.riva.get(a));
 	}
 
 	/** The fields as a reader sees them: tracked, the optimistic layers over them. */
@@ -68,8 +68,8 @@ export class EntityStore {
 		this.directLocal.delete(ref);
 		const a = this.signals.get(ref);
 		if (!a) return false;
-		if (had) this.client.set(a, undefined);
-		if (nodeOf(this.client.graph, a).refs === 0) this.signals.delete(ref);
+		if (had) this.riva.set(a, undefined);
+		if (nodeOf(this.riva.graph, a).refs === 0) this.signals.delete(ref);
 		return had;
 	}
 
@@ -83,7 +83,7 @@ export class EntityStore {
 			changed[k] = fields[k];
 			any = true;
 		}
-		if (any) this.client.set(this.signalOf(ref), { ...prev, ...changed });
+		if (any) this.riva.set(this.signalOf(ref), { ...prev, ...changed });
 	}
 
 	/** Removes every entity no live root or pin reaches (cycles included). */
@@ -97,7 +97,7 @@ export class EntityStore {
 			const fields = this.peek(r);
 			for (const k in fields) todo.push(...refsIn(fields[k]));
 		}
-		this.client.batch(() => {
+		this.riva.batch(() => {
 			for (const ref of [...this.signals.keys()])
 				if (!live.has(ref)) this.clear(ref);
 		});
