@@ -1,6 +1,6 @@
 {
 	"name": "@softistx/riva-graphql",
-	"version": "0.2.0",
+	"version": "0.3.0",
 	"description": "GraphQL transport for riva over @softistx/graphql-client, with persisted ids and the allowlist codegen plugin.",
 	"license": "MIT",
 	"type": "module",

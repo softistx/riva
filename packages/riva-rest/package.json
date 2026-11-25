@@ -1,6 +1,6 @@
 {
 	"name": "@softistx/riva-rest",
-	"version": "0.2.0",
+	"version": "0.3.0",
 	"description": "REST transport for riva, typed by OpenAPI through openapi-httpyz, with a free fetcher for schema-less APIs.",
 	"license": "MIT",
 	"type": "module",

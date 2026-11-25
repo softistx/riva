@@ -1,6 +1,6 @@
 {
 	"name": "@softistx/riva-react",
-	"version": "0.2.0",
+	"version": "0.3.0",
 	"description": "React adapter for riva: RivaProvider, hooks, Suspense and SSR support.",
 	"license": "MIT",
 	"type": "module",
