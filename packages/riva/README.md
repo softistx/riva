@@ -164,6 +164,7 @@ The context, `reset`, naming rules and SSR: [store](./docs/guide/store.md).
 ## Resources
 
 ```ts
+import { signal } from '@softistx/riva';
 import { resource } from '@softistx/riva/resource';
 
 const page = signal(1);

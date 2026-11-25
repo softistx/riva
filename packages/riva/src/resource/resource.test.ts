@@ -214,6 +214,21 @@ describe('lazy', () => {
 		expect(calls).toHaveLength(1); // not observed any more: no refetch
 	});
 
+	test('known limitation: with no polling a dropped reader stays observed until a change', async () => {
+		const { q, calls, riva } = setup();
+		const r = resource(riva, () => [q, { n: 1 }] as const);
+		const label = computed(() => r.state.status);
+		const off = riva.subscribe(label, () => {});
+		await tick();
+		calls[0]?.ok('x');
+		await tick();
+		off();
+		await tick();
+		riva.queries.invalidate(q, { n: 1 });
+		await tick();
+		expect(calls).toHaveLength(2); // still observed: the invalidation refetched
+	});
+
 	test('on the server nothing is observed', async () => {
 		delete g.document;
 		const { q, calls, riva } = setup();
