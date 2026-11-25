@@ -34,6 +34,16 @@
 			"import": "./dist/codegen/index.js",
 			"default": "./dist/codegen/index.js"
 		},
+		"./server": {
+			"types": "./dist/server/index.d.ts",
+			"import": "./dist/server/index.js",
+			"default": "./dist/server/index.js"
+		},
+		"./bff": {
+			"types": "./dist/bff/index.d.ts",
+			"import": "./dist/bff/index.js",
+			"default": "./dist/bff/index.js"
+		},
 		"./package.json": "./package.json"
 	},
 	"keywords": [
@@ -86,7 +96,9 @@
 			"src/index.ts",
 			"src/infinite/index.ts",
 			"src/cache/index.ts",
-			"src/codegen/index.ts"
+			"src/codegen/index.ts",
+			"src/server/index.ts",
+			"src/bff/index.ts"
 		]
 	}
 }

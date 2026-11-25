@@ -240,6 +240,33 @@ const manifest = buildAllowlist({
 - It fails on a text with no operation or several, an anonymous one, a subscription, and two operations of one name.
 - Do not rely on the order of outputs inside one codegen run: the manifest is built after all of them, from the hook.
 
+## BFF mode
+
+In the browser, `bffTransport` posts `{ id, variables }` to your `dataRoute` (from `@softistx/riva-react-router/server`) and reads `{ data }` back, Dates included. The browser never sends a document: the route runs the manifest's text through the request client, with the session your `setup` gave it.
+
+```ts
+// browser: app/riva.client.ts
+import { bffTransport } from '@softistx/riva-graphql/bff';
+import { provideGraphQL } from '@softistx/riva-graphql';
+
+provideGraphQL(client, bffTransport({ url: '/_data' }));
+```
+
+```ts
+// server: app/routes/_data.ts (a route with an action and a loader)
+import { dataRoute } from '@softistx/riva-react-router/server';
+import { allowlist } from '@softistx/riva-graphql/server';
+import manifest from '../generated/allowlist.json';
+
+const route = dataRoute({ sources: [allowlist(manifest)] });
+export const action = route.action;
+export const loader = route.loader;
+```
+
+- `bffTransport({ url?, fetch?, headers? })`: `url` defaults to `/_data`; `headers` adds per-call headers (a CSRF token, say). The route's refusals and the API's errors come back as `RivaRequestError` with the route's `code` and `status` (retryable for 5xx, 408 and 429); a failed fetch is a `RivaNetworkError`, an abort a `RivaAbortError`.
+- `allowlist(manifest)` is a `DataSource`: it knows only the manifest's ids, parses each document once, and runs it through the transport `provideGraphQL` set on the request client.
+- Keep `/bff` and `/server` out of each other's bundle: `/bff` is for the browser, `/server` imports `graphql`.
+
 ## Entry points
 
 | Import | Holds | Notes |
@@ -247,8 +274,10 @@ const manifest = buildAllowlist({
 | `@softistx/riva-graphql` | `query`, `mutation`, `provideGraphQL`, `graphqlClientTransport`, `toRivaError`, `operationOf`, `VERSION` | Imports `@softistx/riva` only; no optional peer. |
 | `@softistx/riva-graphql/infinite` | `infinite` | Imports `@softistx/riva/infinite`. |
 | `@softistx/riva-graphql/cache` | `normalized` | Imports `@softistx/riva/entities`; no `graphql` value import. |
+| `@softistx/riva-graphql/bff` | `bffTransport` | Browser; imports `@softistx/riva/ssr` only. |
+| `@softistx/riva-graphql/server` | `allowlist` | Server only; needs `graphql`. |
 | `@softistx/riva-graphql/codegen` | `buildAllowlist`, `writeAllowlist` | Node and codegen only; needs `graphql`. |
 
-Exported types: `GraphQLTransport`, `Operation`, `OperationKind`, `VarsOf` and `GraphQLQueryOptions`, `GraphQLMutationOptions`, `OperationCache` (main entry); `NormalizedOptions`, `PossibleTypes` (`/cache`); `GraphQLInfiniteOptions` (`/infinite`); `AllowlistConfig`, `AllowlistEntry`, `AllowlistManifest` (`/codegen`).
+Exported types: `GraphQLTransport`, `Operation`, `OperationKind`, `VarsOf` and `GraphQLQueryOptions`, `GraphQLMutationOptions`, `OperationCache` (main entry); `NormalizedOptions`, `PossibleTypes` (`/cache`); `GraphQLInfiniteOptions` (`/infinite`); `AllowlistConfig`, `AllowlistEntry`, `AllowlistManifest` (`/codegen`); `BffTransportOptions` (`/bff`); `DataOperation`, `DataSource` (`/server`).
 
 riva + riva-graphql stays under 8 kB gzipped, and with the entities and the cache under 11 kB (checked by the repo's size budget), `@softistx/graphql-client` and `graphql` not counted.

@@ -46,3 +46,11 @@ export function rivaMiddleware<Result = unknown>(
 		return als.run(client, next);
 	};
 }
+
+export {
+	type DataOperation,
+	type DataRoute,
+	type DataRouteOptions,
+	type DataSource,
+	dataRoute,
+} from './data-route';

@@ -28,6 +28,16 @@ Code: `RIVA_SCOPE` (`RivaScopeError`).
 
 **Fix:** keep the single declaration on the root route.
 
+## `revalidate is observed by RivaRouterProvider: render it above the component that invalidates it.`
+
+Code: `RIVA_SCOPE` (`RivaScopeError`).
+
+**When:** `revalidate` was invalidated (a mutation's `invalidates`, `invalidateOnAction`, or `revalidate.invalidate(client)`) on a client no `RivaRouterProvider` renders for.
+
+**Why:** the provider leaves the router's `revalidate()` on the client; with no provider there is nothing to call.
+
+**Fix:** render `RivaRouterProvider` above the component, with the same `client`.
+
 ## Data refetches right after hydration
 
 **When:** the browser fetches a query it received from the loader.

@@ -9,7 +9,8 @@
  * against its hard cap of 9216 B. The riva-graphql row leaves
  * `@softistx/graphql-client` and `graphql` external; the riva-rest row leaves
  * `@softistx/httpyz` and `@softistx/openapi-httpyz` external; the riva-react-router
- * row leaves `react-router` external and has none for its `/server` subpath.
+ * row leaves `react-router` external and has none for its `/server` subpath;
+ * the riva-graphql/bff row counts the browser's side of `/_data` (the `/server` allowlist runs on the server).
  */
 export interface Budget {
 	name: string;
@@ -95,6 +96,16 @@ export const budgets: Budget[] = [
 			'packages/riva-react-router/dist/index.js',
 		],
 		limit: 11264,
+	},
+	{
+		name: '@softistx/riva + riva-graphql/bff',
+		entry: [
+			'packages/riva/dist/index.js',
+			'packages/riva/dist/ssr/index.js',
+			'packages/riva-graphql/dist/index.js',
+			'packages/riva-graphql/dist/bff/index.js',
+		],
+		limit: 9216,
 	},
 	{
 		name: '@softistx/riva + riva-rest',

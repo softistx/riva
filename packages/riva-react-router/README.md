@@ -104,6 +104,29 @@ The provider hydrates each match's `~riva` once. The first render is seeded befo
 
 The ambient scope (`mySignal.get()` resolving to the request's client, also after an `await`) works only inside the `next` that `rivaMiddleware` runs, that is in loaders, actions and the code they call. Outside it (another middleware that runs before, a module scope), use `rivaOf(context)`.
 
+## The `/_data` route
+
+`dataRoute` lets the browser run allowlisted operations through your server, with the session of the request. Mount it on a route with an action; the browser's `bffTransport` (`@softistx/riva-graphql/bff`) posts to it.
+
+```ts
+// app/routes/_data.ts
+import { dataRoute } from '@softistx/riva-react-router/server';
+import { allowlist } from '@softistx/riva-graphql/server';
+import manifest from '../generated/allowlist.json';
+
+const route = dataRoute({ sources: [allowlist(manifest)] });
+export const action = route.action;
+export const loader = route.loader; // 405
+```
+
+Options: `sources` (asked in order, the first that knows the id runs it), `origin` (the one allowed origin, default the request's own; set it behind a proxy), `maxBytes` (default 262144), `onError(error, request)` (what a non-`RivaRequestError` threw; the browser only sees a 500). Refusals are `{ error: { code, message, status } }` with `RIVA_DATA_*` codes, see the graphql troubleshooting.
+
+## After a write
+
+- `useActionResult(result, { into, vars, select? })` writes an action's result (`useActionData()`, or a fetcher's `data`) into a query's entry, once per result. `select` picks the data out of the result (required when the types differ); returning `undefined` (a validation error) writes nothing.
+- `revalidate` is a query: invalidating it re-runs the route loaders through the router's `revalidate()`. Put it in a mutation's `invalidates`, or call `revalidate.invalidate(client)`; invalidations of one tick make one run. It needs `RivaRouterProvider` above the caller, else it fails with `RIVA_SCOPE`: `revalidate is observed by RivaRouterProvider: render it above the component that invalidates it.`
+- `<RivaRouterProvider invalidateOnAction={[patients, revalidate]}>` invalidates that list each time a non-GET navigation or fetcher settles, so a plain `<Form>` keeps the data fresh with no hand-written glue.
+
 ## Exports
 
 | Export | From | What |
@@ -112,9 +135,12 @@ The ambient scope (`mySignal.get()` resolving to the request's client, also afte
 | `rivaOf(context)` | `.` | The request's client; `RivaScopeError` when the middleware did not run. |
 | `riva(context)` | `.` | `{ '~riva': Snapshot }`, to spread into loader data. |
 | `rivaContext` | `.` | The router context key. |
-| `RivaRouterProvider` | `.` | `client?`, `setup?`, `children`. |
+| `RivaRouterProvider` | `.` | `client?`, `setup?`, `invalidateOnAction?`, `children`. |
+| `useActionResult` | `.` | Writes an action's result into a query entry. |
+| `revalidate` | `.` | Query that re-runs the route loaders when invalidated. |
+| `dataRoute(opts)` | `/server` | The `/_data` action and loader. |
 
-Types: `ContextLike` (what `rivaOf` and `riva` accept, a `context.get`), `RivaRouterProviderProps` from `.`; `RivaMiddlewareOptions` and `MiddlewareArgs` from `/server`.
+Types: `ContextLike` (what `rivaOf` and `riva` accept, a `context.get`), `RivaRouterProviderProps` from `.`; `RivaMiddlewareOptions`, `MiddlewareArgs`, `DataRouteOptions`, `DataRoute`, `DataSource` and `DataOperation` from `/server`.
 
 ## Notes for hosts
 
