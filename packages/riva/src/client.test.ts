@@ -1,6 +1,8 @@
 import { expect, test } from 'bun:test';
-import { createRiva, Riva } from './client';
+import { createRiva, Riva, type RivaExtension } from './client';
 import { computed } from './computed';
+import { RivaError } from './errors';
+import { query } from './query';
 import { signal } from './signal';
 
 test('createRiva returns a Riva', () => {
@@ -127,4 +129,112 @@ test('several errors become an AggregateError, and a throwing effect is isolated
 	expect(seen).toEqual([1, 1]);
 	c.set(b, 2);
 	expect(runs).toEqual([0, 2]);
+});
+
+const clock = () => {
+	let t = 0;
+	return {
+		now: () => t,
+		advance(ms: number) {
+			t += ms;
+		},
+		setTimeout: () => 0,
+		clearTimeout: () => {},
+	};
+};
+
+test('an extension is installed once, with the riva, under its key', () => {
+	const installs: Riva[] = [];
+	const ext: RivaExtension<{ hello: string }> = {
+		install(r) {
+			installs.push(r);
+			return { hello: 'hi' };
+		},
+	};
+	const riva = createRiva({ greet: ext, other: ext });
+	expect(riva.greet).toEqual({ hello: 'hi' });
+	expect(riva.other.hello).toBe('hi');
+	expect(installs).toEqual([riva, riva]);
+	expect(riva).toBeInstanceOf(Riva);
+});
+
+test('a value without install is ignored, not installed', () => {
+	const riva = createRiva({ plain: { a: 1 }, nothing: undefined } as never);
+	expect('plain' in riva).toBe(false);
+	expect('nothing' in riva).toBe(false);
+});
+
+test('a Riva member name cannot be an extension', () => {
+	const ext = { install: () => 1 };
+	for (const key of ['get', 'set', 'subscribe', 'run', 'queries', 'graph'])
+		expect(() => createRiva({ [key]: ext } as never)).toThrow(RivaError);
+	try {
+		createRiva({ get: ext } as never);
+	} catch (e) {
+		expect((e as RivaError).code).toBe('RIVA_DEFINITION');
+	}
+});
+
+test('createRivaClient keeps the same signature', async () => {
+	const { createRivaClient } = await import('./deprecated');
+	const riva = createRivaClient({ x: { install: () => 7 } });
+	expect(riva.x).toBe(7);
+});
+
+test('defaults.staleTime applies when the definition sets none', async () => {
+	const sched = clock();
+	const riva = createRiva({
+		scheduler: sched,
+		events: { onFocus: () => () => {}, onReconnect: () => () => {} },
+		defaults: { staleTime: '10s' },
+	});
+	let n = 0;
+	const q = query({ id: 'q', fetch: async () => ++n });
+	await q.ensure(riva);
+	sched.advance(9_999);
+	expect(await q.ensure(riva)).toBe(1);
+	sched.advance(1);
+	expect(await q.ensure(riva)).toBe(2);
+});
+
+test("a definition's own staleTime wins over defaults, even 0", async () => {
+	const sched = clock();
+	const riva = createRiva({
+		scheduler: sched,
+		defaults: { staleTime: Infinity },
+	});
+	let n = 0;
+	const own = query({ id: 'own', staleTime: 0, fetch: async () => ++n });
+	await own.ensure(riva);
+	await own.ensure(riva);
+	expect(n).toBe(2);
+	const inherits = query({ id: 'inh', fetch: async () => ++n });
+	await inherits.ensure(riva);
+	sched.advance(10 ** 12);
+	await inherits.ensure(riva);
+	expect(n).toBe(3);
+});
+
+test('a subscribe staleTime still beats the default', async () => {
+	const sched = clock();
+	const riva = createRiva({
+		scheduler: sched,
+		defaults: { staleTime: Infinity },
+	});
+	let n = 0;
+	const q = query({ id: 'q', fetch: async () => ++n });
+	await q.ensure(riva);
+	const off = riva.subscribe(q, undefined as never, () => {}, { staleTime: 0 });
+	await new Promise((r) => setTimeout(r, 0));
+	off();
+	expect(n).toBe(2);
+});
+
+test('with no defaults a query is stale at once (built-in 0)', async () => {
+	const riva = createRiva({ scheduler: clock() });
+	let n = 0;
+	const q = query({ id: 'q', fetch: async () => ++n });
+	await q.ensure(riva);
+	await q.ensure(riva);
+	expect(n).toBe(2);
 });

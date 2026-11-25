@@ -14,15 +14,15 @@ export interface Node {
 	/** Bumped each time the value changes. */
 	ver: number;
 	/** The graph epoch this computed was last verified at. */
-	stamp: number;
+	stamp?: number;
 	/** Live observers plus listeners: links to sources exist only while > 0. */
 	refs: number;
 	observers: Set<Node>;
 	/** Sources read by the last evaluation, with the version seen. */
 	deps: Map<Node, number>;
 	listeners: Set<Listener<unknown>>;
-	seen: number;
-	busy: boolean;
+	seen?: number;
+	busy?: boolean;
 	init: boolean;
 }
 
@@ -31,9 +31,9 @@ export interface Graph {
 	nodes: WeakMap<Def, Node>;
 	/** Bumped on every write: a computed verified at this epoch is fresh. */
 	epoch: number;
-	track: Map<Node, number> | undefined;
+	track?: Map<Node, number> | undefined;
 	depth: number;
-	flushing: boolean;
+	flushing?: boolean;
 	pending: Set<Node>;
 	/** The signals that travel in an SSR snapshot, by name; null once a name is taken twice. @internal */
 	named: Map<string, Node | null>;
@@ -45,9 +45,7 @@ export const createGraph = (riva: Riva): Graph => ({
 	riva,
 	nodes: new WeakMap(),
 	epoch: 0,
-	track: undefined,
 	depth: 0,
-	flushing: false,
 	pending: new Set(),
 	named: new Map(),
 });
@@ -66,15 +64,12 @@ export function nodeOf(g: Graph, def: Def): Node {
 		const isSignal = def.kind === 'signal';
 		n = {
 			def,
-			value: isSignal ? initialOf(g, def) : undefined,
+			value: isSignal && initialOf(g, def),
 			ver: 0,
-			stamp: -1,
 			refs: 0,
 			observers: new Set(),
 			deps: new Map(),
 			listeners: new Set(),
-			seen: 0,
-			busy: false,
 			init: isSignal,
 		};
 		g.nodes.set(def, n);

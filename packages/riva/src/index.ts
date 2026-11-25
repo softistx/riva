@@ -2,6 +2,7 @@ export { batch, untracked } from './batch';
 export {
 	createRiva,
 	Riva,
+	type RivaExtension,
 	type RivaOptions,
 	type SubscribeOptions,
 } from './client';

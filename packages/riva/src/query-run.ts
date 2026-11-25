@@ -1,3 +1,4 @@
+import { noop } from './env';
 import { RivaAbortError, RivaError } from './errors';
 import {
 	armGc,
@@ -13,8 +14,6 @@ import {
 	view,
 } from './query-entry';
 import { raceAbort, retryDelay, shouldRetry, sleep } from './retry';
-
-const noop = () => {};
 
 /** Fetch, retry with backoff, restart on a new controller; ends with the value or the error. */
 async function loop(c: Ctx, e: Entry, f: Inflight): Promise<unknown> {
@@ -50,8 +49,6 @@ function start(c: Ctx, e: Entry): Inflight {
 		promise: undefined as unknown as Promise<unknown>,
 		ctl: new AbortController(),
 		waiters: 0,
-		pinned: false,
-		set: undefined,
 		prev: peek(c, e),
 	};
 	e.run = f;

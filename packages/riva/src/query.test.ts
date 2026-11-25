@@ -22,8 +22,9 @@ test('a definition is frozen, stateless and resolves its durations', () => {
 		refetchOnReconnect: true,
 	});
 	const d = query({ id: 'd', fetch: async () => 1 });
+	// Unset: the riva's `defaults.staleTime` decides, 0 when it has none.
 	expect(d.options).toMatchObject({
-		staleTime: 0,
+		staleTime: undefined,
 		gcTime: undefined,
 		refetchEvery: undefined,
 	});
