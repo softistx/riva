@@ -5,6 +5,7 @@ import {
 	createRiva,
 	type Riva,
 	type RivaExtension,
+	type RivaOptions,
 	type Signal,
 	signal,
 } from './index';
@@ -49,4 +50,12 @@ test('extensions are typed on the instance', () => {
 		// @ts-expect-error `defaults` is not an extension
 		createRiva({ defaults: ext });
 	};
+});
+
+test('options widened to RivaOptions type as a plain Riva', () => {
+	const options: RivaOptions = { defaults: { staleTime: 1 } };
+	expectTypeOf(createRiva(options)).toEqualTypeOf<Riva>();
+	// An inferred literal keeps its extensions.
+	const inferred = { graphql: { install: () => 1 } };
+	expectTypeOf(createRiva(inferred).graphql).toEqualTypeOf<number>();
 });

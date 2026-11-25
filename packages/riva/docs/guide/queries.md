@@ -49,7 +49,7 @@ const off = riva.subscribe(user, { id: '1' }, (state) => console.log(state.statu
 | --- | --- | --- |
 | `id` | required | Identifies the definition; ids must be unique. |
 | `fetch(vars, { signal, riva })` | required | Returns the data. |
-| `staleTime` | `0` | How long data stays fresh. A `Duration`: a number of ms or `"250ms"`, `"30s"`, `"5m"`, `"2h"`. |
+| `staleTime` | `0` | How long data stays fresh. A `Duration`: a number of ms or `"250ms"`, `"30s"`, `"5m"`, `"2h"`. Unset, it takes `createRiva({ defaults: { staleTime } })`. |
 | `gcTime` | 5 min in a browser, `Infinity` on the server | How long an unobserved entry is kept. No timers on the server: a per-request riva is just dropped. |
 | `retry` | 3 in a browser, 0 on the server | A count, or `(failures, error) => boolean`. |
 | `retryDelay` | `min(1000 * 2 ** failures, 30_000)` | `(failures) => ms`. |
@@ -88,6 +88,6 @@ Exported types: `Query`, `QueryOptions`, `QueryState`, `QueryStatus`, `EnsureOpt
 
 ## Traps
 
-- With the default `staleTime` of 0, every `ensure` and every new observer refetches. Set a `staleTime` for data that may be reused, especially data hydrated from the server.
+- With the default `staleTime` of 0, every `ensure` and every new observer refetches. Set a `staleTime` (or `createRiva({ defaults: { staleTime } })` for every query) for data that may be reused, especially data hydrated from the server.
 - Two definitions with one `id` share a cache entry.
 - `invalidate` only refetches at once what is observed; an unobserved entry refetches on its next read.

@@ -34,7 +34,9 @@ const riva = createRiva({ clock, defaults: { staleTime: '30s' } });
 riva.clock.now(); // typed
 ```
 
-`defaults.staleTime` applies to every query that sets no `staleTime` of its own. A name that is already a `Riva` member (`get`, `set`, `run`, …) cannot be an extension: a type error, and a `RIVA_DEFINITION` error at runtime.
+`defaults.staleTime` applies to every query that sets no `staleTime` of its own.
+
+Extensions install once, in key order, so an install sees the extensions before it but not those after. A Riva member name (`get`, `set`, `run`, …) is a type error and throws `RIVA_DEFINITION`; option names (`defaults`, `scheduler`, `events`) are refused by the types. Pass the options inline, or keep the inferred type of a pre-built object: options annotated as `RivaOptions` lose the extension types and give a plain `Riva`.
 
 ## Signals
 

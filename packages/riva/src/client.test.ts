@@ -238,3 +238,36 @@ test('with no defaults a query is stale at once (built-in 0)', async () => {
 	await q.ensure(riva);
 	expect(n).toBe(2);
 });
+
+test('null and string option values are skipped', () => {
+	const riva = createRiva({ a: null, b: 'text' } as never);
+	expect('a' in riva).toBe(false);
+	expect('b' in riva).toBe(false);
+});
+
+test('an install that throws propagates out of createRiva', () => {
+	const boom = new Error('boom');
+	expect(() =>
+		createRiva({
+			x: {
+				install: () => {
+					throw boom;
+				},
+			},
+		}),
+	).toThrow(boom);
+});
+
+test('a prototype name is reserved too', () => {
+	expect(() => createRiva({ toString: { install: () => 1 } } as never)).toThrow(
+		RivaError,
+	);
+});
+
+test('extensions install in key order and see the earlier ones', () => {
+	const riva = createRiva({
+		a: { install: () => 1 },
+		b: { install: (r: Riva) => (r as unknown as { a: number }).a + 1 },
+	});
+	expect(riva.b).toBe(2);
+});
