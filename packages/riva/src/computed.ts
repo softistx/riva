@@ -2,7 +2,7 @@ import type { Signal, Listener, Unsubscribe } from './signal';
 import { resolve } from './scope';
 
 /** A signal seen without its setter: what a store exposes for its state keys. */
-export interface ReadonlySignal<T> extends Omit<Signal<T>, 'set'> {}
+export interface ReadonlySignal<T> extends Omit<Signal<T>, 'set' | 'equals'> {}
 
 export type Readable<T> = Signal<T> | ReadonlySignal<T> | Computed<T>;
 export type Getter = <U>(def: Readable<U>) => U;

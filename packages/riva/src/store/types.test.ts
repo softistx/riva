@@ -134,3 +134,73 @@ test('the name is a literal type', () => {
 	const S = store({ name: 'x', state: {} });
 	expectTypeOf(S.name).toEqualTypeOf<'x'>();
 });
+
+test('Args strips an optional context too, and keeps an any last parameter', () => {
+	expectTypeOf<Args<[a: number, ctx?: StoreContext]>>().toEqualTypeOf<
+		[number]
+	>();
+	// biome-ignore lint/suspicious/noExplicitAny: an `any` is not a context
+	expectTypeOf<Args<[a: number, b: any]>>().toEqualTypeOf<[number, any]>();
+	const call = (
+		f: (...a: Args<[a: number, b?: number, ctx?: StoreContext]>) => void,
+	) => {
+		f(1);
+		f(1, 2);
+		// @ts-expect-error the required argument
+		f();
+	};
+	expectTypeOf(call).toBeFunction();
+});
+
+test('an action ending with an optional or defaulted parameter must declare ctx', () => {
+	const S = store({
+		name: 'ctxrule',
+		state: { n: 0 },
+		actions: {
+			ok(s, by?: number, _ctx?: StoreContext) {
+				s.n += by ?? 1;
+			},
+			okRequired(s, by: number | undefined) {
+				s.n += by ?? 1;
+			},
+			// biome-ignore lint/suspicious/noExplicitAny: a typed-any last parameter
+			loose(s, by: any) {
+				s.n += by;
+			},
+			bad(s, by?: number) {
+				s.n += by ?? 1;
+			},
+			badDefault(s, by = 1) {
+				s.n += by;
+			},
+		},
+	});
+	expectTypeOf(S.ok).toEqualTypeOf<(by?: number) => void>();
+	expectTypeOf(S.okRequired).toEqualTypeOf<(by: number | undefined) => void>();
+	const never = () => {
+		// @ts-expect-error the action needs `ctx?: StoreContext` last
+		S.bad();
+		// @ts-expect-error the action needs `ctx?: StoreContext` last
+		S.badDefault();
+	};
+	expectTypeOf(never).toBeFunction();
+});
+
+test('a reserved key fails to type', () => {
+	const never = () => {
+		// @ts-expect-error `then` is reserved
+		// biome-ignore lint/suspicious/noThenProperty: the reserved key under test
+		store({ name: 'r1', state: { then: 1 } });
+		// @ts-expect-error `kind` is reserved
+		store({ name: 'r2', state: {}, actions: { kind() {} } });
+	};
+	expectTypeOf(never).toBeFunction();
+});
+
+test('a state key has no equals, no set', () => {
+	expectTypeOf<keyof ReadonlySignal<number>>().not.toEqualTypeOf<
+		keyof ReadonlySignal<number> | 'equals' | 'set'
+	>();
+	expectTypeOf<ReadonlySignal<number>>().not.toHaveProperty('equals');
+	expectTypeOf<ReadonlySignal<number>>().not.toHaveProperty('set');
+});

@@ -73,12 +73,20 @@ describe('definitions', () => {
 			/"a" is taken/,
 		);
 		refusal(
+			// @ts-expect-error a reserved key fails to type
 			() => store({ name: 'x', state: { reset: 1 } }),
 			/"reset" is taken/,
 		);
 		refusal(
+			// @ts-expect-error a reserved key fails to type
 			() => store({ name: 'x', state: {}, actions: { bind() {} } }),
 			/"bind" is taken/,
+		);
+		refusal(
+			// @ts-expect-error a reserved key fails to type
+			// biome-ignore lint/suspicious/noThenProperty: the reserved key under test
+			() => store({ name: 'x', state: { then: 1 } }),
+			/"then" is taken/,
 		);
 	});
 
@@ -429,6 +437,33 @@ describe('async actions', () => {
 		expect(c.graph.depth).toBe(0);
 	});
 
+	test('a listener error in the post-await flush rejects the action, and the depth is back', async () => {
+		const S = store({
+			name: 'lerr',
+			state: { n: 0 },
+			actions: {
+				async go(s) {
+					await Promise.resolve();
+					s.n = 1;
+				},
+				async later(s) {
+					await Promise.resolve();
+					s.n = 2;
+					await new Promise((r) => setTimeout(r, 5));
+				},
+			},
+		});
+		const c = createRivaClient();
+		c.subscribe(S.n, () => {
+			throw new Error('boom');
+		});
+		await expect(S.bind(c)[1].go()).rejects.toThrow('boom');
+		expect(c.graph.depth).toBe(0);
+		await expect(S.bind(c)[1].later()).rejects.toThrow('boom');
+		expect(c.graph.depth).toBe(0);
+		expect(c.get(S.n)).toBe(2);
+	});
+
 	test('s is revoked once the action settles: writes throw, reads work', async () => {
 		let kept!: { got: string };
 		const S = store({
@@ -564,9 +599,30 @@ describe('isolation and names', () => {
 		const two = store({ name: 'dup', state: { b: 1 } });
 		const c = createRivaClient();
 		one.bind(c);
-		refusal(() => two.bind(c), /Two stores are named "dup"/);
+		refusal(
+			() => two.bind(c),
+			/Store "dup": two stores are named "dup" on this client/,
+		);
 		two.bind(createRivaClient());
 		one.bind(c);
+	});
+
+	test('in a browser a newer store with the same name takes over', () => {
+		const g = globalThis as { document?: unknown };
+		const one = store({ name: 'hmr', state: { a: 1 } });
+		const two = store({ name: 'hmr', state: { b: 2 } });
+		const c = createRivaClient();
+		one.bind(c);
+		g.document = {};
+		try {
+			two.bind(c);
+			expect(c.get(two.b)).toBe(2);
+			// the old definition is dropped, and claims the name back when used again
+			one.bind(c);
+			expect(c.get(one.a)).toBe(1);
+		} finally {
+			delete g.document;
+		}
 	});
 
 	test('effects see the store like any signal', () => {
@@ -632,6 +688,18 @@ describe('ssr', () => {
 		expect(browser.get(S.items)).toEqual([{ title: 'a' }]);
 		expect(browser.get(S.total)).toBe(1);
 		browser.graph.epoch; // no refusal: seeding is not a write
+	});
+
+	test('a hydrated value is frozen once the store is used (dev)', () => {
+		const S = build(true);
+		const server = createRivaClient();
+		S.bind(server)[1].add({ title: 'a' });
+		const browser = createRivaClient();
+		hydrate(browser, JSON.parse(JSON.stringify(dehydrate(server))));
+		S.bind(browser);
+		const items = browser.get(S.items);
+		expect(Object.isFrozen(items)).toBe(true);
+		expect(Object.isFrozen(items[0])).toBe(true);
 	});
 
 	test('a store already in use on the browser is not overwritten by hydrate', () => {
