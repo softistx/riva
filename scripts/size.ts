@@ -8,7 +8,8 @@
  * packages/riva/dist) with `react` left external, so core + react is measured
  * against its hard cap of 9216 B. The riva-graphql row leaves
  * `@softistx/graphql-client` and `graphql` external; the riva-rest row leaves
- * `@softistx/httpyz` and `@softistx/openapi-httpyz` external.
+ * `@softistx/httpyz` and `@softistx/openapi-httpyz` external; the riva-react-router
+ * row leaves `react-router` external and has none for its `/server` subpath.
  */
 export interface Budget {
 	name: string;
@@ -86,6 +87,16 @@ export const budgets: Budget[] = [
 		limit: 11520,
 	},
 	{
+		name: '@softistx/riva + riva-react + riva-react-router',
+		entry: [
+			'packages/riva/dist/index.js',
+			'packages/riva/dist/ssr/index.js',
+			'packages/riva-react/dist/index.js',
+			'packages/riva-react-router/dist/index.js',
+		],
+		limit: 11264,
+	},
+	{
 		name: '@softistx/riva + riva-rest',
 		entry: ['packages/riva/dist/index.js', 'packages/riva-rest/dist/index.js'],
 		limit: 8192,
@@ -126,6 +137,9 @@ export async function measure(entry: string | string[]): Promise<number> {
 			'graphql',
 			'@softistx/httpyz',
 			'@softistx/openapi-httpyz',
+			'react-router',
+			'react-router/*',
+			'node:async_hooks',
 		],
 		target: 'browser',
 		plugins: virtual

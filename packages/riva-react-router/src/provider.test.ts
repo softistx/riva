@@ -1,0 +1,112 @@
+import { expect, spyOn, test } from 'bun:test';
+import { createRivaClient, type RivaClient } from '@softistx/riva';
+import { useClient } from '@softistx/riva-react';
+import { act, createElement as h, StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { createMemoryRouter, RouterProvider } from 'react-router';
+import { counter, errorsOf, local, makeApp, seen } from '../test/app';
+import { RivaRouterProvider } from './provider';
+
+test('the server HTML holds the data and the server makes one fetch', async () => {
+	const app = makeApp();
+	const { html } = await app.serve('/patients');
+	expect(html).toContain('Patients:s #1');
+	expect(app.server.calls).toEqual(['Patients']);
+});
+
+test('the browser boots from the loader data with no fetch while it is fresh', async () => {
+	const app = makeApp();
+	const { loaderData } = await app.serve('/patients');
+	const page = await app.boot('/patients', loaderData);
+	expect(page.text('#patients')).toBe('Patients:s #1');
+	expect(app.browser.calls).toEqual([]);
+	await page.unmount();
+});
+
+test('a navigation merges the child snapshot with no browser fetch', async () => {
+	const app = makeApp();
+	const { loaderData } = await app.serve('/patients');
+	const page = await app.boot('/patients', loaderData);
+	await page.go('/patients/1');
+	expect(page.text('#patient')).toBe('Patient:1 #2');
+	expect(app.browser.calls).toEqual([]);
+	await page.unmount();
+});
+
+test('a revalidation updates observed entries without a setState-in-render warning', async () => {
+	const spy = spyOn(console, 'error').mockImplementation(() => {});
+	const app = makeApp();
+	const { loaderData } = await app.serve('/patients');
+	const page = await app.boot('/patients', loaderData);
+	await page.revalidate();
+	expect(page.text('#patients')).toBe('Patients:s #2');
+	expect(app.browser.calls).toEqual([]);
+	expect(errorsOf(spy)).toEqual([]);
+	spy.mockRestore();
+	await page.unmount();
+});
+
+test('a named atom is seeded once and a local atom survives a navigation', async () => {
+	const app = makeApp({ onPatient: (id) => counter.set(Number(id) + 3) });
+	const { loaderData } = await app.serve('/patients/2');
+	const page = await app.boot('/patients/2', loaderData);
+	const client = seen.client as RivaClient;
+	expect(client.get(counter)).toBe(5);
+	client.set(counter, 9);
+	client.set(local, 'typed');
+	await page.go('/patients/3');
+	expect(page.text('#patient')).toBe('Patient:3 #2');
+	expect(client.get(counter)).toBe(9);
+	expect(client.get(local)).toBe('typed');
+	await page.unmount();
+});
+
+test('React StrictMode double render hydrates once and still shows the data', async () => {
+	const app = makeApp();
+	const { loaderData } = await app.serve('/patients');
+	const router = createMemoryRouter(app.browserRoutes, {
+		initialEntries: ['/patients'],
+		hydrationData: { loaderData },
+	});
+	const container = document.createElement('div');
+	document.body.append(container);
+	const dom = createRoot(container);
+	await act(async () =>
+		dom.render(h(StrictMode, null, h(RouterProvider, { router }))),
+	);
+	expect(container.querySelector('#patients')?.textContent).toBe(
+		'Patients:s #1',
+	);
+	expect(app.browser.calls).toEqual([]);
+	await act(async () => dom.unmount());
+	container.remove();
+});
+
+test('a given client is used, and setup runs once with the environment', async () => {
+	const given = createRivaClient();
+	const envs: boolean[] = [];
+	const Probe = () => {
+		seen.client = useClient();
+		return null;
+	};
+	const container = document.createElement('div');
+	document.body.append(container);
+	const dom = createRoot(container);
+	const router = createMemoryRouter([
+		{
+			path: '/',
+			// biome-ignore lint/style/useNamingConvention: React Router's route property
+			Component: () =>
+				h(
+					RivaRouterProvider,
+					{ client: given, setup: (_c, env) => envs.push(env.server) },
+					h(Probe),
+				),
+		},
+	]);
+	await act(async () => dom.render(h(RouterProvider, { router })));
+	expect(seen.client).toBe(given);
+	expect(envs).toEqual([false]);
+	await act(async () => dom.unmount());
+	container.remove();
+});
