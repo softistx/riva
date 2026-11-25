@@ -9,7 +9,7 @@ hand-written keys.
 
 ```ts
 // One riva per request on the server, one in the browser.
-// Schematic names: PATIENTS_QUERY and the other documents, Invoice, Route, appRivaOf (a typed `rivaOf`)
+// Schematic names: PATIENTS_QUERY and the other documents, Invoice, Route
 import { createGraphQLClient } from "@softistx/graphql-client";
 import { createRiva, signal } from "@softistx/riva";
 import { graphql } from "@softistx/riva-graphql";
@@ -32,7 +32,7 @@ const invoice = await appRiva.rest.get<Invoice>("/invoices/42");
 
 // React Router loader: await what the page needs, the cache travels with the payload
 export async function loader({ context, params }: Route.LoaderArgs) {
-  await appRivaOf(context).graphql.query(PATIENTS_QUERY, { school: params.school });
+  await rivaOf(context).graphql.query(PATIENTS_QUERY, { school: params.school });
   return riva(context);
 }
 

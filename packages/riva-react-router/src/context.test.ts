@@ -7,7 +7,7 @@ test('rivaOf reads the request riva from the context', () => {
 	const context = new RouterContextProvider();
 	const riva = createRiva();
 	context.set(rivaContext, riva);
-	expect(rivaOf(context)).toBe(riva);
+	expect<unknown>(rivaOf(context)).toBe(riva); // registered in register.test.ts: typed by the app riva
 });
 
 test('rivaOf without the middleware throws a RivaScopeError naming the fix', () => {
