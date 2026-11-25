@@ -5,6 +5,9 @@ import {
 	RivaNetworkError,
 	RivaRequestError,
 } from '@softistx/riva';
+import { GraphQLError, type GraphQLErrorEntry } from '@softistx/riva/resource';
+
+export { GraphQLError, type GraphQLErrorEntry };
 
 // The graphql-client errors are read by name, not by `instanceof`, so a second
 // copy of the package (or none imported here) still maps, and this entry
@@ -24,7 +27,7 @@ const isNamed = (e: unknown, name: string): e is Failure =>
  * core's retry policy and `instanceof` checks work:
  *
  * - the caller's abort: `RivaAbortError`;
- * - `ApiError` (the response carried `errors`): `RivaRequestError` with the
+ * - `ApiError` (the response carried `errors`): a `GraphQLError` (a `RivaRequestError`) with the
  *   API's `extensions.code` untouched, its `status`, retryable only for 5xx,
  *   408 and 429; the `ApiError` is its `cause`;
  * - `ApiStatusError`: `RivaHttpError`;
@@ -42,11 +45,20 @@ export function toRivaError(error: unknown, signal?: AbortSignal): unknown {
 		return new RivaAbortError();
 	if (isNamed(error, 'ApiError') && Array.isArray(error.errors)) {
 		const status = error.status ?? 400;
-		return new RivaRequestError(error.code ?? 'GRAPHQL_ERROR', error.message, {
-			status,
-			retryable: isRetryableStatus(status),
-			cause: error,
+		const entries = (error.errors as GraphQLErrorEntry[]).map((e) => {
+			const code = (e as { extensions?: { code?: unknown } }).extensions?.code;
+			return {
+				message: e.message,
+				...(e.path && { path: e.path }),
+				...(typeof code === 'string' && { code }),
+			};
 		});
+		return new GraphQLError(
+			error.code ?? 'GRAPHQL_ERROR',
+			entries,
+			(error as { data?: unknown }).data ?? undefined,
+			{ status, retryable: isRetryableStatus(status), cause: error },
+		);
 	}
 	if (isNamed(error, 'ApiStatusError') && typeof error.status === 'number')
 		return new RivaHttpError(error.status, error.message, { cause: error });

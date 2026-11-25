@@ -10,7 +10,7 @@ import {
 	RivaNetworkError,
 	RivaRequestError,
 } from '@softistx/riva';
-import { toRivaError } from './errors';
+import { GraphQLError, toRivaError } from './errors';
 
 const api = (code: string | undefined, http?: number, httpStatus = 200) =>
 	new ApiError(
@@ -130,4 +130,33 @@ test('an ApiError with no status is read as 400 and never retried; a 503 status 
 	const retryable = (status: number) =>
 		(toRivaError(new ApiStatusError(status, null)) as RivaHttpError).retryable;
 	expect([retryable(503), retryable(404)]).toEqual([true, false]);
+});
+
+test('an ApiError becomes a GraphQLError listing its errors with their paths and the partial data', () => {
+	const cause = new ApiError(
+		[
+			{
+				message: 'Hidden',
+				path: ['viewer', 'friends', 0, 'email'],
+				extensions: { code: 'auth.denied' },
+			},
+			{ message: 'Gone' },
+		],
+		{ viewer: { id: '1' } },
+		200,
+	);
+	const e = toRivaError(cause) as GraphQLError;
+	expect(e).toBeInstanceOf(GraphQLError);
+	expect(e).toBeInstanceOf(RivaRequestError);
+	expect(e.errors).toEqual([
+		{
+			message: 'Hidden',
+			path: ['viewer', 'friends', 0, 'email'],
+			code: 'auth.denied',
+		},
+		{ message: 'Gone' },
+	]);
+	expect(e.message).toBe('Hidden (at viewer.friends.0.email); Gone');
+	expect(e.data).toEqual({ viewer: { id: '1' } });
+	expect(e.cause).toBe(cause);
 });

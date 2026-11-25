@@ -1,3 +1,4 @@
+export { GraphQLError, type GraphQLErrorEntry } from './graphql-error';
 export { type MutationHandle, mutationHandle } from './mutation-handle';
 export {
 	type Resource,

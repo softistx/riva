@@ -35,7 +35,7 @@ Install the extension once, then call GraphQL like a function: no definition, no
 
 ```ts
 import { createGraphQLClient } from '@softistx/graphql-client';
-import { createRiva } from '@softistx/riva';
+import { createRiva, signal } from '@softistx/riva';
 import { graphql } from '@softistx/riva-graphql';
 import { normalized } from '@softistx/riva-graphql/cache';
 import { ADD_BOOK, BOOK_ADDED, BOOKS_QUERY } from './graphql';
@@ -44,20 +44,37 @@ const gql = createGraphQLClient({ url: 'https://api.example.com/graphql' });
 // graphql(transport) works too; the optional second argument stores the data, e.g. { cache: normalized() }
 const riva = createRiva({ graphql: graphql(gql, { cache: normalized() }) });
 
-const data = await riva.graphql.query(BOOKS_QUERY, { first: 10 }, { staleTime: '30s' });
-const book = await riva.graphql.mutate(ADD_BOOK, { title: 'Dune' }, { invalidates: [BOOKS_QUERY] });
-const stop = riva.graphql.subscribe(BOOK_ADDED, {}, {
+const data = await riva.graphql.query(BOOKS_QUERY, { first: 10 }, { staleTime: '30s' }); // one-shot: data or throws
+
+// The same call is a reactive resource: state, subscribe, tracked variables.
+const first = signal(10);
+const signedIn = signal(true);
+const books = riva.graphql.query(BOOKS_QUERY, () => ({ first: riva.get(first) }), {
+	enabled: () => riva.get(signedIn), // false: status 'idle', nothing fetched
+	keepPrevious: true, // new variables: the old data stays, `placeholder: true`
+});
+books.state; // { status: 'idle' | 'loading' | 'success' | 'error', data, error, isFetching, placeholder }
+const off = books.subscribe((state) => console.log(state.status)); // the first reader starts the fetch
+
+const save = riva.graphql.mutation(ADD_BOOK); // a handle: state (idle first), reset()
+const book = await save({ title: 'Dune' }, { invalidates: [BOOKS_QUERY] });
+await riva.graphql.mutate(ADD_BOOK, { title: 'Dune' }); // one-shot, no handle
+
+const added = riva.graphql.subscribe(BOOK_ADDED, {}, {
 	next(added) {}, // after the result was merged into the entity cache
 	error(e) {}, // a stream failure ends the subscription
 	complete() {}, // the stream ended on its own
 });
-stop();
+const closeFeed = added.subscribe((state) => console.log(state.status)); // opens the stream; the last unsubscribe closes it
 ```
 
 - Data and variables are typed from the document; the variables are optional when it has none.
-- `query` options: `staleTime` (this call only, over the definition's and the riva's `defaults`) and `signal`. `mutate` options: `invalidates` (documents, definitions or `at(query, vars)`, marked stale once it succeeded) and `signal`.
+- Variables are a plain value, a riva signal or computed, or a function that reads signals (tracked: when what it reads changes, the key is derived again). Equal variables, however they were derived, are one key; a subscription does not reconnect for them.
+- `query` returns a `Resource` (`@softistx/riva/resource`): `state`, `subscribe` and awaitable. Options: `staleTime` (this call only), `enabled` (a boolean or tracked function; while false the variables function is not called), `keepPrevious` (default true) and `signal` (stops the wait of `await`). It is lazy: it fetches from its first subscriber or observed reader, never on a server, where `await` is the way to load.
+- A response with data **and** errors is the `error` state: `data` keeps the partial result and `error` is a `GraphQLError` listing every error with its path. `await` rejects with it.
+- `mutate` and the `mutation` handle take `invalidates` (documents, definitions or `at(query, vars)`, marked stale once it succeeded) and `signal`. `mutation` makes a new handle at each call; its state follows the last call.
+- `subscribe` returns a stream resource (no `await`): `loading` until the first result, then `success` with the last one. Callbacks and `enabled` are optional. It needs a transport that can (a transport must not define `mutate`, which is how `graphql()` tells a client from a transport): the `@softistx/graphql-client` one does (server-sent events, never reconnected). An error thrown by `next` (or by the cache merge) is raised outside the stream and ends it, never sent to `error`. With `normalized()` each result is merged into the entity cache; with another cache, or none, it only goes to `next`.
 - The definitions behind the calls are made once per riva, per document (never shared between rivas), under the id `graphql:<operation id>`: a hand-made `query(DOC)` on the same riva keeps its own entries (and cache). `invalidates: [DOC]` marks the simple call's entries stale; `invalidates: [handMadeDef]` marks the hand-made definition's only. `invalidates` is an array (no function form), checked before the mutation runs.
-- `subscribe` needs a transport that can (a transport must not define `mutate`, which is how `graphql()` tells a client from a transport): the `@softistx/graphql-client` one does (server-sent events, never reconnected). A subscription is not tied to the riva's lifetime: call `stop()` yourself (on unmount, at the end of a request). An error thrown by `next` (or by the cache merge) is raised outside the stream and ends it, never sent to `error`. With `normalized()` each result is merged into the entity cache; with another cache, or none, it only goes to `next`.
 - Definitions (`query()`, `mutation()`, `infinite()`) keep working on the same riva, for shared settings.
 
 ## Provide the transport
