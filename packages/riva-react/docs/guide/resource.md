@@ -31,8 +31,8 @@ It returns a callable with the mutation state fields (`status`, `data`, `error`)
 ```ts
 const input = useStableInput('books', () => ({ first }), enabled);
 const state = useResource(input.key, (riva) =>
-	riva.graphql.query(BOOKS_QUERY, input.input as never, { enabled: input.enabled }),
+	riva.graphql.query(BOOKS_QUERY, input.input as { first: number }, { enabled: input.enabled }),
 );
 ```
 
-`useStableInput(id, input, enabled)` returns `{ key, input, enabled }`: the key to give `useResource`, and the input and `enabled` to hand the call. An inline `() => ({ first })` does not change the key at each render, only its result does. A function (or a signal) is evaluated at each render, untracked, to derive the key, so it follows props; the resource itself still tracks the signals the function reads. While `enabled` is false the function is never called. Under suspense it is called once per render for the key.
+`StableInput.input` is `unknown`, so a hook built on it casts it once, to the variables type (`as { first: number }` above). `useStableInput(id, input, enabled)` returns `{ key, input, enabled }`: the key to give `useResource`, and the input and `enabled` to hand the call. An inline `() => ({ first })` does not change the key at each render, only its result does. A function (or a signal) is evaluated at each render, untracked, to derive the key, so it follows props; the resource itself still tracks the signals the function reads. While `enabled` is false the function is never called. Under suspense it is called once per render for the key.

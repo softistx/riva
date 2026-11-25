@@ -10,51 +10,54 @@ Peers: `@softistx/riva`, `@softistx/riva-react`, `react` ^19 and `react-router` 
 
 ## Setup
 
-`middleware` on a route module needs React Router 8 framework mode. The middleware goes on the root route, the provider in the root component:
+`middleware` on a route module needs React Router 8 framework mode. Build the riva in one module that both the server and the browser can import, put the middleware on the root route, and give the same factory to the provider:
 
 ```ts
-// app/riva.server.ts: built in a *.server.ts module, so /server stays out of the browser bundle
+// app/riva.ts: one factory, so the request, the render and the browser build the same riva
 import { createGraphQLClient } from '@softistx/graphql-client';
-import { graphqlClientTransport, provideGraphQL } from '@softistx/riva-graphql';
-import { rivaMiddleware } from '@softistx/riva-react-router/server';
+import { createRiva } from '@softistx/riva';
+import { graphql } from '@softistx/riva-graphql';
+import { type ContextLike, rivaOf } from '@softistx/riva-react-router';
 
 const API_URL = 'https://api.example.com/graphql'; // schematic: your API
 
+export function createAppRiva(cookie?: string) {
+	return createRiva({
+		graphql: graphql(createGraphQLClient({ url: API_URL, headers: cookie ? { cookie } : {} })),
+		defaults: { staleTime: '30s' }, // fresh server data is not fetched again at hydration
+	});
+}
+export type AppRiva = ReturnType<typeof createAppRiva>;
+
+// `rivaOf` returns the base `Riva`; this one carries `riva.graphql` in its type.
+export const appRivaOf = (context: ContextLike) => rivaOf(context) as AppRiva;
+```
+
+```ts
+// app/riva.server.ts: a *.server.ts module, so /server stays out of the browser bundle
+import { rivaMiddleware } from '@softistx/riva-react-router/server';
+import { createAppRiva } from './riva';
+
 export const rivaMw = rivaMiddleware({
-	// the caller port of the request: here its session cookie goes to the API
-	setup: (riva, { request }) =>
-		provideGraphQL(
-			riva,
-			graphqlClientTransport(
-				createGraphQLClient({
-					url: API_URL,
-					headers: { cookie: request.headers.get('cookie') ?? '' },
-				}),
-			),
-		),
+	// the request's session cookie goes to the API
+	create: ({ request }) => createAppRiva(request.headers.get('cookie') ?? undefined),
 });
 ```
 
 ```tsx
 // app/root.tsx
-import { createGraphQLClient } from '@softistx/graphql-client';
-import { graphqlClientTransport, provideGraphQL } from '@softistx/riva-graphql';
 import { RivaRouterProvider } from '@softistx/riva-react-router';
+import { useState } from 'react';
 import { Outlet } from 'react-router';
+import { createAppRiva } from './riva';
 import { rivaMw } from './riva.server';
-
-const API_URL = 'https://api.example.com/graphql'; // schematic: your API
 
 export const middleware = [rivaMw];
 
 export default function Root() {
+	const [riva] = useState(() => createAppRiva()); // the browser's riva, made once
 	return (
-		<RivaRouterProvider
-			// the riva the render and the browser use; the data itself comes from the loaders
-			setup={(riva) =>
-				provideGraphQL(riva, graphqlClientTransport(createGraphQLClient({ url: API_URL })))
-			}
-		>
+		<RivaRouterProvider riva={riva}>
 			<Outlet />
 		</RivaRouterProvider>
 	);
@@ -65,30 +68,29 @@ Keep `/server` out of the browser bundle (it imports `node:async_hooks`): build 
 
 ## The loader pattern
 
-Define the query once, read it in the loader and in the component:
+Await the data in the loader, read it with a hook in the component:
 
 ```tsx
 // app/patients.tsx
-import { query } from '@softistx/riva-graphql';
-import { useQuery } from '@softistx/riva-react';
-import { riva, rivaOf } from '@softistx/riva-react-router';
+import { riva } from '@softistx/riva-react-router';
+import { useGraphQL } from '@softistx/riva-graphql/react';
 import { PATIENTS_QUERY } from './graphql'; // schematic: your document
+import { appRivaOf } from './riva';
 import type { Route } from './+types/patients';
 
-export const patients = query(PATIENTS_QUERY, { staleTime: '30s' });
-
 export async function loader({ context, params }: Route.LoaderArgs) {
-	await patients.ensure(rivaOf(context), { school: params.school });
+	await appRivaOf(context).graphql.query(PATIENTS_QUERY, { school: params.school });
 	return riva(context);
 }
 
 export default function Patients({ params }: Route.ComponentProps) {
-	const { data } = useQuery(patients, { school: params.school });
-	return <ul>{data?.patients.map((p) => <li key={p.id}>{p.name}</li>)}</ul>;
+	const patients = useGraphQL(PATIENTS_QUERY, { school: params.school });
+	if (patients.status !== 'success') return null;
+	return <ul>{patients.data.patients.map((p) => <li key={p.id}>{p.name}</li>)}</ul>;
 }
 ```
 
-`rivaOf` and `riva` are for server loaders and actions only; return `riva(context)` from one loader per request. [Guide](./docs/guide/loader.md).
+For REST it is `await appRivaOf(context).rest.get('/patients/{id}', { param: { id: params.id } })` and `useRest` from `@softistx/riva-rest/react`. `rivaOf` and `riva` are for server loaders and actions only; return `riva(context)` from one loader per request. [Guide](./docs/guide/loader.md).
 
 ## The `/_data` route
 
@@ -111,45 +113,31 @@ For REST, add `operations(api)` from `@softistx/riva-rest/server` to `sources`. 
 
 ## After a write
 
-- `useActionResult(result, { into, vars, select? })` writes an action's result into a query's entry, once per result.
-- `revalidate` is a query: invalidating it re-runs the route loaders. It needs `RivaRouterProvider` above the caller.
-- `<RivaRouterProvider invalidateOnAction={[patients, revalidate]}>` invalidates that list each time a non-GET navigation or fetcher settles.
+- `invalidates: [revalidate]` on a mutation, or `<RivaRouterProvider invalidateOnAction={[revalidate]}>`: `revalidate` is a query, and invalidating it re-runs the route loaders, which await the data again. It needs `RivaRouterProvider` above the caller.
+- `useActionResult(result, { into, vars, select? })` writes an action's result into a query definition's entry, once per result ([shared definitions](https://github.com/softistx/riva/blob/develop/packages/riva/docs/guide/shared-definitions.md)).
 
 [Guide](./docs/guide/after-a-write.md).
 
 ```tsx
 // app/patients.tsx
-import { mutation } from '@softistx/riva-graphql';
-import { useQuery } from '@softistx/riva-react';
-import { revalidate, useActionResult } from '@softistx/riva-react-router';
-import { useActionData } from 'react-router';
-import type { Route } from './+types/patients';
-import { patients } from './patients.queries'; // the query of "The loader pattern"
-import { RENAME_PATIENT_MUTATION } from './graphql'; // schematic: your document
+import { useGraphQL, useGraphQLMutation } from '@softistx/riva-graphql/react';
+import { revalidate } from '@softistx/riva-react-router';
+import { PATIENTS_QUERY, RENAME_PATIENT_MUTATION } from './graphql'; // schematic: your documents
 
-// A mutation run in the browser re-runs the route loaders too.
-export const renamePatient = mutation(RENAME_PATIENT_MUTATION, {
-	invalidates: [revalidate],
-});
-
-// app/root.tsx: a plain <Form> post settles, then these are invalidated.
-// <RivaRouterProvider invalidateOnAction={[patients, revalidate]}>
-
-export async function action({ request, context }: Route.ActionArgs) {
-	// ...run the write on the server, then answer with the new row
-	return { list: { patients: [{ id: '1', name: 'Ada' }] } };
-}
-
-export default function Patients({ params }: Route.ComponentProps) {
-	const data = useActionData<typeof action>();
-	// The action's answer fills the entry at once, no refetch needed.
-	useActionResult(data, {
-		into: patients,
-		vars: { school: params.school },
-		select: (r) => r.list, // the query's data, out of the answer
-	});
-	const { data: list } = useQuery(patients, { school: params.school });
-	return <ul>{list?.patients.map((p) => <li key={p.id}>{p.name}</li>)}</ul>;
+export default function Patients({ params }: { params: { school: string } }) {
+	const patients = useGraphQL(PATIENTS_QUERY, { school: params.school });
+	const rename = useGraphQLMutation(RENAME_PATIENT_MUTATION);
+	if (patients.status !== 'success') return null;
+	return (
+		<ul>
+			{patients.data.patients.map((p) => (
+				// the write settles, then the loader runs again and awaits the list
+				<li key={p.id} onClick={() => rename({ id: p.id, name: 'Ana' }, { invalidates: [revalidate] })}>
+					{p.name}
+				</li>
+			))}
+		</ul>
+	);
 }
 ```
 
@@ -162,7 +150,7 @@ export default function Patients({ params }: Route.ComponentProps) {
 | `riva(context)` | `.` | `{ '~riva': Snapshot }`, to spread into loader data. |
 | `rivaContext` | `.` | The router context key. |
 | `RivaRouterProvider` | `.` | `riva?`, `setup?`, `invalidateOnAction?`, `children`. |
-| `useActionResult` | `.` | Writes an action's result into a query entry. |
+| `useActionResult` | `.` | Writes an action's result into a query definition's entry. |
 | `revalidate` | `.` | Query that re-runs the route loaders when invalidated. |
 | `dataRoute(opts)` | `/server` | The `/_data` action and loader. |
 
@@ -175,4 +163,8 @@ Types: `ContextLike` (what `rivaOf` and `riva` accept, a `context.get`), `RivaRo
 - `Snapshot` keeps its brand through `useLoaderData`, so `data['~riva']` can be handed to `hydrate` by hand.
 - Errors travel as codes: a failed query rehydrates as its class (`instanceof RivaRequestError` holds) with an empty message.
 
-More: [guides](https://github.com/softistx/riva/blob/develop/packages/riva-react-router/docs/README.md), [troubleshooting](https://github.com/softistx/riva/blob/develop/packages/riva-react-router/docs/troubleshooting.md), [spec](https://github.com/softistx/riva/blob/develop/docs/spec.md).
+## Documentation
+
+- [Guides](https://github.com/softistx/riva/blob/develop/packages/riva-react-router/docs/README.md): setup, the loader pattern, the `/_data` route, after a write.
+- [Troubleshooting](https://github.com/softistx/riva/blob/develop/packages/riva-react-router/docs/troubleshooting.md): every error and `RIVA_DATA_*` code, with the fix.
+- [Roadmap](https://github.com/softistx/riva/blob/develop/docs/roadmap.md) and [spec](https://github.com/softistx/riva/blob/develop/docs/spec.md).

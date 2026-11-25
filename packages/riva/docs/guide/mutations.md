@@ -1,5 +1,7 @@
 # Mutations
 
+> Most call sites use the simple API (`riva.graphql`, `riva.rest`, the hooks over them). This page covers the definition, for settings several call sites share: see [Advanced: shared definitions](./shared-definitions.md).
+
 `mutation({ id, run, optimistic?, updates?, invalidates?, cache?, retry?, retryDelay? })` sends a change and shows its expected result at once. The definition is stateless; `run(riva, vars, { signal? })` resolves with the server data, or rejects with the error after the rollback.
 
 ```ts

@@ -1,5 +1,7 @@
 # Infinite lists: `@softistx/riva-react/infinite`
 
+> Most call sites read GraphQL or REST with the hooks of the adapters (`useGraphQL`, `useRest`: see the [resource hooks](./resource.md)). This page covers the hook over a definition, for settings several call sites share: see [Advanced: shared definitions](https://github.com/softistx/riva/blob/develop/packages/riva/docs/guide/shared-definitions.md).
+
 `useInfiniteQuery` binds a list built with `infinite()` from `@softistx/riva/infinite`. `connection` reads the Relay shape `{ edges: [{ node, cursor }], pageInfo }` out of a page, and `data.nodes` is every loaded page's nodes, flattened.
 
 ```tsx

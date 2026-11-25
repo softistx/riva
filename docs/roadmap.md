@@ -16,7 +16,7 @@
 - **SSR hydration follow-ups** — deferred hydration no longer notifies an observer twice for the same data. [#31](https://github.com/softistx/riva/issues/31)
 - **Each snapshot key emitted once per request** — several loaders returning the same riva no longer repeat data in the hydration payload. [#36](https://github.com/softistx/riva/issues/36)
 - **Store robustness** — hot reload keeps a store's state, stores behave the same on servers with DOM shims, and `useStore` sees a memoised child's reads. [#40](https://github.com/softistx/riva/issues/40)
-- Subscriptions and server-sent events.
+- **Server-sent events** — a stream over SSE as a resource, beside the GraphQL subscriptions of the simple API.
 - Devtools to inspect the cache, signals and requests.
 
 ## Later

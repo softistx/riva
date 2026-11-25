@@ -2,22 +2,23 @@
 
 ## What it is for
 
-Definitions are stateless; the transport lives on the `Riva` that runs them. Give each riva one when you create it.
+The transport lives on the `Riva` that runs the calls. `graphql(client)` installs it when you create the riva.
 
 ## Provide it
 
 ```ts
 import { createGraphQLClient } from '@softistx/graphql-client';
 import { createRiva } from '@softistx/riva';
-import { graphqlClientTransport, provideGraphQL } from '@softistx/riva-graphql';
+import { graphql } from '@softistx/riva-graphql';
 
 const gql = createGraphQLClient({ url: 'https://api.example.com/graphql' });
 
-export const riva = createRiva();
-provideGraphQL(riva, graphqlClientTransport(gql));
+export const riva = createRiva({ graphql: graphql(gql) });
 ```
 
-On the server, build both inside the request handler so the caller's credentials stay with the request.
+`graphql(client)` takes a `@softistx/graphql-client` client, or any transport (below). On the server, build the riva inside the request handler so the caller's credentials stay with the request.
+
+A riva made without the extension (`createRiva()`) gets its transport with `provideGraphQL(riva, graphqlClientTransport(gql))`: only [definitions](https://github.com/softistx/riva/blob/develop/packages/riva/docs/guide/shared-definitions.md) run on it, there is no `riva.graphql`.
 
 ## `graphqlClientTransport(gql)`
 
@@ -45,7 +46,8 @@ Any object with `execute(operation, variables, { signal })` is a transport. The 
 `subscribe(operation, variables, { signal })` is optional: it returns an `AsyncIterable` of results that ends when the signal aborts, and `riva.graphql.subscribe` throws without it. A transport must not define `mutate`: `graphql()` takes an object that has one for a `@softistx/graphql-client` client. A transport that only posts an id and variables to a BFF route fits. Map its failures with `toRivaError(error, signal?)`.
 
 ```ts
-import { provideGraphQL, toRivaError, type GraphQLTransport } from '@softistx/riva-graphql';
+import { createRiva } from '@softistx/riva';
+import { graphql, toRivaError, type GraphQLTransport } from '@softistx/riva-graphql';
 
 const transport: GraphQLTransport = {
 	async execute(operation, variables, { signal }) {
@@ -62,10 +64,10 @@ const transport: GraphQLTransport = {
 		}
 	},
 };
-provideGraphQL(riva, transport);
+const riva = createRiva({ graphql: graphql(transport) });
 ```
 
 ## Traps
 
-- A definition that runs on a riva with no transport throws a `RivaScopeError` naming `provideGraphQL`.
-- Providing a transport on one riva never affects another: it is per riva.
+- A call or definition that runs on a riva with no transport throws a `RivaScopeError` naming `provideGraphQL`: create the riva with `createRiva({ graphql: graphql(client) })`.
+- A transport is per riva: giving one to a riva never affects another.

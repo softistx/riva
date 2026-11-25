@@ -1,6 +1,6 @@
 # @softistx/riva-react
 
-React bindings for [riva](https://github.com/softistx/riva/blob/develop/packages/riva/README.md): a provider, hooks over signals, queries, mutations, infinite lists and entities, and Suspense. Typed end to end: variables and data are inferred from the definition, never annotated at the call site.
+React bindings for [riva](https://github.com/softistx/riva/blob/develop/packages/riva/README.md): a provider, the building blocks of the adapters' hooks (`useGraphQL`, `useRest`), hooks over signals, and hooks over shared query and mutation definitions, with Suspense. Typed end to end: variables and data are inferred, never annotated at the call site.
 
 Guides and fixes: [docs](./docs/README.md). Work in progress, see the [spec](https://github.com/softistx/riva/blob/develop/docs/spec.md).
 
@@ -10,17 +10,22 @@ bun add @softistx/riva @softistx/riva-react react
 
 Peers: `react` ^19 and `@softistx/riva`. Every hook binds through `useSyncExternalStore`, so it is concurrent-safe and renders on the server.
 
-The examples are schematic: `Patient`, `fetchPatients`, `sendRename` and `fetchPatientPage` stand for your own types and transport functions.
+The examples are schematic: `Patient`, `fetchPatients`, `sendRename` and `fetchPatientPage` stand for your own types and transport functions; `Spinner` and `Failure` for your own components.
 
 ## Provider
 
 One `Riva` per tree: one in the browser, one per request on the server. A hook with no provider above it throws a `RivaScopeError` that names the fix.
 
 ```tsx
+import { createGraphQLClient } from '@softistx/graphql-client';
 import { createRiva } from '@softistx/riva';
+import { graphql } from '@softistx/riva-graphql';
 import { RivaProvider } from '@softistx/riva-react';
 
-const riva = createRiva(); // per request on the server
+const riva = createRiva({
+	graphql: graphql(createGraphQLClient({ url: 'https://api.example.com/graphql' })), // per request on the server
+	defaults: { staleTime: '30s' },
+});
 
 export const App = () => (
 	<RivaProvider riva={riva}>
@@ -29,7 +34,50 @@ export const App = () => (
 );
 ```
 
-`useRiva()` returns the riva, to call `def.invalidate(riva, vars)` or `def.ensure(riva, vars)` from an event handler. [Guide](./docs/guide/provider.md).
+`useRiva()` returns the riva, to call it from an event handler: `riva.graphql.mutate(...)`, or `def.invalidate(riva, vars)` on a definition. [Guide](./docs/guide/provider.md).
+
+## Hooks of the adapters
+
+`@softistx/riva-graphql/react` and `@softistx/riva-rest/react` ship the hooks for GraphQL and REST: they call `riva.graphql` and `riva.rest` on the riva of the provider and return the resource state (`idle | loading | success | error`). This package supplies what they are made of (below).
+
+```tsx
+import { useGraphQL, useGraphQLMutation } from '@softistx/riva-graphql/react';
+import { BOOKS_QUERY, ADD_BOOK_MUTATION } from './graphql'; // typed documents
+
+function Books({ first }: { first: number }) {
+	const books = useGraphQL(BOOKS_QUERY, { first }); // typed from the document
+	const add = useGraphQLMutation(ADD_BOOK_MUTATION);
+	if (books.status === 'loading') return <Spinner />;
+	if (books.status === 'error') return <Failure error={books.error} />;
+	return <button onClick={() => add({ title: 'Dune' }, { invalidates: [BOOKS_QUERY] })}>{books.data.books.length}</button>;
+}
+```
+
+The REST equivalents are `useRest('get', path, input)` and `useRestMutation(method, path)`. Their guides: [GraphQL README](https://github.com/softistx/riva/blob/develop/packages/riva-graphql/README.md#react-hooks), [REST README](https://github.com/softistx/riva/blob/develop/packages/riva-rest/README.md#react-hooks).
+
+## Resource hooks
+
+`@softistx/riva-react/resource` holds the generic blocks the adapters' hooks (`useGraphQL`, `useRest`, ...) are built on; use them to make a hook for your own resource.
+
+```ts
+import { useMutationHandle, useResource, useStableInput } from '@softistx/riva-react/resource';
+
+// BOOKS_QUERY and ADD_BOOK_MUTATION are documents written with graphql(); the names are schematic.
+function Books({ first }: { first: number }) {
+	// useStableInput(id, input, enabled) gives the key and what to hand the call.
+	const input = useStableInput('books', () => ({ first }), undefined);
+	// `StableInput.input` is `unknown`: a generic hook casts it once, to the variables type.
+	// The key identifies the resource: derive it from everything `make` reads.
+	const state = useResource(input.key, (riva) =>
+		riva.graphql.query(BOOKS_QUERY, input.input as { first: number }, { enabled: input.enabled }),
+	);
+	// useMutationHandle(key, make): a callable with the mutation state fields and reset().
+	const save = useMutationHandle('add-book', (riva) => riva.graphql.mutation(ADD_BOOK_MUTATION));
+	return null;
+}
+```
+
+`useResource(key, make, { suspense?, keepPrevious? })` makes one resource per riva and key, as a discriminated state; `suspense: true` suspends and types it as success, and `suspenseStaleTime(riva, staleTime?)` is the `staleTime` such a fetch should use (yours or the riva's, at least 1000 ms). `useStableInput` returns `{ key, input, enabled }`; a function input is evaluated at each render (untracked) to derive the key, so it follows props, and the resource still tracks the signals it reads. A disabled hook never calls it. The callable of `useMutationHandle` and its `reset` change identity with the state: call them from handlers, never list them in effect dependencies. [Guide](./docs/guide/resource.md).
 
 ## Signals and computeds
 
@@ -49,76 +97,42 @@ function Search() {
 
 [Guide](./docs/guide/signals.md).
 
-## Queries
+## Hooks over shared definitions
 
-`useQuery(def, vars?, opts?)` returns the query state (`status`, `data`, `error`, `isFetching`, `updatedAt`) plus `refetch`. It fetches while the component is mounted, when the data is missing or stale. Variables and data are inferred from `fetch`.
+`useQuery`, `useMutation` and `useInfiniteQuery` read a definition (`query()`, `mutation()`, `infinite()`): settings written once and shared by several call sites, such as polling or an optimistic update. For a plain read or write, use the adapters' hooks above; [Advanced: shared definitions](https://github.com/softistx/riva/blob/develop/packages/riva/docs/guide/shared-definitions.md) says when a definition earns its place.
 
 ```tsx
-import { query } from '@softistx/riva';
-import { useQuery } from '@softistx/riva-react';
+import { mutation, query } from '@softistx/riva';
+import { useMutation, useQuery } from '@softistx/riva-react';
 
 const patients = query({
 	id: 'patients',
 	staleTime: '30s',
 	fetch: ({ school }: { school: string }, { signal }) => fetchPatients(school, signal), // Promise<Patient[]>
 });
-
-function PatientList({ school }: { school: string }) {
-	const { data, status, error, refetch } = useQuery(patients, { school });
-	if (status === 'error') return <button onClick={refetch}>Retry: {String(error)}</button>;
-	return <ul>{data?.map((p) => <li key={p.id}>{p.name}</li>)}</ul>;
-}
-```
-
-Options: `enabled` (`true`) and `suspense` (`false`). Variables are compared by value, so an inline `{ school }` never resubscribes; `refetch()` never rejects. [Guide](./docs/guide/queries.md).
-
-## Suspense
-
-With `suspense: true`, the component suspends while there is no data, and `data` is no longer optional in its type. A failure with no data is thrown to the nearest error boundary. With `enabled: false` it never suspends: the query reads `idle`.
-
-```tsx
-import { Suspense } from 'react';
-import { ErrorBoundary } from 'react-error-boundary';
-
-function PatientList({ school }: { school: string }) {
-	const { data } = useQuery(patients, { school }, { suspense: true });
-	return <ul>{data.map((p) => <li key={p.id}>{p.name}</li>)}</ul>; // data: Patient[]
-}
-
-export const Page = ({ school }: { school: string }) => (
-	<ErrorBoundary fallback={<p>Failed</p>}>
-		<Suspense fallback={<p>Loading…</p>}>
-			<PatientList school={school} />
-		</Suspense>
-	</ErrorBoundary>
-);
-```
-
-To retry after an error, start the fetch again before resetting the boundary (`onReset={() => patients.prefetch(riva, { school })}`). [Guide](./docs/guide/suspense.md).
-
-## Mutations
-
-`useMutation(def)` holds its status per hook instance. `run` resolves with the server data and rejects with the error (also in `error`). [Guide](./docs/guide/mutations.md).
-
-```tsx
-import { mutation } from '@softistx/riva';
-import { useMutation } from '@softistx/riva-react';
-
 const rename = mutation({
 	id: 'renamePatient',
 	run: (vars: { id: string; name: string }, { signal }) => sendRename(vars, signal), // Promise<Patient>
 	invalidates: [patients],
 });
 
-function Rename({ id }: { id: string }) {
-	const { run, isPending, error, reset } = useMutation(rename);
+function PatientList({ school }: { school: string }) {
+	const { data, status, error, refetch } = useQuery(patients, { school });
+	const { run, isPending } = useMutation(rename); // `run` rejects with the error, also in `error`
+	if (status === 'error') return <button onClick={refetch}>Retry: {String(error)}</button>;
 	return (
-		<button disabled={isPending} onClick={() => run({ id, name: 'New name' }).catch(() => {})}>
-			Rename
-		</button>
+		<ul>
+			{data?.map((p) => (
+				<li key={p.id}>
+					{p.name} <button disabled={isPending} onClick={() => run({ id: p.id, name: 'New name' }).catch(() => {})}>Rename</button>
+				</li>
+			))}
+		</ul>
 	);
 }
 ```
+
+`useQuery(def, vars?, opts?)` returns `status`, `data`, `error`, `isFetching`, `updatedAt` and `refetch`; its options are `enabled` (`true`) and `suspense` (`false`). Variables are compared by value, so an inline `{ school }` never resubscribes; `refetch()` never rejects. With `suspense: true` the component suspends while there is no data, `data` is no longer optional, and a failure goes to the nearest error boundary. Guides: [queries](./docs/guide/queries.md), [suspense](./docs/guide/suspense.md), [mutations](./docs/guide/mutations.md).
 
 ## Infinite lists
 
@@ -189,13 +203,25 @@ function PatientName({ id }: { id: string }) {
 Render each request under its own `RivaProvider` with its own riva; no hook holds module-level state, so nothing leaks between requests.
 
 ```tsx
+import { createGraphQLClient } from '@softistx/graphql-client';
 import { createRiva } from '@softistx/riva';
+import { graphql } from '@softistx/riva-graphql';
+import { useGraphQL } from '@softistx/riva-graphql/react';
 import { RivaProvider } from '@softistx/riva-react';
 import { renderToReadableStream } from 'react-dom/server';
+import { PATIENTS_QUERY } from './graphql'; // a typed document
+
+function PatientList({ school }: { school: string }) {
+	const patients = useGraphQL(PATIENTS_QUERY, { school });
+	return <p>{patients.status === 'success' ? patients.data.patients.edges.length : '…'}</p>;
+}
 
 export async function handle(school: string): Promise<Response> {
-	const riva = createRiva(); // one per request
-	await patients.ensure(riva, { school }); // so the first render has data
+	const riva = createRiva({
+		graphql: graphql(createGraphQLClient({ url: 'https://api.example.com/graphql' })),
+		defaults: { staleTime: '30s' },
+	}); // one per request
+	await riva.graphql.query(PATIENTS_QUERY, { school }); // so the first render has data
 	const stream = await renderToReadableStream(
 		<RivaProvider riva={riva}>
 			<PatientList school={school} />
@@ -206,29 +232,6 @@ export async function handle(school: string): Promise<Response> {
 ```
 
 A hook never starts a fetch during a server render, except through `suspense: true`. To hand the cache to the browser, use `@softistx/riva-react-router` or `dehydrate` and `hydrate`. [Guide](./docs/guide/ssr.md).
-
-## Resource hooks
-
-`@softistx/riva-react/resource` holds the generic blocks the adapters' hooks (`useGraphQL`, `useRest`, ...) are built on; use them to make a hook for your own resource.
-
-```ts
-import { useMutationHandle, useResource, useStableInput } from '@softistx/riva-react/resource';
-
-// BOOKS_QUERY and ADD_BOOK_MUTATION are documents written with graphql(); the names are schematic.
-function Books({ first }: { first: number }) {
-	// useStableInput(id, input, enabled) gives the key and what to hand the call.
-	const input = useStableInput('books', () => ({ first }), undefined);
-	// The key identifies the resource: derive it from everything `make` reads.
-	const state = useResource(input.key, (riva) =>
-		riva.graphql.query(BOOKS_QUERY, input.input as never, { enabled: input.enabled }),
-	);
-	// useMutationHandle(key, make): a callable with the mutation state fields and reset().
-	const save = useMutationHandle('add-book', (riva) => riva.graphql.mutation(ADD_BOOK_MUTATION));
-	return null;
-}
-```
-
-`useResource(key, make, { suspense?, keepPrevious? })` makes one resource per riva and key, as a discriminated state; `suspense: true` suspends and types it as success, and `suspenseStaleTime(riva, staleTime?)` is the `staleTime` such a fetch should use (yours or the riva's, at least 1000 ms). `useStableInput` returns `{ key, input, enabled }`; a function input is evaluated at each render (untracked) to derive the key, so it follows props, and the resource still tracks the signals it reads. A disabled hook never calls it. The callable of `useMutationHandle` and its `reset` change identity with the state: call them from handlers, never list them in effect dependencies. [Guide](./docs/guide/resource.md).
 
 ## Entry points
 
@@ -243,3 +246,9 @@ function Books({ first }: { first: number }) {
 Types: `MutationResult` (what `useMutation` returns), `RivaProviderProps`, `SuspendedState` and `UseQueryOptions` (main entry), `InfiniteResult` and `UseInfiniteQueryOptions` (`/infinite`), `UseResourceOptions`, `StableInput`, `MutationHook` and `SuspendedState` (`/resource`).
 
 Core plus the main entry stays under 9 kB gzipped; the subpaths cost nothing until imported.
+
+## Documentation
+
+- [Guides](https://github.com/softistx/riva/blob/develop/packages/riva-react/docs/README.md): provider, resource hooks, signals, stores, server rendering.
+- [Troubleshooting](https://github.com/softistx/riva/blob/develop/packages/riva-react/docs/troubleshooting.md): every error and its fix.
+- [Roadmap](https://github.com/softistx/riva/blob/develop/docs/roadmap.md) and [spec](https://github.com/softistx/riva/blob/develop/docs/spec.md).

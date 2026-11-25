@@ -8,54 +8,56 @@ hand-written keys.
 ## API sketch
 
 ```ts
-// Local state: definitions, no value until a riva reads them
-import { signal, computed } from "@softistx/riva";
+// One riva per request on the server, one in the browser.
+// Schematic names: PATIENTS_QUERY and the other documents, Invoice, Route, appRivaOf (a typed `rivaOf`)
+import { createGraphQLClient } from "@softistx/graphql-client";
+import { createRiva, signal } from "@softistx/riva";
+import { graphql } from "@softistx/riva-graphql";
+import { rest } from "@softistx/riva-rest";
 
-export const filter = signal("");
-export const sidebarOpen = signal(true, { persist: false });
-export const hasFilter = computed((get) => get(filter).length > 0);
-
-// GraphQL
-import { query, mutation, infinite } from "@softistx/riva-graphql";
-
-export const patients = query(PATIENTS_QUERY, { staleTime: "30s" });
-export const patientsFeed = infinite(PATIENTS_QUERY, { connection: (d) => d.patients });
-export const renamePatient = mutation(RENAME_PATIENT_MUTATION, {
-  optimistic: ({ id, name }) => ({ renamePatient: { __typename: "Patient", id, name } }),
+export const appRiva = createRiva({
+  graphql: graphql(createGraphQLClient({ url: "https://api.example.com/graphql" })),
+  rest: rest({ baseUrl: "https://api.example.com" }), // or rest(openApiClient), typed
+  defaults: { staleTime: "30s" },
 });
 
-// REST (OpenAPI)
-import { rest } from "@softistx/riva-rest";
-export const invoice = rest.query(api, "get /invoices/{id}");
+// Local state: no value until a riva reads it
+export const filter = signal("");
 
-// React Router loader
+// Server state: call it like a function, no definition, no key
+const patients = await appRiva.graphql.query(PATIENTS_QUERY, { school: "north" }); // data, or throws
+const live = appRiva.graphql.query(PATIENTS_QUERY, { school: "north" }); // the same call, as a resource
+await appRiva.graphql.mutate(RENAME_PATIENT_MUTATION, { id: "1", name: "Ana" }, { invalidates: [PATIENTS_QUERY] });
+const invoice = await appRiva.rest.get<Invoice>("/invoices/42");
+
+// React Router loader: await what the page needs, the cache travels with the payload
 export async function loader({ context, params }: Route.LoaderArgs) {
-  await patients.ensure(context, { school: params.slug });
-  return riva(context); // dehydrated cache travels with the payload
+  await appRivaOf(context).graphql.query(PATIENTS_QUERY, { school: params.school });
+  return riva(context);
 }
 
-// Component: same definition, typed vars and data
-function PatientList() {
-  const [q, setQ] = useSignal(filter);
-  const { data, status, refetch } = useQuery(patients, { school, q });
-  const rename = useMutation(renamePatient); // optimistic + rollback
-  const feed = useInfiniteQuery(patientsFeed, { school });
+// Component: the same call, as a hook
+function PatientList({ school }: { school: string }) {
+  const patients = useGraphQL(PATIENTS_QUERY, { school });
+  const rename = useGraphQLMutation(RENAME_PATIENT_MUTATION);
+  if (patients.status !== "success") return null;
+  return patients.data.patients.map((p) => <button key={p.id} onClick={() => rename({ id: p.id, name: "Ana" })}>{p.name}</button>);
 }
-
-// Outside a component
-patients.invalidate(riva, { school });
-renamePatient.run(riva, { id, name });
 ```
+
+`query()`, `mutation()` and `infinite()` definitions stay for what several call
+sites share (polling, optimistic updates, cursor pagination): see
+[shared definitions](./packages/riva/docs/guide/shared-definitions.md).
 
 ## Packages
 
 | Package | Role |
 |---------|------|
-| `@softistx/riva` | Core: signals, `Riva`, query and mutation engine, cache, pagination, optimistic layer, dehydrate and hydrate |
-| `@softistx/riva-react` | `RivaProvider`, hooks, Suspense support |
-| `@softistx/riva-graphql` | GraphQL transport over `@softistx/graphql-client`, persisted ids, allowlist codegen |
-| `@softistx/riva-rest` | REST transport over `openapi-httpyz`, plus a free fetcher |
-| `@softistx/riva-react-router` | Per-request riva, ambient scope, SSR hydration and navigation merge |
+| `@softistx/riva` | Core: `createRiva`, signals, resources, the query and mutation engine, cache, pagination, optimistic layer, dehydrate and hydrate |
+| `@softistx/riva-react` | `RivaProvider`, `useRiva`, resource hooks, hooks over definitions, Suspense support |
+| `@softistx/riva-graphql` | `riva.graphql` over `@softistx/graphql-client`, `useGraphQL` hooks, persisted ids, allowlist codegen |
+| `@softistx/riva-rest` | `riva.rest` over `openapi-httpyz` or a plain base URL, `useRest` hooks |
+| `@softistx/riva-react-router` | Per-request riva, ambient scope, SSR hydration and navigation merge, `/_data` route |
 
 ## Status
 

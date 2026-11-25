@@ -1,5 +1,7 @@
 # OpenAPI mode
 
+> Most call sites use the [simple API](./simple-api.md). This page covers the definition, for settings several call sites share: see [Advanced: shared definitions](https://github.com/softistx/riva/blob/develop/packages/riva/docs/guide/shared-definitions.md).
+
 ## What it is for
 
 `query(api, 'method path', options?)` and `mutation(api, 'method path', options?)` build definitions typed from the spec. The route is the one the spec writes (`'get /invoices/{id}'`), checked at compile time and when the definition is created. The variables are the operation's input (`param`, `query`, `json`, …), the data is its 2xx reply, both from the spec.

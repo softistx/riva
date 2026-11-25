@@ -1,5 +1,7 @@
 # Queries
 
+> Most call sites use the simple API (`riva.graphql`, `riva.rest`, the hooks over them). This page covers the definition, for settings several call sites share: see [Advanced: shared definitions](./shared-definitions.md).
+
 A query is a stateless definition: an `id` and a `fetch` that takes typed variables and returns data. The core is transport-agnostic: the GraphQL and REST adapters supply the id and the fetcher; here it runs over a plain `fetch`. Cache entries live in the `Riva`, keyed by the id and the stable-serialized variables.
 
 ```ts

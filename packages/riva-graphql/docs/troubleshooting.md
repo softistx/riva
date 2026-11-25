@@ -6,20 +6,21 @@ Each entry is headed by the message you will see.
 
 Code: `RIVA_SCOPE` (`RivaScopeError`).
 
-**When:** a query, mutation or infinite list ran on a `Riva` that was never given a transport.
+**When:** a definition (`query()`, `mutation()`, `infinite()`) ran on a `Riva` that was never given a transport. A riva made with `createRiva({ graphql: graphql(client) })` has one already.
 
-**Why:** definitions are stateless and the transport lives on the riva, so two server requests never share one.
+**Why:** the transport lives on the riva, not on the definition, so two server requests never share one.
 
-**Fix:** provide it where the riva is created, per request on the server.
+**Fix:** create the riva with the extension, per request on the server.
 
 ```ts
 import { createGraphQLClient } from '@softistx/graphql-client';
 import { createRiva } from '@softistx/riva';
-import { graphqlClientTransport, provideGraphQL } from '@softistx/riva-graphql';
+import { graphql } from '@softistx/riva-graphql';
 
-const riva = createRiva();
-provideGraphQL(riva, graphqlClientTransport(createGraphQLClient({ url: 'https://api.example.com/graphql' })));
+const riva = createRiva({ graphql: graphql(createGraphQLClient({ url: 'https://api.example.com/graphql' })) });
 ```
+
+A riva made with `createRiva()` takes its transport with `provideGraphQL(riva, graphqlClientTransport(client))`, but has no `riva.graphql`.
 
 ## `riva-graphql: the operation has no name; name it (query Patients { ... }) so it has an id.`
 
@@ -193,7 +194,7 @@ Code: `RIVA_CACHE` (`RivaError`).
 
 **Why:** two `normalized()` (or `entities()`) policies with different `keys` or `identify` were used on one riva.
 
-**Fix:** create one `normalized(options)` and pass it to every definition. The core explains it in [its troubleshooting page](../../riva/docs/troubleshooting.md#this-client-already-uses-other-entity-identity-rules).
+**Fix:** create one `normalized(options)` and pass it to every definition. The core explains it in [its troubleshooting page](../../riva/docs/troubleshooting.md#this-riva-already-uses-other-entity-identity-rules).
 
 ## A query fetches although another query showed the same entity
 

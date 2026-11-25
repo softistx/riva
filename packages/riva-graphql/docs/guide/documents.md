@@ -1,14 +1,14 @@
 # Documents
 
-Read this first: every definition is built from a typed document, so the document rules decide what the rest infers.
+Read this first: every call (`riva.graphql.query`, the hooks) and every definition is built from a typed document, so the document rules decide what the rest infers.
 
 ## What it is for
 
-`query()`, `mutation()` and `infinite()` take a `TypedDocumentNode` written with the client preset's `graphql()` function. Variables and data are inferred from it; you never annotate them.
+`riva.graphql.query / mutation / subscribe`, `useGraphQL` and, for shared settings, `query()`, `mutation()` and `infinite()` take a `TypedDocumentNode` written with the client preset's `graphql()` function. Variables and data are inferred from it; you never annotate them.
 
 ## Write the documents
 
-Hold each document in a `SCREAMING_SNAKE_CASE` constant (`PATIENTS_QUERY`). Codegen derives the PascalCase types and, with `persistedDocuments`, a hash per operation.
+Hold each document in a `SCREAMING_SNAKE_CASE` constant with its kind as a suffix (`PATIENTS_QUERY`, `RENAME_PATIENT_MUTATION`, `PATIENT_RENAMED_SUBSCRIPTION`). Codegen derives the PascalCase types and, with `persistedDocuments`, a hash per operation.
 
 ```ts
 // app/patients/graphql.ts

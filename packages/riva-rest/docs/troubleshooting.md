@@ -6,21 +6,24 @@ Each entry is headed by the message you will see.
 
 Code: `RIVA_SCOPE` (`RivaScopeError`).
 
-**When:** a query or mutation ran on a `Riva` that was never given a transport.
+**When:** a definition (`query()`, `mutation()`) ran on a `Riva` that was never given a transport. A riva made with `createRiva({ rest: rest(...) })` has one already.
 
-**Why:** definitions are stateless and the transport lives on the riva, so two server requests never share one.
+**Why:** the transport lives on the riva, not on the definition, so two server requests never share one.
 
-**Fix:** provide it where the riva is created, per request on the server.
+**Fix:** create the riva with the extension, per request on the server.
 
 ```ts
 import { createHttpClient } from '@softistx/httpyz';
+import { createOpenApiClient } from '@softistx/openapi-httpyz';
 import { createRiva } from '@softistx/riva';
-import { httpyzTransport, provideRest } from '@softistx/riva-rest';
+import { rest } from '@softistx/riva-rest';
+import { operations } from './generated/openapi/operations'; // from `nxgt-openapi generate`
 
 const http = createHttpClient({ baseUrl: 'https://api.example.com' });
-const riva = createRiva();
-provideRest(riva, httpyzTransport(http));
+const riva = createRiva({ rest: rest(createOpenApiClient(http, operations)) });
 ```
+
+A riva made with `createRiva()` takes its transport with `provideRest(riva, httpyzTransport(http, api))`, but has no `riva.rest`.
 
 ## `The REST transport of this Riva holds no httpyz client: build it with httpyzTransport(http, api).`
 

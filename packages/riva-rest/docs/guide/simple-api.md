@@ -78,4 +78,10 @@ The transport's errors are riva's: a declared non-2xx reply is a `RivaHttpError`
 
 Definitions made with `query()` and `mutation()` keep working on the same riva, under their own ids; the simple calls use `rest:<method> <path>`.
 
+## In components and loaders
+
+In a component, `useRest` and `useRestMutation` call the same API on the riva of the nearest provider ([React hooks](../../README.md#react-hooks)). In a React Router loader, `await riva.rest.get(path, input)` fills the request's riva, and the component reads it with `useRest('get', path, input)` ([loader pattern](https://github.com/softistx/riva/blob/develop/packages/riva-react-router/docs/guide/loader.md)). Give the riva a `defaults: { staleTime }` so the browser does not fetch again what the server sent.
+
+When a setting must be shared by several call sites (polling, optimistic updates), use a definition: [Advanced: shared definitions](https://github.com/softistx/riva/blob/develop/packages/riva/docs/guide/shared-definitions.md).
+
 Problems: [troubleshooting](../troubleshooting.md).
