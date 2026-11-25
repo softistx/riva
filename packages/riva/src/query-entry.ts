@@ -7,7 +7,7 @@ import { stableKey } from './key';
 import type { Query, QueryState } from './query';
 import { isBrowser } from './scope';
 import { type Signal, signal } from './signal';
-import type { SeedEntry } from './ssr/hydrate';
+import type { SnapshotEntry } from './ssr/dehydrate';
 
 // biome-ignore lint/suspicious/noExplicitAny: entries of every definition share one map
 export type AnyQuery = Query<any, any>;
@@ -47,6 +47,17 @@ export interface Entry {
 	gc: unknown;
 	poll: unknown;
 }
+
+/**
+ * A snapshot entry waiting for its query entry. `defer` is the deferred
+ * snapshot's entry list when hydrated for a render: it holds the entry back
+ * from definitions with a cache policy, and `seed` takes the entry out of the
+ * list once it has applied it. @internal
+ */
+export type SeedEntry = SnapshotEntry & {
+	at: number;
+	defer?: SnapshotEntry[];
+};
 
 /** What one client's query cache shares between its files. */
 export interface Ctx {

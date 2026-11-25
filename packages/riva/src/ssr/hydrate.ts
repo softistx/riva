@@ -7,12 +7,16 @@ import {
 	RivaRequestError,
 } from '../errors';
 import { nodeOf } from '../graph';
-import { type Ctx, type Entry, type Lay, peek, putData } from '../query-entry';
+import {
+	type Ctx,
+	type Entry,
+	type Lay,
+	peek,
+	putData,
+	type SeedEntry,
+} from '../query-entry';
 import { decode, ssrError } from './codec';
 import type { Snapshot, SnapshotEntry, SnapshotError } from './dehydrate';
-
-/** A snapshot entry waiting for its query entry; `defer` holds it back from entries read during a render. @internal */
-export type SeedEntry = SnapshotEntry & { at: number; defer?: true };
 
 /** Rebuilds the error by its code, so `instanceof` still holds. The message is empty: it never travels. */
 const errorOf = ({ code, status, retryable }: SnapshotError): unknown => {
@@ -44,11 +48,13 @@ function apply(c: Ctx, e: Entry, p: SeedEntry): void {
  * the deferred pass: its write would reach entities other entries observe.
  */
 function seed(c: Ctx, e: Entry): void {
-	const pending = c.pending as Map<string, SeedEntry>;
-	const p = pending.get(e.key);
+	const p = c.pending?.get(e.key);
 	if (p && !(p.defer && e.def.options.cache)) {
-		pending.delete(e.key);
+		c.pending?.delete(e.key);
 		apply(c, e, p);
+		// Applied now: the deferred pass must not write it a second time.
+		const i = p.defer?.findIndex((x) => x.k === p.k) ?? -1;
+		if (i >= 0) p.defer?.splice(i, 1);
 	}
 }
 
@@ -82,7 +88,11 @@ export function hydrate(
 	client.batch(() => {
 		for (const se of snapshot.q) {
 			// A deferred snapshot is applied later, so its ages are understated by the delay.
-			const p: SeedEntry = { ...se, at: now - se.u, ...(defer && { defer }) };
+			const p: SeedEntry = {
+				...se,
+				at: now - se.u,
+				...(defer && { defer: deferred }),
+			};
 			const e = c.entries.get(se.k);
 			if (!e) {
 				const old = pending.get(p.k);
