@@ -1,4 +1,5 @@
 import type { Riva } from './client';
+import { ms } from './duration';
 import type { RivaEvents, Scheduler } from './env';
 import { RivaAbortError } from './errors';
 import { stableKey } from './key';
@@ -62,7 +63,8 @@ export function createQueryCache(
 			const signal = opts?.signal;
 			if (signal?.aborted) return Promise.reject(new RivaAbortError());
 			const e = entryOf(c, def, vars);
-			if (!stale(c, e)) return Promise.resolve(view(c, e).data as D);
+			if (!stale(c, e, ms(opts?.staleTime)))
+				return Promise.resolve(view(c, e).data as D);
 			const f = join(c, e);
 			f.waiters++;
 			return (signal ? raceAbort(f.promise, signal) : f.promise).finally(() => {

@@ -8,5 +8,13 @@ export {
 	type OperationCache,
 	query,
 } from './query';
+export {
+	type GraphQLApi,
+	type GraphQLSimpleOptions,
+	graphql,
+	type MutateCall,
+	type QueryCall,
+	type SubscribeCall,
+} from './simple';
 export { type GraphQLTransport, provideGraphQL } from './transport';
 export type { VarsOf } from './types';

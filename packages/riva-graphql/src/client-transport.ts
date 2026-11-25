@@ -6,12 +6,17 @@ import type { GraphQLTransport } from './transport';
  * The transport over an `@softistx/graphql-client` client: a query goes
  * through `client.query`, a mutation through `client.mutate`, with the
  * definition's signal. The client's own `persisted` option decides whether the
- * persisted id or the text is sent. Its errors are mapped by `toRivaError`.
+ * persisted id or the text is sent. A subscription goes through
+ * `client.subscribe`. Its errors are mapped by `toRivaError`.
  */
 export function graphqlClientTransport(
 	client: GraphQLClient,
 ): GraphQLTransport {
 	return {
+		subscribe: (operation, variables, { signal }) =>
+			client.subscribe(operation.document, variables as never, {
+				signal,
+			}) as AsyncIterable<never>,
 		async execute(operation, variables, { signal }) {
 			const call = [operation.document, variables, { signal }] as never as [
 				never,

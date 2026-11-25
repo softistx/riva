@@ -29,6 +29,36 @@ export const PATIENTS_QUERY = graphql(`
 `);
 ```
 
+## Simple API
+
+Install the extension once, then call GraphQL like a function: no definition, no key, no glue. Calls return the data and throw `RivaError`s; calls with the same document and variables share one cache entry and one in-flight request.
+
+```ts
+import { createGraphQLClient } from '@softistx/graphql-client';
+import { createRiva } from '@softistx/riva';
+import { graphql } from '@softistx/riva-graphql';
+import { normalized } from '@softistx/riva-graphql/cache';
+import { ADD_BOOK, BOOK_ADDED, BOOKS_QUERY } from './graphql';
+
+const gql = createGraphQLClient({ url: 'https://api.example.com/graphql' });
+// graphql(transport) works too; the optional second argument stores the data, e.g. { cache: normalized() }
+const riva = createRiva({ graphql: graphql(gql, { cache: normalized() }) });
+
+const data = await riva.graphql.query(BOOKS_QUERY, { first: 10 }, { staleTime: '30s' });
+const book = await riva.graphql.mutate(ADD_BOOK, { title: 'Dune' }, { invalidates: [BOOKS_QUERY] });
+const stop = riva.graphql.subscribe(BOOK_ADDED, {}, {
+	next(added) {}, // after the result was merged into the entity cache
+	error(e) {}, // a failure ends the subscription
+});
+stop();
+```
+
+- Data and variables are typed from the document; the variables are optional when it has none.
+- `query` options: `staleTime` (this call only, over the definition's and the riva's `defaults`) and `signal`. `mutate` options: `invalidates` (documents, definitions or `at(query, vars)`, marked stale once it succeeded) and `signal`.
+- The definitions behind the calls are made once per riva, per document (never shared between rivas), so `riva.graphql.query(DOC)` and `query(DOC)` defined by hand share an id: use one of them per document on a riva (a second raises `Two definitions share the id`), or pass `id` to the hand-made one.
+- `subscribe` needs a transport that can: the `@softistx/graphql-client` one does (server-sent events, never reconnected). With `normalized()` each result is merged into the entity cache; with another cache, or none, it only goes to `next`.
+- Definitions (`query()`, `mutation()`, `infinite()`) keep working on the same riva, for shared settings.
+
 ## Provide the transport
 
 Definitions are stateless; the transport lives on the `Riva` that runs them. Give each riva one, when you create it.

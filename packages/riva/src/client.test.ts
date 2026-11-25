@@ -271,3 +271,19 @@ test('extensions install in key order and see the earlier ones', () => {
 	});
 	expect(riva.b).toBe(2);
 });
+
+test('an ensure staleTime overrides the definition and the defaults for that call', async () => {
+	const sched = clock();
+	const riva = createRiva({ scheduler: sched, defaults: { staleTime: 0 } });
+	let n = 0;
+	const q = query({ id: 'q', staleTime: '1m', fetch: async () => ++n });
+	await q.ensure(riva);
+	sched.advance(5_000);
+	expect(await q.ensure(riva)).toBe(1);
+	expect(await q.ensure(riva, undefined, { staleTime: '5s' })).toBe(2);
+	expect(await q.ensure(riva, undefined, { staleTime: 0 })).toBe(3);
+	expect(await q.ensure(riva, undefined, { staleTime: Infinity })).toBe(3);
+	expect(() => q.ensure(riva, undefined, { staleTime: 'x' as never })).toThrow(
+		/Invalid duration/,
+	);
+});

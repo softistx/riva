@@ -103,7 +103,7 @@ export const budgets: Budget[] = [
 			'packages/riva-graphql/dist/index.js',
 			'packages/riva-graphql/dist/cache/index.js',
 		],
-		limit: 11520,
+		limit: 12288,
 	},
 	{
 		name: '@softistx/riva + riva-react + riva-react-router',
@@ -128,7 +128,7 @@ export const budgets: Budget[] = [
 			'packages/riva-graphql/dist/index.js',
 			'packages/riva-graphql/dist/bff/index.js',
 		],
-		limit: 9216,
+		limit: 9728,
 	},
 	{
 		name: '@softistx/riva + riva-rest',

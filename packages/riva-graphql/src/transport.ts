@@ -12,6 +12,15 @@ export interface GraphQLTransport {
 		variables: Vars,
 		options: { signal: AbortSignal },
 	): Promise<Data>;
+	/**
+	 * Optional: opens a subscription and yields each result's data until the
+	 * signal aborts. Without it, `riva.graphql.subscribe` throws.
+	 */
+	subscribe?<Data, Vars>(
+		operation: Operation<Data, Vars>,
+		variables: Vars,
+		options: { signal: AbortSignal },
+	): AsyncIterable<Data>;
 }
 
 // Held on the riva's slots: the transport of a request dies with its riva.

@@ -2,7 +2,7 @@ import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import { RivaError } from '@softistx/riva';
 import type { DocumentNode } from 'graphql';
 
-export type OperationKind = 'query' | 'mutation';
+export type OperationKind = 'query' | 'mutation' | 'subscription';
 
 /**
  * What a transport executes: the typed document and what was read from it.
@@ -58,11 +58,6 @@ function read(document: DocumentNode): Operation {
 			'RIVA_DEFINITION',
 			'riva-graphql: the operation has no name; name it (query Patients { ... }) so it has an id.',
 		);
-	if (first.operation === 'subscription')
-		throw new RivaError(
-			'RIVA_DEFINITION',
-			`riva-graphql: ${name} is a subscription; subscriptions are not supported yet.`,
-		);
 	const persistedId = hashOf(document);
 	return {
 		document: document as unknown as Operation['document'],
@@ -75,8 +70,8 @@ function read(document: DocumentNode): Operation {
 
 /**
  * Reads a document once. Throws a `RivaError` (`RIVA_DEFINITION`) when it is not a document node,
- * holds no operation, several, an unnamed one or a subscription, or when it
- * is not of the `expected` kind.
+ * holds no operation, several or an unnamed one, or when it is not of the
+ * `expected` kind (a subscription is refused unless it is the one expected).
  */
 export function operationOf<Data, Vars>(
 	document: TypedDocumentNode<Data, Vars>,
@@ -87,6 +82,11 @@ export function operationOf<Data, Vars>(
 		op = read(document);
 		cache.set(document, op);
 	}
+	if (op.kind === 'subscription' && expected !== 'subscription')
+		throw new RivaError(
+			'RIVA_DEFINITION',
+			`riva-graphql: ${op.name} is a subscription; run it with riva.graphql.subscribe(), it has no query() or mutation() definition.`,
+		);
 	if (expected && op.kind !== expected)
 		throw new RivaError(
 			'RIVA_DEFINITION',
