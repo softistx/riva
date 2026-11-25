@@ -1,6 +1,6 @@
 # @softistx/riva-graphql
 
-GraphQL for [riva](https://github.com/softistx/riva/blob/develop/packages/riva/README.md) over [`@softistx/graphql-client`](https://github.com/softistx/graphql): `query`, `mutation` and `infinite` definitions typed from a `TypedDocumentNode` (variables and data are inferred, never annotated), a per-client transport, errors mapped to riva's, and a codegen helper that builds the allowlist a BFF's `/_data` route executes from the client preset's persisted documents.
+GraphQL for [riva](https://github.com/softistx/riva/blob/develop/packages/riva/README.md) over [`@softistx/graphql-client`](https://github.com/softistx/graphql): `query`, `mutation` and `infinite` definitions typed from a `TypedDocumentNode` (variables and data are inferred, never annotated), a per-riva transport, errors mapped to riva's, and a codegen helper that builds the allowlist a BFF's `/_data` route executes from the client preset's persisted documents.
 
 Guides and fixes: [docs](./docs/README.md). Work in progress, see the [spec](https://github.com/softistx/riva/blob/develop/docs/spec.md).
 
@@ -31,20 +31,20 @@ export const PATIENTS_QUERY = graphql(`
 
 ## Provide the transport
 
-Definitions are stateless; the transport lives on the `RivaClient` that runs them. Give each client one, when you create it.
+Definitions are stateless; the transport lives on the `Riva` that runs them. Give each riva one, when you create it.
 
 ```ts
 import { createGraphQLClient } from '@softistx/graphql-client';
-import { createRivaClient } from '@softistx/riva';
+import { createRiva } from '@softistx/riva';
 import { graphqlClientTransport, provideGraphQL } from '@softistx/riva-graphql';
 
 const gql = createGraphQLClient({ url: 'https://api.example.com/graphql' });
 
-export const client = createRivaClient();
-provideGraphQL(client, graphqlClientTransport(gql));
+export const riva = createRiva();
+provideGraphQL(riva, graphqlClientTransport(gql));
 ```
 
-On the server, build both inside the request handler. A definition that runs on a client with no transport throws a `RivaScopeError` naming `provideGraphQL`. Any object with `execute(operation, variables, { signal })` is a transport. [Guide](./docs/guide/transport.md).
+On the server, build both inside the request handler. A definition that runs on a riva with no transport throws a `RivaScopeError` naming `provideGraphQL`. Any object with `execute(operation, variables, { signal })` is a transport. [Guide](./docs/guide/transport.md).
 
 ## Queries
 
@@ -54,9 +54,9 @@ import { PATIENTS_QUERY } from './graphql';
 
 export const patients = query(PATIENTS_QUERY, { staleTime: '30s' });
 
-await patients.ensure(client, { school: 'north' }); // variables typed from the document
-const state = client.get(patients, { school: 'north' }); // state.data is the document's data
-patients.invalidate(client, { school: 'north' });
+await patients.ensure(riva, { school: 'north' }); // variables typed from the document
+const state = riva.get(patients, { school: 'north' }); // state.data is the document's data
+patients.invalidate(riva, { school: 'north' });
 ```
 
 Options: the core's (`staleTime`, `gcTime`, `retry`, `refetchEvery`, …) plus `id` and `cache`. **Ids must be unique.** [Guide](./docs/guide/queries.md).
@@ -71,7 +71,7 @@ export const renamePatient = mutation(RENAME_PATIENT_MUTATION, {
 	invalidates: [patients], // observed lists refetch once it succeeded
 });
 
-await renamePatient.run(client, { id: '1', name: 'Ana' }); // rejects after the rollback
+await renamePatient.run(riva, { id: '1', name: 'Ana' }); // rejects after the rollback
 ```
 
 Options: `optimistic`, `updates`, `invalidates`, `retry`, `cache`, typed from the document. [Guide](./docs/guide/mutations.md).
@@ -86,9 +86,9 @@ export const patientsFeed = infinite(PATIENTS_QUERY, {
 	connection: (data) => data.patients, // { edges, pageInfo }
 });
 
-await patientsFeed.ensure(client, { school: 'north' });
-await patientsFeed.fetchNext(client, { school: 'north' });
-const { data, hasNext } = client.get(patientsFeed, { school: 'north' });
+await patientsFeed.ensure(riva, { school: 'north' });
+await patientsFeed.fetchNext(riva, { school: 'north' });
+const { data, hasNext } = riva.get(patientsFeed, { school: 'north' });
 data?.nodes; // the flattened nodes, typed from the document
 ```
 
@@ -142,14 +142,14 @@ await writeAllowlist('app/generated/persisted-documents.json', 'app/generated/al
 
 ## BFF mode
 
-In the browser, `bffTransport` posts `{ id, variables }` to your `dataRoute` (from `@softistx/riva-react-router/server`) and reads `{ data }` back, Dates included. The browser never sends a document: the route runs the manifest's text through the request client, with the session your `setup` gave it.
+In the browser, `bffTransport` posts `{ id, variables }` to your `dataRoute` (from `@softistx/riva-react-router/server`) and reads `{ data }` back, Dates included. The browser never sends a document: the route runs the manifest's text through the request riva, with the session your `setup` gave it.
 
 ```ts
-// browser: app/riva.client.ts
+// browser: app/riva.riva.ts
 import { bffTransport } from '@softistx/riva-graphql/bff';
 import { provideGraphQL } from '@softistx/riva-graphql';
 
-provideGraphQL(client, bffTransport({ url: '/_data' }));
+provideGraphQL(riva, bffTransport({ url: '/_data' }));
 ```
 
 ```ts

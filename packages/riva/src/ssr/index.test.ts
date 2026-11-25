@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from 'bun:test';
-import { createRivaClient } from '../client';
+import { createRiva } from '../client';
 import { RivaScopeError } from '../errors';
 import { signal } from '../signal';
 import * as ssr from './index';
@@ -16,9 +16,9 @@ test('the subpath exports the snapshot functions and the scope resolver', () => 
 	]);
 });
 
-test('a resolver supplies the ambient client, after client.run', () => {
-	const fromResolver = createRivaClient();
-	const inRun = createRivaClient();
+test('a resolver supplies the ambient riva, after riva.run', () => {
+	const fromResolver = createRiva();
+	const inRun = createRiva();
 	const n = signal(0);
 	expect(() => n.get()).toThrow(RivaScopeError);
 	ssr.setScopeResolver(() => fromResolver);
@@ -29,26 +29,26 @@ test('a resolver supplies the ambient client, after client.run', () => {
 	expect(fromResolver.get(n)).toBe(1);
 });
 
-test('a resolver with no client still hits the server guard, and can be removed', () => {
+test('a resolver with no riva still hits the server guard, and can be removed', () => {
 	const n = signal(0);
 	ssr.setScopeResolver(() => undefined);
 	expect(() => n.get()).toThrow(RivaScopeError);
-	const c = createRivaClient();
+	const c = createRiva();
 	ssr.setScopeResolver(() => c);
 	expect(n.get()).toBe(0);
 	ssr.setScopeResolver(undefined);
 	expect(() => n.get()).toThrow(RivaScopeError);
 });
 
-test('the resolver wins over the browser default client', async () => {
-	const { setDefaultClient } = await import('../scope');
+test('the resolver wins over the browser default riva', async () => {
+	const { setDefaultRiva } = await import('../scope');
 	const g = globalThis as { document?: unknown };
 	g.document = {};
 	try {
-		const fallback = createRivaClient();
-		const fromResolver = createRivaClient();
+		const fallback = createRiva();
+		const fromResolver = createRiva();
 		const n = signal(0);
-		setDefaultClient(fallback);
+		setDefaultRiva(fallback);
 		n.set(1);
 		expect(fallback.get(n)).toBe(1);
 		ssr.setScopeResolver(() => fromResolver);
@@ -58,7 +58,7 @@ test('the resolver wins over the browser default client', async () => {
 		ssr.setScopeResolver(() => undefined);
 		expect(n.get()).toBe(1);
 	} finally {
-		setDefaultClient(undefined);
+		setDefaultRiva(undefined);
 		g.document = undefined;
 		delete g.document;
 	}

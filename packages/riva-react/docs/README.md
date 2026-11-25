@@ -2,7 +2,7 @@
 
 ## Guides
 
-- [Provider](./guide/provider.md): read first: `RivaProvider`, `useClient`, one client per tree.
+- [Provider](./guide/provider.md): read first: `RivaProvider`, `useRiva`, one riva per tree.
 - [Signals](./guide/signals.md): read for `useSignal` and `useValue` over signals and computeds.
 - [Queries](./guide/queries.md): read for `useQuery`: options, result, `refetch`.
 - [Suspense](./guide/suspense.md): read for `suspense: true`, error boundaries and retry.

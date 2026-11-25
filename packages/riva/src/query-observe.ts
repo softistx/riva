@@ -78,7 +78,7 @@ export function observe(
 		};
 	}
 	if (e.observers++ === 0) poll(c, e);
-	const off = c.client.subscribe(e.out, (s) => {
+	const off = c.riva.subscribe(e.out, (s) => {
 		listener(s);
 		complete(c, e, s);
 	});

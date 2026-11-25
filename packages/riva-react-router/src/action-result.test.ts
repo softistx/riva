@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { useClient, useQuery } from '@softistx/riva-react';
+import { useQuery, useRiva } from '@softistx/riva-react';
 import { createElement as h, type ReactElement } from 'react';
 import { Form, useActionData, useFetcher } from 'react-router';
 import { PATIENTS } from '../test/app';
@@ -19,7 +19,7 @@ test('the browser reads through /_data with the session, as Dates and all', asyn
 	const page = await app.boot(app.Patients);
 	expect(page.text('#patients')).toBe('Patients:s #1');
 	expect(app.api).toEqual([{ name: 'Patients', session: 'abc' }]);
-	const entry = app.client().get(PATIENTS, SCHOOL);
+	const entry = app.riva().get(PATIENTS, SCHOOL);
 	const data = entry.data as unknown as { at: Date };
 	expect(data.at).toBeInstanceOf(Date);
 	await page.unmount();
@@ -80,7 +80,7 @@ test('a fetcher result works the same, and each result is written once', async (
 	});
 	const page = await app.boot(() => {
 		const fetcher = useFetcher<{ rev: number; label: string }>();
-		const client = useClient();
+		const riva = useRiva();
 		// The result is the data: no select needed.
 		useActionResult(fetcher.data, { into: PATIENTS, vars: SCHOOL });
 		return h(
@@ -102,7 +102,7 @@ test('a fetcher result works the same, and each result is written once', async (
 					id: 'local',
 					type: 'button',
 					onClick: () =>
-						PATIENTS.setData(client, SCHOOL, { rev: 1, label: 'local' }),
+						PATIENTS.setData(riva, SCHOOL, { rev: 1, label: 'local' }),
 				},
 				'local',
 			),

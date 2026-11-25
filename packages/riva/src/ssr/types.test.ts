@@ -1,20 +1,20 @@
 import { expectTypeOf, test } from 'bun:test';
-import type { RivaClient } from '../index';
+import type { Riva } from '../index';
 import { dehydrate, hydrate, type Snapshot } from './index';
 
 test('dehydrate returns a Snapshot, hydrate takes one', () => {
-	expectTypeOf(dehydrate).toEqualTypeOf<(client: RivaClient) => Snapshot>();
+	expectTypeOf(dehydrate).toEqualTypeOf<(riva: Riva) => Snapshot>();
 	expectTypeOf<Parameters<typeof hydrate>[1]>().toEqualTypeOf<Snapshot>();
 	expectTypeOf(hydrate).returns.toEqualTypeOf<Snapshot | undefined>();
 });
 
 test('hydrate rejects what dehydrate did not make', () => {
-	const client = null as unknown as RivaClient;
+	const riva = null as unknown as Riva;
 	const never = () => {
 		// @ts-expect-error not a snapshot
-		hydrate(client, {});
+		hydrate(riva, {});
 		// @ts-expect-error a version that is not 1
-		hydrate(client, { v: 2, t: 0, q: [], a: {} });
+		hydrate(riva, { v: 2, t: 0, q: [], a: {} });
 	};
 	expectTypeOf(never).toBeFunction();
 });

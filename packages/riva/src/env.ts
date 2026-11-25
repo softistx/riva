@@ -8,7 +8,7 @@ export interface Scheduler {
 }
 
 /** Window events that trigger refetches; each returns its own unsubscribe. */
-export interface ClientEvents {
+export interface RivaEvents {
 	onFocus(cb: () => void): () => void;
 	onReconnect(cb: () => void): () => void;
 }
@@ -36,7 +36,7 @@ const host = () => globalThis as Target;
 const doc = () => (globalThis as { document?: Target }).document;
 
 /** Browser listeners (visibilitychange when visible, focus, online); nothing on the server. */
-export const defaultEvents: ClientEvents = {
+export const defaultEvents: RivaEvents = {
 	onFocus(cb) {
 		const a = on(doc, 'visibilitychange', () => {
 			if (doc()?.visibilityState === 'visible') cb();

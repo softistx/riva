@@ -1,9 +1,9 @@
 # Infinite lists: `@softistx/riva/infinite`
 
-A cursor-paginated list is a query whose data is the pages loaded so far. It reads like any query (`client.get`, `subscribe`, `ensure`, `invalidate`, `setData`, staleness, `gcTime`, `retry`, `cache`) and adds `fetchNext` and `fetchPrevious`. The default page shape is a Relay connection (`edges[].node`, `pageInfo` with `hasNextPage`, `hasPreviousPage`, `startCursor`, `endCursor`).
+A cursor-paginated list is a query whose data is the pages loaded so far. It reads like any query (`riva.get`, `subscribe`, `ensure`, `invalidate`, `setData`, staleness, `gcTime`, `retry`, `cache`) and adds `fetchNext` and `fetchPrevious`. The default page shape is a Relay connection (`edges[].node`, `pageInfo` with `hasNextPage`, `hasPreviousPage`, `startCursor`, `endCursor`).
 
 ```ts
-import { createRivaClient } from '@softistx/riva';
+import { createRiva } from '@softistx/riva';
 import { entities } from '@softistx/riva/entities';
 import { type Connection, infinite } from '@softistx/riva/infinite';
 
@@ -20,12 +20,12 @@ const feed = infinite({
 	// cursor: { after: 'cursor' }, // when the variable is not named `after` (and `before`)
 });
 
-const client = createRivaClient();
-await feed.ensure(client, { search: 'a' }); // the first page
-await feed.fetchNext(client, { search: 'a' }); // appends the next page
-await feed.fetchPrevious(client, { search: 'a' }); // prepends the previous page
+const riva = createRiva();
+await feed.ensure(riva, { search: 'a' }); // the first page
+await feed.fetchNext(riva, { search: 'a' }); // appends the next page
+await feed.fetchPrevious(riva, { search: 'a' }); // prepends the previous page
 
-const s = client.get(feed, { search: 'a' });
+const s = riva.get(feed, { search: 'a' });
 s.data?.nodes; // every loaded node, flattened (memoized per data)
 s.data?.pages; // the pages as fetched
 s.hasNext; s.hasPrevious; s.isFetchingNext; s.isFetchingPrevious;

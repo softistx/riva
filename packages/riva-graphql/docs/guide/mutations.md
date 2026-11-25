@@ -15,7 +15,7 @@ export const renamePatient = mutation(RENAME_PATIENT_MUTATION, {
 	invalidates: [patients], // observed lists refetch once it succeeded
 });
 
-await renamePatient.run(client, { id: '1', name: 'Ana' }); // rejects after the rollback
+await renamePatient.run(riva, { id: '1', name: 'Ana' }); // rejects after the rollback
 ```
 
 ## Options

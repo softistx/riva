@@ -129,7 +129,7 @@ test('the signal reaches the request and an abort is a RivaAbortError', async ()
 	expect(reqSignal?.aborted).toBe(true);
 });
 
-test('a route the client does not have, or no api, is a non-retryable request error', async () => {
+test('a route the riva does not have, or no api, is a non-retryable request error', async () => {
 	const t = transport(() => json({}));
 	await expect(
 		t.call(

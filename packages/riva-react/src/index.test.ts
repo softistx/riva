@@ -7,6 +7,7 @@ test('the main entry exports the provider and the hooks, nothing from the opt-in
 		'useClient',
 		'useMutation',
 		'useQuery',
+		'useRiva',
 		'useSignal',
 		'useValue',
 	]);

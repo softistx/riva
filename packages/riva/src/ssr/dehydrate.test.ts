@@ -16,11 +16,11 @@ const items = query<{ page: number }, { n: number; at: Date }>({
 
 describe('entries', () => {
 	test('a success is dehydrated with its encoded data and its age', async () => {
-		const { client: make, sched } = fakeEnv();
-		const client = make();
-		await items.ensure(client, { page: 1 });
+		const { riva: make, sched } = fakeEnv();
+		const riva = make();
+		await items.ensure(riva, { page: 1 });
 		sched.advance(250);
-		const snap = dehydrate(client);
+		const snap = dehydrate(riva);
 		expect(snap.v).toBe(1);
 		expect(snap.t).toBe(sched.now());
 		expect(snap.q).toEqual([
@@ -35,7 +35,7 @@ describe('entries', () => {
 	});
 
 	test('an error carries its code, status and retryability, never a message, a stack or a cause', async () => {
-		const client = fakeEnv().client();
+		const riva = fakeEnv().riva();
 		const failing = query<void, string>({
 			id: 'failing',
 			retry: 0,
@@ -43,8 +43,8 @@ describe('entries', () => {
 				throw new RivaHttpError(503, 'Unavailable', { cause: new Error('x') });
 			},
 		});
-		await failing.ensure(client).catch(() => {});
-		const json = JSON.stringify(dehydrate(client));
+		await failing.ensure(riva).catch(() => {});
+		const json = JSON.stringify(dehydrate(riva));
 		expect(JSON.parse(json).q[0]).toMatchObject({
 			s: 'error',
 			e: {
@@ -59,7 +59,7 @@ describe('entries', () => {
 	});
 
 	test('a RivaError without status carries no status, a message never travels, anything else is RIVA_UNKNOWN', async () => {
-		const client = fakeEnv().client();
+		const riva = fakeEnv().riva();
 		const a = query<void, string>({
 			id: 'a',
 			retry: 0,
@@ -74,9 +74,9 @@ describe('entries', () => {
 				throw new Error('secret detail');
 			},
 		});
-		await a.ensure(client).catch(() => {});
-		await b.ensure(client).catch(() => {});
-		const q = dehydrate(client).q;
+		await a.ensure(riva).catch(() => {});
+		await b.ensure(riva).catch(() => {});
+		const q = dehydrate(riva).q;
 		expect(q.find((e) => e.k.startsWith('a:'))?.e).toEqual({
 			code: 'MY_CODE',
 		});
@@ -88,44 +88,44 @@ describe('entries', () => {
 	});
 
 	test('idle and in-flight entries without data are skipped', async () => {
-		const client = fakeEnv().client();
+		const riva = fakeEnv().riva();
 		const slow = query<void, string>({
 			id: 'slow',
 			fetch: () => new Promise<string>(() => {}),
 		});
-		client.get(items, { page: 9 });
-		const p = slow.ensure(client);
+		riva.get(items, { page: 9 });
+		const p = slow.ensure(riva);
 		p.catch(() => {});
 		await settle();
-		expect(dehydrate(client).q).toEqual([]);
+		expect(dehydrate(riva).q).toEqual([]);
 	});
 
 	test('optimistic layers are left out', async () => {
-		const client = fakeEnv().client();
-		await items.ensure(client, { page: 1 });
-		client.queries.lay(items, { page: 1 }, () => ({
+		const riva = fakeEnv().riva();
+		await items.ensure(riva, { page: 1 });
+		riva.queries.lay(items, { page: 1 }, () => ({
 			n: 99,
 			at: new Date(0),
 		}));
-		expect(client.get(items, { page: 1 }).data?.n).toBe(99);
-		expect(dehydrate(client).q[0]?.d).toMatchObject({ n: 1 });
+		expect(riva.get(items, { page: 1 }).data?.n).toBe(99);
+		expect(dehydrate(riva).q[0]?.d).toMatchObject({ n: 1 });
 	});
 
 	test('an invalidated entry is flagged', async () => {
-		const client = fakeEnv().client();
-		await items.ensure(client, { page: 1 });
-		items.invalidate(client, { page: 1 });
-		expect(dehydrate(client).q[0]?.i).toBe(1);
+		const riva = fakeEnv().riva();
+		await items.ensure(riva, { page: 1 });
+		items.invalidate(riva, { page: 1 });
+		expect(dehydrate(riva).q[0]?.i).toBe(1);
 	});
 
 	test('a value the codec refuses names the entry', async () => {
-		const client = fakeEnv().client();
+		const riva = fakeEnv().riva();
 		const bad = query<void, Map<string, number>>({
 			id: 'bad',
 			fetch: async () => new Map(),
 		});
-		await bad.ensure(client);
-		expect(() => dehydrate(client)).toThrow(
+		await bad.ensure(riva);
+		expect(() => dehydrate(riva)).toThrow(
 			'Cannot dehydrate an instance of Map at bad:.data',
 		);
 	});
@@ -133,39 +133,39 @@ describe('entries', () => {
 
 describe('signals', () => {
 	test('only changed, named signals that opted in travel', () => {
-		const client = fakeEnv().client();
+		const riva = fakeEnv().riva();
 		const changed = signal(1, { name: 'changed', ssr: true });
 		const same = signal(1, { name: 'same', ssr: true });
 		const anonymous = signal(1, { ssr: true });
 		const local = signal(1, { name: 'local' });
 		const when = signal(new Date(0), { name: 'when', ssr: true });
-		for (const a of [changed, same, anonymous, local]) client.get(a);
-		client.get(when);
-		client.set(changed, 2);
-		client.set(anonymous, 2);
-		client.set(local, 2);
-		client.set(when, new Date(5));
-		expect(dehydrate(client).a).toEqual({
+		for (const a of [changed, same, anonymous, local]) riva.get(a);
+		riva.get(when);
+		riva.set(changed, 2);
+		riva.set(anonymous, 2);
+		riva.set(local, 2);
+		riva.set(when, new Date(5));
+		expect(dehydrate(riva).a).toEqual({
 			changed: 2,
 			when: { $t: 'D', v: '1970-01-01T00:00:00.005Z' },
 		});
 	});
 
 	test('internal signals never travel', async () => {
-		const client = fakeEnv().client();
-		await items.ensure(client, { page: 1 });
-		expect(dehydrate(client).a).toEqual({});
+		const riva = fakeEnv().riva();
+		await items.ensure(riva, { page: 1 });
+		expect(dehydrate(riva).a).toEqual({});
 	});
 
 	test('two signals with one name throw', () => {
-		const client = fakeEnv().client();
-		client.get(signal(1, { name: 'twin', ssr: true }));
-		client.get(signal(2, { name: 'twin', ssr: true }));
-		expect(() => dehydrate(client)).toThrow(
+		const riva = fakeEnv().riva();
+		riva.get(signal(1, { name: 'twin', ssr: true }));
+		riva.get(signal(2, { name: 'twin', ssr: true }));
+		expect(() => dehydrate(riva)).toThrow(
 			'Cannot dehydrate: two signals are named "twin". Give each SSR signal a unique name, or set ssr: false.',
 		);
 		try {
-			dehydrate(client);
+			dehydrate(riva);
 		} catch (e) {
 			expect((e as RivaError).code).toBe('RIVA_SSR');
 		}

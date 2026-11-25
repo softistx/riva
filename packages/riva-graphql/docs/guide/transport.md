@@ -2,19 +2,19 @@
 
 ## What it is for
 
-Definitions are stateless; the transport lives on the `RivaClient` that runs them. Give each client one when you create it.
+Definitions are stateless; the transport lives on the `Riva` that runs them. Give each riva one when you create it.
 
 ## Provide it
 
 ```ts
 import { createGraphQLClient } from '@softistx/graphql-client';
-import { createRivaClient } from '@softistx/riva';
+import { createRiva } from '@softistx/riva';
 import { graphqlClientTransport, provideGraphQL } from '@softistx/riva-graphql';
 
 const gql = createGraphQLClient({ url: 'https://api.example.com/graphql' });
 
-export const client = createRivaClient();
-provideGraphQL(client, graphqlClientTransport(gql));
+export const riva = createRiva();
+provideGraphQL(riva, graphqlClientTransport(gql));
 ```
 
 On the server, build both inside the request handler so the caller's credentials stay with the request.
@@ -62,10 +62,10 @@ const transport: GraphQLTransport = {
 		}
 	},
 };
-provideGraphQL(client, transport);
+provideGraphQL(riva, transport);
 ```
 
 ## Traps
 
-- A definition that runs on a client with no transport throws a `RivaScopeError` naming `provideGraphQL`.
-- Providing a transport on one client never affects another: it is per client.
+- A definition that runs on a riva with no transport throws a `RivaScopeError` naming `provideGraphQL`.
+- Providing a transport on one riva never affects another: it is per riva.

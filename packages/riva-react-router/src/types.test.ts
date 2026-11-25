@@ -1,10 +1,5 @@
 import { expectTypeOf, test } from 'bun:test';
-import {
-	createRivaClient,
-	type Query,
-	query,
-	type RivaClient,
-} from '@softistx/riva';
+import { createRiva, type Query, query, type Riva } from '@softistx/riva';
 import type { hydrate, Snapshot } from '@softistx/riva/ssr';
 import { buildAllowlist } from '@softistx/riva-graphql/codegen';
 import { allowlist } from '@softistx/riva-graphql/server';
@@ -23,10 +18,10 @@ import {
 import { type DataSource, dataRoute, rivaMiddleware } from './server/index';
 
 const context = new RouterContextProvider();
-context.set(rivaContext, createRivaClient());
+context.set(rivaContext, createRiva());
 
-test('rivaOf returns the request client', () => {
-	expectTypeOf(rivaOf(context)).toEqualTypeOf<RivaClient>();
+test('rivaOf returns the request riva', () => {
+	expectTypeOf(rivaOf(context)).toEqualTypeOf<Riva>();
 });
 
 test('riva() spreads into loader data, keeping the branded snapshot', () => {

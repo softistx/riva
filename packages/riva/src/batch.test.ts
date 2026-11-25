@@ -1,13 +1,13 @@
 import { expect, test } from 'bun:test';
 import { batch, untracked } from './batch';
-import { createRivaClient } from './client';
+import { createRiva } from './client';
 import { computed } from './computed';
 import { signal } from './signal';
 
 test('batch defers notifications until the outermost batch ends', () => {
 	const a = signal(0);
 	const b = signal(0);
-	const c = createRivaClient();
+	const c = createRiva();
 	const sum = computed((get) => get(a) + get(b));
 	const seen: number[] = [];
 	c.subscribe(sum, (v) => seen.push(v));
@@ -24,9 +24,9 @@ test('batch defers notifications until the outermost batch ends', () => {
 	expect(seen).toEqual([3]);
 });
 
-test('batch notifies even when fn throws, and runs fn without a client', () => {
+test('batch notifies even when fn throws, and runs fn without a riva', () => {
 	const a = signal(0);
-	const c = createRivaClient();
+	const c = createRiva();
 	const seen: number[] = [];
 	c.subscribe(a, (v) => seen.push(v));
 	expect(() =>
@@ -48,7 +48,7 @@ test('untracked reads do not become dependencies', () => {
 		calls++;
 		return get(a) + untracked(() => b.get());
 	});
-	const c = createRivaClient();
+	const c = createRiva();
 	c.run(() => {
 		expect(d.get()).toBe(2);
 		b.set(5);

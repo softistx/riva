@@ -1,6 +1,6 @@
 import { RivaError } from './errors';
 import type { Graph, Node } from './graph';
-import { withClient } from './scope';
+import { withRiva } from './scope';
 
 const MAX_RUNS = 100;
 
@@ -19,7 +19,7 @@ export function collect(g: Graph, n: Node): void {
 }
 
 /**
- * Notifies the queued nodes' listeners, each in its own client. Every
+ * Notifies the queued nodes' listeners, each in its own riva. Every
  * notification runs; errors are collected and rethrown after (one as is,
  * several as an AggregateError). A node re-running over 100 times in one
  * flush is a loop.
@@ -56,7 +56,7 @@ export function flush(g: Graph, refresh: (g: Graph, n: Node) => void): void {
 					n.seen = n.ver;
 					for (const l of [...n.listeners])
 						try {
-							withClient(g.client, () => l(n.value));
+							withRiva(g.riva, () => l(n.value));
 						} catch (e) {
 							errors.push(e);
 						}

@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { query } from '@softistx/riva';
 import { act } from 'react';
-import { deferred, h, mount, newClient } from '../test/render';
+import { deferred, h, mount, newRiva } from '../test/render';
 import { useQueryState, useStableVars } from './query-state';
 
 test('useStableVars keeps the first object of a key across renders', async () => {
@@ -50,7 +50,7 @@ test('a disabled binding reads idle and does not fetch', async () => {
 	function C() {
 		return h('p', null, useQueryState(q, undefined, false).state.status);
 	}
-	const m = await mount(h(C), newClient());
+	const m = await mount(h(C), newRiva());
 	expect(m.text()).toBe('idle');
 	expect(calls).toBe(0);
 	await m.unmount();

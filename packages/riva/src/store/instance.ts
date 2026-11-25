@@ -1,4 +1,4 @@
-import type { RivaClient } from '../client';
+import type { Riva } from '../client';
 import type { Readable } from '../computed';
 import { isBrowser } from '../scope';
 import { freeze, type StoreDef } from './def';
@@ -11,47 +11,47 @@ export type Instance = readonly [
 ];
 
 /**
- * The store on one client, made on first use and kept in `client.slots`: a
+ * The store on one riva, made on first use and kept in `riva.slots`: a
  * read-only view of its state and computeds, and its bound actions. It also
- * claims the store's name on the client: a second store with that name is
+ * claims the store's name on the riva: a second store with that name is
  * refused on the server, and takes over in a browser (a hot-reloaded module).
  * A replaced definition is remembered (`was:<name>`): a component still holding
  * it resolves to the current instance and does not take the name back.
  */
-export function instance(def: StoreDef, client: RivaClient): Instance {
-	const cached = client.slots.get(def) as Instance | undefined;
+export function instance(def: StoreDef, riva: Riva): Instance {
+	const cached = riva.slots.get(def) as Instance | undefined;
 	if (cached) return cached;
 	const { name, sigs, members, actions } = def;
 	const claim = `name:${name}`;
-	const holder = client.slots.get(claim) as StoreDef | undefined;
-	const was = client.slots.get(`was:${name}`) as Set<StoreDef> | undefined;
-	if (holder !== undefined && was?.has(def)) return instance(holder, client);
+	const holder = riva.slots.get(claim) as StoreDef | undefined;
+	const was = riva.slots.get(`was:${name}`) as Set<StoreDef> | undefined;
+	if (holder !== undefined && was?.has(def)) return instance(holder, riva);
 	if (holder !== undefined) {
 		if (!isBrowser())
 			refuse(
-				`Store "${name}": two stores are named "${name}" on this client: give each store a unique name.`,
+				`Store "${name}": two stores are named "${name}" on this riva: give each store a unique name.`,
 			);
-		client.slots.delete(holder);
-		client.slots.set(`was:${name}`, (was ?? new Set()).add(holder));
+		riva.slots.delete(holder);
+		riva.slots.set(`was:${name}`, (was ?? new Set()).add(holder));
 		for (const sig of Object.values(holder.sigs))
-			if (sig.name) client.graph.named.delete(sig.name);
+			if (sig.name) riva.graph.named.delete(sig.name);
 	}
-	client.slots.set(claim, def);
+	riva.slots.set(claim, def);
 	// A hydrated value is not frozen when it is decoded: freeze it here (dev only).
-	const seeds = client.graph.seeds;
+	const seeds = riva.graph.seeds;
 	if (seeds)
 		for (const k in sigs) {
 			const sig = sigs[k];
 			if (sig?.name !== undefined && seeds.has(sig.name))
-				client.untracked(() => freeze(client.get(sig)));
+				riva.untracked(() => freeze(riva.get(sig)));
 		}
 	const bound: Record<string, (...args: unknown[]) => unknown> = {};
 	for (const k in actions)
-		bound[k] = (...args) => run(def, client, actions[k] as never, args);
+		bound[k] = (...args) => run(def, riva, actions[k] as never, args);
 	const made: Instance = [
 		view(
 			members,
-			(k) => client.get(members[k] as Readable<unknown>),
+			(k) => riva.get(members[k] as Readable<unknown>),
 			(k) =>
 				refuse(
 					`Store "${name}": "${k}" is read-only here; write it in an action.`,
@@ -59,6 +59,6 @@ export function instance(def: StoreDef, client: RivaClient): Instance {
 		),
 		bound,
 	];
-	client.slots.set(def, made);
+	riva.slots.set(def, made);
 	return made;
 }

@@ -16,7 +16,7 @@ After an action or a mutation, the data on screen must follow. Three tools: writ
 
 ## `revalidate`
 
-`revalidate` is a query: invalidating it re-runs the route loaders through the router's `revalidate()`. Put it in a mutation's `invalidates`, or call `revalidate.invalidate(client)`; invalidations of one tick make one run.
+`revalidate` is a query: invalidating it re-runs the route loaders through the router's `revalidate()`. Put it in a mutation's `invalidates`, or call `revalidate.invalidate(riva)`; invalidations of one tick make one run.
 
 ## `invalidateOnAction`
 

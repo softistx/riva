@@ -5,7 +5,7 @@ import type {
 	VarsArgs,
 } from '@softistx/riva';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useClient } from './context';
+import { useRiva } from './context';
 
 export interface MutationResult<Vars, Data> {
 	/** Runs the mutation: resolves with the server data, rejects with the error (also in `error`). */
@@ -38,7 +38,7 @@ const IDLE: Settled<never> = Object.freeze({
 export function useMutation<Vars, Data>(
 	def: Mutation<Vars, Data>,
 ): MutationResult<Vars, Data> {
-	const client = useClient();
+	const riva = useRiva();
 	const [state, setState] = useState<Settled<Data>>(IDLE);
 	const live = useRef(false);
 	const latest = useRef(0);
@@ -57,8 +57,8 @@ export function useMutation<Vars, Data>(
 			report(id, { status: 'pending', data: undefined, error: undefined });
 			try {
 				const data = await (
-					def.run as (c: typeof client, ...a: unknown[]) => Promise<Data>
-				)(client, ...args);
+					def.run as (c: typeof riva, ...a: unknown[]) => Promise<Data>
+				)(riva, ...args);
 				report(id, { status: 'success', data, error: undefined });
 				return data;
 			} catch (error) {
@@ -66,7 +66,7 @@ export function useMutation<Vars, Data>(
 				throw error;
 			}
 		},
-		[client, def, report],
+		[riva, def, report],
 	);
 	const reset = useCallback(() => {
 		latest.current++;

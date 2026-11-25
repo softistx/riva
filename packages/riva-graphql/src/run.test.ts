@@ -1,18 +1,18 @@
 import { expect, test } from 'bun:test';
-import { createRivaClient } from '@softistx/riva';
+import { createRiva } from '@softistx/riva';
 import { fakeTransport, PATIENTS_QUERY } from '../test/fixtures';
 import { operationOf } from './operation';
 import { fetchOf } from './run';
 import { provideGraphQL } from './transport';
 
-test('fetches through the transport of the context client, with its signal', async () => {
-	const client = createRivaClient();
+test('fetches through the transport of the context riva, with its signal', async () => {
+	const riva = createRiva();
 	const t = fakeTransport(() => ({ ok: true }));
-	provideGraphQL(client, t);
+	provideGraphQL(riva, t);
 	const ctl = new AbortController();
 	const out = await fetchOf(operationOf(PATIENTS_QUERY))(
 		{ school: 's' },
-		{ client, signal: ctl.signal },
+		{ riva, signal: ctl.signal },
 	);
 	expect(out as unknown).toEqual({ ok: true });
 	expect(t.calls[0]).toMatchObject({
@@ -24,11 +24,11 @@ test('fetches through the transport of the context client, with its signal', asy
 });
 
 test('rejects without a transport', async () => {
-	const client = createRivaClient();
+	const riva = createRiva();
 	await expect(
 		fetchOf(operationOf(PATIENTS_QUERY))(
 			{ school: 's' },
-			{ client, signal: new AbortController().signal },
+			{ riva, signal: new AbortController().signal },
 		),
 	).rejects.toThrow(/provideGraphQL/);
 });

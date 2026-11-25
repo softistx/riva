@@ -2,13 +2,13 @@
 
 Each entry is headed by the message you will see.
 
-## `No RivaClient in this request: add rivaMiddleware() from @softistx/riva-react-router/server to the root route's middleware.`
+## `No Riva in this request: add rivaMiddleware() from @softistx/riva-react-router/server to the root route's middleware.`
 
 Code: `RIVA_SCOPE` (`RivaScopeError`).
 
 **When:** `rivaOf(context)` or `riva(context)` ran in a loader or action of a request where the middleware did not run.
 
-**Why:** `rivaOf` and `riva` are for server loaders and actions only (`clientLoader` is not supported), and the request's client is created by the middleware and put in the router context; nothing else makes one.
+**Why:** `rivaOf` and `riva` are for server loaders and actions only (`clientLoader` is not supported), and the request's riva is created by the middleware and put in the router context; nothing else makes one.
 
 **Fix:** declare it on the root route.
 
@@ -24,7 +24,7 @@ Code: `RIVA_SCOPE` (`RivaScopeError`).
 
 **When:** the middleware is listed on the root route and on a nested route (or twice on one).
 
-**Why:** a second run would replace the request's client, and loaders that ran before would have filled another.
+**Why:** a second run would replace the request's riva, and loaders that ran before would have filled another.
 
 **Fix:** keep the single declaration on the root route.
 
@@ -32,11 +32,11 @@ Code: `RIVA_SCOPE` (`RivaScopeError`).
 
 Code: `RIVA_SCOPE` (`RivaScopeError`).
 
-**When:** `revalidate` was invalidated (a mutation's `invalidates`, `invalidateOnAction`, or `revalidate.invalidate(client)`) on a client no `RivaRouterProvider` renders for.
+**When:** `revalidate` was invalidated (a mutation's `invalidates`, `invalidateOnAction`, or `revalidate.invalidate(riva)`) on a riva no `RivaRouterProvider` renders for.
 
-**Why:** the provider leaves the router's `revalidate()` on the client; with no provider there is nothing to call.
+**Why:** the provider leaves the router's `revalidate()` on the riva; with no provider there is nothing to call.
 
-**Fix:** render `RivaRouterProvider` above the component, with the same `client`.
+**Fix:** render `RivaRouterProvider` above the component, with the same `riva`.
 
 ## `RIVA_DATA_*` refusals from `dataRoute`
 

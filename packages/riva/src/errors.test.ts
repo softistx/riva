@@ -18,7 +18,7 @@ test('RivaError carries a code and its name', () => {
 });
 
 test('RivaScopeError is a RivaError with the scope code', () => {
-	const e = new RivaScopeError('no client');
+	const e = new RivaScopeError('no riva');
 	expect(e).toBeInstanceOf(RivaError);
 	expect(e).toBeInstanceOf(RivaScopeError);
 	expect(e.code).toBe('RIVA_SCOPE');

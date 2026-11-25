@@ -1,4 +1,4 @@
-import type { RivaClient } from '../client';
+import type { Riva } from '../client';
 import type { Computed, Getter, ReadonlySignal } from '../computed';
 import type { Mutation, RunOptions } from '../mutation';
 import type { EnsureOptions, Query, VarsArgs } from '../query';
@@ -6,16 +6,16 @@ import type { EnsureOptions, Query, VarsArgs } from '../query';
 /** What an action, a computed or a component reads: the keys of `S`, read-only. */
 export type View<S> = { readonly [K in keyof S]: S[K] };
 
-/** The last argument every action gets: its client, and the engine bound to it. */
+/** The last argument every action gets: its riva, and the engine bound to it. */
 export interface StoreContext {
-	readonly client: RivaClient;
-	/** Fetches when missing or stale and awaits (`query.ensure(client, …)`). */
+	readonly riva: Riva;
+	/** Fetches when missing or stale and awaits (`query.ensure(riva, …)`). */
 	fetch<Vars, Data>(
 		// biome-ignore lint/suspicious/noExplicitAny: any state shape of a query
 		query: Query<Vars, Data, any>,
 		...args: VarsArgs<Vars, [opts?: EnsureOptions]>
 	): Promise<Data>;
-	/** Runs a mutation (`mutation.run(client, …)`). */
+	/** Runs a mutation (`mutation.run(riva, …)`). */
 	mutate<Vars, Data>(
 		mutation: Mutation<Vars, Data>,
 		...args: VarsArgs<Vars, [opts?: RunOptions]>
@@ -90,25 +90,25 @@ export type Reserved<S, C, A> = [
 export type Action<S, C> = (s: S & Readonly<C>, ...args: any[]) => unknown;
 
 export interface StoreOptions<S, C, A> {
-	/** Required and unique per client: it prefixes each state key's signal name. */
+	/** Required and unique per riva: it prefixes each state key's signal name. */
 	name: string;
 	/** Every state key travels in an SSR snapshot. Default false. */
 	ssr?: boolean;
 	state: S;
 	/** Derived values: `(s, get) => value`, `s` being the state only. */
 	computed?: { [K in keyof C]: (s: View<S>, get: Getter) => C[K] };
-	/** The only writers: `(s, ...args, { client, fetch, mutate })`. */
+	/** The only writers: `(s, ...args, { riva, fetch, mutate })`. */
 	actions?: A & Record<string, Action<S, C>>;
 }
 
-/** A domain store: stateless definitions, their values live per `RivaClient`. */
+/** A domain store: stateless definitions, their values live per `Riva`. */
 export type Store<N extends string, S, C, A> = {
 	readonly kind: 'store';
 	readonly name: N;
-	/** Puts every state key back to its initial value (the ambient client, or the one given). */
-	reset(client?: RivaClient): void;
-	/** The store on one client: a read-only view of state and computeds, and the actions. */
-	bind(client: RivaClient): readonly [View<S & C>, Bound<A>];
+	/** Puts every state key back to its initial value (the ambient riva, or the one given). */
+	reset(riva?: Riva): void;
+	/** The store on one riva: a read-only view of state and computeds, and the actions. */
+	bind(riva: Riva): readonly [View<S & C>, Bound<A>];
 } & { readonly [K in keyof S]: ReadonlySignal<S[K]> } & {
 	readonly [K in keyof C]: Computed<C[K]>;
 } & Bound<A>;

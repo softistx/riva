@@ -14,9 +14,9 @@ export const patientsFeed = infinite(PATIENTS_QUERY, {
 	connection: (data) => data.patients, // { edges, pageInfo }
 });
 
-await patientsFeed.ensure(client, { school: 'north' });
-await patientsFeed.fetchNext(client, { school: 'north' });
-const { data, hasNext } = client.get(patientsFeed, { school: 'north' });
+await patientsFeed.ensure(riva, { school: 'north' });
+await patientsFeed.fetchNext(riva, { school: 'north' });
+const { data, hasNext } = riva.get(patientsFeed, { school: 'north' });
 data?.nodes; // the flattened nodes, typed from the document
 ```
 

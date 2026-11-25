@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { createRivaClient } from '../client';
+import { createRiva } from '../client';
 import { type Signal, signal } from '../signal';
 import type { StoreDef } from './def';
 import { instance } from './instance';
@@ -19,13 +19,13 @@ const make = (name: string): StoreDef => {
 };
 
 describe('instance', () => {
-	test('is made once per client, with a read-only view and bound actions', () => {
+	test('is made once per riva, with a read-only view and bound actions', () => {
 		const def = make('i1');
-		const c = createRivaClient();
+		const c = createRiva();
 		const a = instance(def, c);
 		expect(instance(def, c)).toBe(a);
 		expect(instance(make('i1b'), c)).not.toBe(a);
-		expect(instance(def, createRivaClient())).not.toBe(a);
+		expect(instance(def, createRiva())).not.toBe(a);
 		a[1]['inc']?.();
 		expect(a[0]['n']).toBe(1);
 		expect(() => {
@@ -36,7 +36,7 @@ describe('instance', () => {
 	test('claims the name: a second definition is refused on the server, not in a browser', () => {
 		const one = make('i2');
 		const two = make('i2');
-		const c = createRivaClient();
+		const c = createRiva();
 		instance(one, c);
 		expect(() => instance(two, c)).toThrow(/two stores are named "i2"/);
 		const g = globalThis as { document?: unknown };
@@ -52,7 +52,7 @@ describe('instance', () => {
 	test('a replaced definition does not take the name back (hot-reload ping-pong)', () => {
 		const a = make('i3');
 		const b = make('i3');
-		const c = createRivaClient();
+		const c = createRiva();
 		const g = globalThis as { document?: unknown };
 		g.document = {};
 		try {
@@ -78,7 +78,7 @@ describe('instance', () => {
 
 	test('on the server a definition other than the holder is still refused', () => {
 		const a = make('i4');
-		const c = createRivaClient();
+		const c = createRiva();
 		instance(a, c);
 		expect(() => instance(make('i4'), c)).toThrow(/two stores are named "i4"/);
 		expect(() => instance(make('i4'), c)).toThrow(/two stores are named "i4"/);

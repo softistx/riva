@@ -1,13 +1,13 @@
 import { expect, test } from 'bun:test';
-import { createRivaClient, RivaScopeError } from '@softistx/riva';
+import { createRiva, RivaScopeError } from '@softistx/riva';
 import { RouterContextProvider } from 'react-router';
 import { riva, rivaContext, rivaOf } from './context';
 
-test('rivaOf reads the request client from the context', () => {
+test('rivaOf reads the request riva from the context', () => {
 	const context = new RouterContextProvider();
-	const client = createRivaClient();
-	context.set(rivaContext, client);
-	expect(rivaOf(context)).toBe(client);
+	const riva = createRiva();
+	context.set(rivaContext, riva);
+	expect(rivaOf(context)).toBe(riva);
 });
 
 test('rivaOf without the middleware throws a RivaScopeError naming the fix', () => {
@@ -21,13 +21,13 @@ test('rivaOf without the middleware throws a RivaScopeError naming the fix', () 
 	expect(e).toBeInstanceOf(RivaScopeError);
 	expect(e?.code).toBe('RIVA_SCOPE');
 	expect(e?.message).toBe(
-		"No RivaClient in this request: add rivaMiddleware() from @softistx/riva-react-router/server to the root route's middleware.",
+		"No Riva in this request: add rivaMiddleware() from @softistx/riva-react-router/server to the root route's middleware.",
 	);
 });
 
-test('riva() makes a spreadable payload holding a snapshot of the request client', () => {
+test('riva() makes a spreadable payload holding a snapshot of the request riva', () => {
 	const context = new RouterContextProvider();
-	context.set(rivaContext, createRivaClient());
+	context.set(rivaContext, createRiva());
 	const data = { ...riva(context), extra: 1 };
 	expect(Object.keys(data)).toEqual(['~riva', 'extra']);
 	expect(data['~riva']).toMatchObject({ v: 1, q: [], a: {} });

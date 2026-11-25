@@ -1,5 +1,5 @@
 import { expect, expectTypeOf, test } from 'bun:test';
-import { createRivaClient } from './client';
+import { createRiva } from './client';
 import { at, type Mutation, mutation } from './mutation';
 import { query } from './query';
 
@@ -15,7 +15,7 @@ test('a definition is frozen and stateless', () => {
 
 test('variables are optional when void', async () => {
 	const m = mutation({ id: 'm', run: async () => 'ok' });
-	expect(await m.run(createRivaClient())).toBe('ok');
+	expect(await m.run(createRiva())).toBe('ok');
 });
 
 test('Vars and Data are typed through run, optimistic, updates and invalidates', () => {
@@ -61,7 +61,7 @@ test('Vars and Data are typed through run, optimistic, updates and invalidates',
 	mutation({ id: 'w', run: async () => 1, invalidates: [at(one, 3)] });
 	// Never called: only the types are checked.
 	const _calls = () => {
-		const c = createRivaClient();
+		const c = createRiva();
 		expectTypeOf(m.run(c, { name: 'x' })).toEqualTypeOf<
 			Promise<{ ok: boolean }>
 		>();

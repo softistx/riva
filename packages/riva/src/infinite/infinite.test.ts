@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { createRivaClient } from '../client';
+import { createRiva } from '../client';
 import { entities } from '../entities';
 import { writeEntity } from '../entities/api';
 import { RivaHttpError } from '../errors';
@@ -64,7 +64,7 @@ const feedOf = (s: ReturnType<typeof server>, extra = {}) =>
 	});
 
 const names = (
-	c: ReturnType<typeof createRivaClient>,
+	c: ReturnType<typeof createRiva>,
 	f: ReturnType<typeof feedOf>,
 ) => c.get(f, undefined).data?.nodes.map((n) => n.name);
 
@@ -72,7 +72,7 @@ describe('paging', () => {
 	test('first page, fetchNext twice, then fetchPrevious', async () => {
 		const s = server(7);
 		const f = feedOf(s);
-		const c = createRivaClient();
+		const c = createRiva();
 		const first = await f.ensure(c);
 		expect(first.nodes.map((n) => n.id)).toEqual(['0', '1']);
 		await f.fetchNext(c);
@@ -96,7 +96,7 @@ describe('paging', () => {
 	test('fetchPrevious prepends a page before the first', async () => {
 		const s = server(7);
 		const f = feedOf(s);
-		const c = createRivaClient();
+		const c = createRiva();
 		// start in the middle
 		f.setData(c, undefined, {
 			pages: [(await s.fetch({ after: '2' })) as never],
@@ -115,7 +115,7 @@ describe('paging', () => {
 	test('hasNext turns false at the end and fetchNext is then a no-op', async () => {
 		const s = server(3);
 		const f = feedOf(s);
-		const c = createRivaClient();
+		const c = createRiva();
 		await f.ensure(c);
 		expect(c.get(f).hasNext).toBe(true);
 		await f.fetchNext(c);
@@ -129,14 +129,14 @@ describe('paging', () => {
 	test('fetchNext before the first page is loaded is a no-op', async () => {
 		const s = server(3);
 		const f = feedOf(s);
-		await f.fetchNext(createRivaClient());
+		await f.fetchNext(createRiva());
 		expect(s.calls).toHaveLength(0);
 	});
 
 	test('a concurrent fetchNext is deduped, and isFetchingNext shows', async () => {
 		const s = server(7);
 		const f = feedOf(s);
-		const c = createRivaClient();
+		const c = createRiva();
 		await f.ensure(c);
 		const seen: boolean[] = [];
 		const off = c.subscribe(f, undefined, (st) => seen.push(st.isFetchingNext));
@@ -171,7 +171,7 @@ describe('paging', () => {
 			connection: (p) => p,
 			retry: 0,
 		});
-		const c = createRivaClient();
+		const c = createRiva();
 		await f.ensure(c, { size: 5 });
 		await f.fetchNext(c, { size: 5 });
 		expect(calls).toEqual([{ size: 5 }, { size: 5, cursor: 'c1' }]);
@@ -183,7 +183,7 @@ describe('refetch', () => {
 	test('invalidate re-runs every loaded page from the first one and swaps them at once', async () => {
 		const s = server(7);
 		const f = feedOf(s, { staleTime: '1h' });
-		const c = createRivaClient();
+		const c = createRiva();
 		await f.ensure(c);
 		await f.fetchNext(c);
 		await f.fetchNext(c);
@@ -223,7 +223,7 @@ describe('refetch', () => {
 			},
 			connection: (p) => p,
 		});
-		const c = createRivaClient();
+		const c = createRiva();
 		await f.ensure(c);
 		await f.fetchNext(c);
 		expect(c.get(f).data?.nodes).toEqual(['a', 'b', 'c', 'd']);
@@ -237,7 +237,7 @@ describe('refetch', () => {
 	test('a list that shrank stops early when hasNextPage turns false', async () => {
 		const s = server(7);
 		const f = feedOf(s);
-		const c = createRivaClient();
+		const c = createRiva();
 		await f.ensure(c);
 		await f.fetchNext(c);
 		await f.fetchNext(c);
@@ -253,7 +253,7 @@ describe('refetch', () => {
 	test('an error during the refetch keeps the old pages', async () => {
 		const s = server(7);
 		const f = feedOf(s);
-		const c = createRivaClient();
+		const c = createRiva();
 		await f.ensure(c);
 		await f.fetchNext(c);
 		s.state.fail = true;
@@ -267,7 +267,7 @@ describe('refetch', () => {
 	test('an abort keeps the old pages', async () => {
 		const s = server(7);
 		const f = feedOf(s);
-		const c = createRivaClient();
+		const c = createRiva();
 		await f.ensure(c);
 		f.invalidate(c);
 		void f.ensure(c).catch(() => {});
@@ -280,7 +280,7 @@ describe('errors', () => {
 	test('an error during fetchNext keeps the loaded pages and sets the error', async () => {
 		const s = server(7);
 		const f = feedOf(s);
-		const c = createRivaClient();
+		const c = createRiva();
 		await f.ensure(c);
 		s.state.fail = true;
 		await expect(f.fetchNext(c)).rejects.toBeInstanceOf(RivaHttpError);
@@ -299,7 +299,7 @@ describe('errors', () => {
 	test('a page that arrives after the list moved is dropped', async () => {
 		const s = server(7);
 		const f = feedOf(s);
-		const c = createRivaClient();
+		const c = createRiva();
 		await f.ensure(c);
 		const p = f.fetchNext(c);
 		f.setData(c, undefined, {
@@ -316,7 +316,7 @@ describe('lifecycle', () => {
 	test('gc drops an unobserved feed', async () => {
 		const s = server(7);
 		const f = feedOf(s, { gcTime: 1 });
-		const c = createRivaClient();
+		const c = createRiva();
 		await f.ensure(c);
 		await new Promise((r) => setTimeout(r, 20));
 		expect(c.get(f).status).toBe('idle');
@@ -325,7 +325,7 @@ describe('lifecycle', () => {
 	test('flags never outlive a fetch, gc included', async () => {
 		const s = server(7);
 		const f = feedOf(s, { gcTime: 1 });
-		const c = createRivaClient();
+		const c = createRiva();
 		await f.ensure(c);
 		await f.fetchNext(c);
 		await new Promise((r) => setTimeout(r, 20));
@@ -340,16 +340,16 @@ describe('lifecycle', () => {
 	test('a caller value for a cursor variable is stripped', async () => {
 		const s = server(7);
 		const f = feedOf(s);
-		const c = createRivaClient();
+		const c = createRiva();
 		await f.ensure(c, { after: '4' } as never);
 		expect(s.calls[0]).toEqual({});
 	});
 
-	test('two clients do not share pages or in-flight fetches', async () => {
+	test('two riva instances do not share pages or in-flight fetches', async () => {
 		const s = server(7);
 		const f = feedOf(s);
-		const a = createRivaClient();
-		const b = createRivaClient();
+		const a = createRiva();
+		const b = createRiva();
 		await f.ensure(a);
 		await f.ensure(b);
 		await f.fetchNext(a);
@@ -364,7 +364,7 @@ describe('lifecycle', () => {
 	test('on the server nothing is timed: no gc, no retry', async () => {
 		const s = server(7);
 		const f = feedOf(s);
-		const c = createRivaClient({
+		const c = createRiva({
 			scheduler: {
 				now: () => 0,
 				setTimeout() {
@@ -387,7 +387,7 @@ describe('with entities()', () => {
 	test('a node edit through writeEntity shows in the feed', async () => {
 		const s = server(7);
 		const f = patients(s);
-		const c = createRivaClient();
+		const c = createRiva();
 		await f.ensure(c);
 		await f.fetchNext(c);
 		const seen: Array<string | undefined> = [];
@@ -410,7 +410,7 @@ describe('with entities()', () => {
 	test('fetchNext normalizes the new page: a refetch elsewhere updates it', async () => {
 		const s = server(7);
 		const f = patients(s);
-		const c = createRivaClient();
+		const c = createRiva();
 		await f.ensure(c);
 		await f.fetchNext(c);
 		writeEntity(c, 'Patient:2', { name: 'Two' });
@@ -421,7 +421,7 @@ describe('with entities()', () => {
 	test('a mutation tx.set on a feed shows at once and rolls back on failure', async () => {
 		const s = server(7);
 		const f = patients(s);
-		const c = createRivaClient();
+		const c = createRiva();
 		await f.ensure(c);
 		const add = mutation<string, string>({
 			id: 'add',
@@ -458,7 +458,7 @@ test('a first fetch that fails leaves an error with no data', async () => {
 	const s = server(7);
 	s.state.fail = true;
 	const f = feedOf(s);
-	const c = createRivaClient();
+	const c = createRiva();
 	await f.ensure(c).catch(() => {});
 	expect(c.get(f).status).toBe('error');
 	expect(c.get(f).data).toBeUndefined();

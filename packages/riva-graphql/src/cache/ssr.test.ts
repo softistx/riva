@@ -1,11 +1,11 @@
 /* biome-ignore-all lint/style/useNamingConvention: GraphQL's field names */
 import { expect, test } from 'bun:test';
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
-import { createRivaClient, type RivaClient } from '@softistx/riva';
+import { createRiva, type Riva } from '@softistx/riva';
 import { readEntity } from '@softistx/riva/entities';
 import { dehydrate, hydrate } from '@softistx/riva/ssr';
 import { parse } from 'graphql';
-import { storeOfClient } from '../../test/cache';
+import { storeOfRiva } from '../../test/cache';
 import { fakeTransport } from '../../test/fixtures';
 import { query } from '../query';
 import { provideGraphQL } from '../transport';
@@ -39,44 +39,44 @@ const answer = (n: number) => ({
 const cache = normalized();
 const aliased = query(ALIASED_QUERY, { cache, staleTime: 60_000 });
 
-function setup(): { client: RivaClient; calls: () => number } {
-	const client = createRivaClient();
+function setup(): { riva: Riva; calls: () => number } {
+	const riva = createRiva();
 	const transport = fakeTransport((call) =>
 		answer((call.variables as { n: number }).n),
 	);
-	provideGraphQL(client, transport);
-	return { client, calls: () => transport.calls.length };
+	provideGraphQL(riva, transport);
+	return { riva, calls: () => transport.calls.length };
 }
 
 test('a normalized cache with aliases and arguments survives dehydrate and hydrate', async () => {
 	const server = setup();
-	await aliased.ensure(server.client, { id: '1', n: 1 });
-	await aliased.ensure(server.client, { id: '1', n: 2 });
-	const snap = JSON.parse(JSON.stringify(dehydrate(server.client)));
+	await aliased.ensure(server.riva, { id: '1', n: 1 });
+	await aliased.ensure(server.riva, { id: '1', n: 2 });
+	const snap = JSON.parse(JSON.stringify(dehydrate(server.riva)));
 
 	const browser = setup();
-	hydrate(browser.client, snap);
-	const one = browser.client.get(aliased, { id: '1', n: 1 }).data;
-	const two = browser.client.get(aliased, { id: '1', n: 2 }).data;
+	hydrate(browser.riva, snap);
+	const one = browser.riva.get(aliased, { id: '1', n: 1 }).data;
+	const two = browser.riva.get(aliased, { id: '1', n: 2 }).data;
 	expect(one).toEqual(answer(1));
 	expect(two).toEqual(answer(2));
 	expect(one?.me.label).toBe('Ada');
 	expect(two?.me.friends.map((f) => f.nick)).toEqual(['P2', 'P3']);
 
 	// Renormalized under field names and argument keys, as the server's store is.
-	expect(storeOfClient(browser.client).peek('Patient:1')).toEqual(
-		storeOfClient(server.client).peek('Patient:1'),
+	expect(storeOfRiva(browser.riva).peek('Patient:1')).toEqual(
+		storeOfRiva(server.riva).peek('Patient:1'),
 	);
-	expect(readEntity(browser.client, 'Patient:1')).toMatchObject({
+	expect(readEntity(browser.riva, 'Patient:1')).toMatchObject({
 		name: 'Ada',
 	});
 
 	// Fresh data: subscribing fetches nothing; a second dehydrate is identical.
-	const off = browser.client.subscribe(aliased, { id: '1', n: 1 }, () => {});
+	const off = browser.riva.subscribe(aliased, { id: '1', n: 1 }, () => {});
 	await new Promise((r) => setImmediate(r));
 	off();
 	expect(browser.calls()).toBe(0);
-	const again = dehydrate(browser.client);
+	const again = dehydrate(browser.riva);
 	expect(again.q.map((e) => [e.k, e.d])).toEqual(
 		snap.q.map((e: { k: string; d: unknown }) => [e.k, e.d]),
 	);

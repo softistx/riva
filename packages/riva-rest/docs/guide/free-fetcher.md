@@ -37,7 +37,7 @@ export const renameTodo = mutation({
 | `run(vars, ctx)` (mutation) | required | Sends the change, returns the data. |
 | the others | core defaults | `staleTime`, `gcTime`, `retry`, `cache`, `optimistic`, `invalidates`… |
 
-The context is the core's (`signal`, `client`) plus `http`, the httpyz client of the transport.
+The context is the core's (`signal`, `riva`) plus `http`, the httpyz client of the transport.
 
 ## Traps
 

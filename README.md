@@ -8,7 +8,7 @@ hand-written keys.
 ## API sketch
 
 ```ts
-// Local state: definitions, no value until a client reads them
+// Local state: definitions, no value until a riva reads them
 import { signal, computed } from "@softistx/riva";
 
 export const filter = signal("");
@@ -43,19 +43,19 @@ function PatientList() {
 }
 
 // Outside a component
-patients.invalidate(client, { school });
-renamePatient.run(client, { id, name });
+patients.invalidate(riva, { school });
+renamePatient.run(riva, { id, name });
 ```
 
 ## Packages
 
 | Package | Role |
 |---------|------|
-| `@softistx/riva` | Core: signals, `RivaClient`, query and mutation engine, cache, pagination, optimistic layer, dehydrate and hydrate |
+| `@softistx/riva` | Core: signals, `Riva`, query and mutation engine, cache, pagination, optimistic layer, dehydrate and hydrate |
 | `@softistx/riva-react` | `RivaProvider`, hooks, Suspense support |
 | `@softistx/riva-graphql` | GraphQL transport over `@softistx/graphql-client`, persisted ids, allowlist codegen |
 | `@softistx/riva-rest` | REST transport over `openapi-httpyz`, plus a free fetcher |
-| `@softistx/riva-react-router` | Per-request client, ambient scope, SSR hydration and navigation merge |
+| `@softistx/riva-react-router` | Per-request riva, ambient scope, SSR hydration and navigation merge |
 
 ## Status
 

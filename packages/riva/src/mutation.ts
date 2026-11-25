@@ -1,4 +1,4 @@
-import type { RivaClient } from './client';
+import type { Riva } from './client';
 import { execute } from './mutation-run';
 import type { CachePolicy, FetchContext, Query, VarsArgs } from './query';
 import type { AnyQuery } from './query-entry';
@@ -66,10 +66,7 @@ export interface Mutation<Vars, Data> {
 	/** @internal */
 	readonly options: MutationOptions<Vars, Data>;
 	/** Resolves with the server data; rejects with the error, after the rollback. */
-	run(
-		client: RivaClient,
-		...args: VarsArgs<Vars, [opts?: RunOptions]>
-	): Promise<Data>;
+	run(riva: Riva, ...args: VarsArgs<Vars, [opts?: RunOptions]>): Promise<Data>;
 }
 
 export function mutation<Vars = void, Data = unknown>(
@@ -79,8 +76,8 @@ export function mutation<Vars = void, Data = unknown>(
 		kind: 'mutation',
 		id: options.id,
 		options,
-		run: (client: RivaClient, vars?: Vars, opts?: RunOptions) =>
-			execute(client, options, vars as Vars, opts),
+		run: (riva: Riva, vars?: Vars, opts?: RunOptions) =>
+			execute(riva, options, vars as Vars, opts),
 	} as Mutation<Vars, Data>);
 	return def;
 }

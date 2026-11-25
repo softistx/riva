@@ -1,4 +1,4 @@
-import type { RivaClient } from '../client';
+import type { Riva } from '../client';
 import { denormalize } from './denormalize';
 import type { Fields } from './identity';
 import { refsIn } from './json';
@@ -7,10 +7,10 @@ import { type EntityPolicy, EntityRoot, storeOf } from './policy';
 
 /** The entity as the queries read it (tracked inside a computed or effect); `undefined` when missing. */
 export const readEntity = <T = Record<string, unknown>>(
-	client: RivaClient,
+	riva: Riva,
 	ref: string,
 ): T | undefined => {
-	const store = storeOf(client);
+	const store = storeOf(riva);
 	return denormalize(store, { __ref: ref }, store.directLocal) as T | undefined;
 };
 
@@ -20,33 +20,33 @@ export const readEntity = <T = Record<string, unknown>>(
  * notified once.
  */
 export function writeEntity<T extends Fields = Fields>(
-	client: RivaClient,
+	riva: Riva,
 	ref: string,
 	patch: T | ((prev: Record<string, unknown> | undefined) => T),
 ): void {
-	const store = storeOf(client);
+	const store = storeOf(riva);
 	const next =
 		typeof patch === 'function'
-			? patch(client.untracked(() => readEntity(client, ref)))
+			? patch(riva.untracked(() => readEntity(riva, ref)))
 			: patch;
 	const pending = normalizeAt(store, ref, next);
-	client.batch(() => {
+	riva.batch(() => {
 		for (const [r, fields] of pending) store.merge(r, fields);
 		store.pins.add(ref);
 	});
 }
 
 /** Removes an entity: queries reading it see the field as missing. `false` when absent. */
-export function evict(client: RivaClient, ref: string): boolean {
-	const store = storeOf(client);
+export function evict(riva: Riva, ref: string): boolean {
+	const store = storeOf(riva);
 	store.pins.delete(ref);
 	return store.clear(ref);
 }
 
 /** Marks stale every query entry that reaches the entity, and refetches the observed ones. */
-export function invalidateEntity(client: RivaClient, ref: string): void {
-	const store = storeOf(client);
-	client.queries.invalidateBy((stored) => {
+export function invalidateEntity(riva: Riva, ref: string): void {
+	const store = storeOf(riva);
+	riva.queries.invalidateBy((stored) => {
 		if (!(stored instanceof EntityRoot)) return false;
 		const seen = new Set<string>();
 		const todo = [...stored.refs];

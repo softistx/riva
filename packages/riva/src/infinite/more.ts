@@ -1,4 +1,4 @@
-import type { RivaClient } from '../client';
+import type { Riva } from '../client';
 import { computed } from '../computed';
 import { stableKey } from '../key';
 import type { FetchContext, Query } from '../query';
@@ -21,19 +21,19 @@ export interface More<Vars, Page, Node> {
 const noop = () => {};
 
 /** Whether the entry is fetching (a refetch of every loaded page, or its first load). */
-const busyOf = <V, P, N>(c: More<V, P, N>, client: RivaClient, vars: V) =>
-	computed(() => client.queries.state(c.q, vars).isFetching);
+const busyOf = <V, P, N>(c: More<V, P, N>, riva: Riva, vars: V) =>
+	computed(() => riva.queries.state(c.q, vars).isFetching);
 
 /** Waits until the entry's refetch is no longer in flight. */
 async function settled(
-	client: RivaClient,
+	riva: Riva,
 	busy: ReturnType<typeof computed<boolean>>,
 	signal: AbortSignal,
 ): Promise<void> {
-	while (client.get(busy))
+	while (riva.get(busy))
 		await raceAbort(
 			new Promise<void>((done) => {
-				const off = client.subscribe(busy, (b) => {
+				const off = riva.subscribe(busy, (b) => {
 					if (b) return;
 					off();
 					done();
@@ -47,27 +47,27 @@ async function settled(
 async function load<V, P, N>(
 	c: More<V, P, N>,
 	dir: Dir,
-	client: RivaClient,
+	riva: Riva,
 	vars: V,
 	key: string,
 	signal: AbortSignal,
 ): Promise<void> {
-	const data = () => client.untracked(() => client.queries.state(c.q, vars));
-	const busy = busyOf(c, client, vars);
+	const data = () => riva.untracked(() => riva.queries.state(c.q, vars));
+	const busy = busyOf(c, riva, vars);
 	for (;;) {
-		await settled(client, busy, signal);
+		await settled(riva, busy, signal);
 		const at = cursorBeyond(c.connection, data().data, dir);
 		if (at === undefined) return;
 		const param: PageParam = dir === 'next' ? { after: at } : { before: at };
 		// A refetch that ran meanwhile makes this page older than the list.
 		let refetched = false;
-		const off = client.subscribe(busy, (b) => {
+		const off = riva.subscribe(busy, (b) => {
 			refetched ||= b;
 		});
-		const next = await withRetry(client.queries.sched, c, signal, () =>
-			c.page(vars, param, { signal, client }),
+		const next = await withRetry(riva.queries.sched, c, signal, () =>
+			c.page(vars, param, { signal, riva }),
 		).finally(off);
-		await settled(client, busy, signal);
+		await settled(riva, busy, signal);
 		const now = data();
 		if (
 			refetched ||
@@ -75,48 +75,48 @@ async function load<V, P, N>(
 			cursorBeyond(c.connection, now.data, dir) !== at
 		)
 			continue; // the list moved under the fetch: start again from its cursor
-		const invalid = client.queries.invalid(c.q, vars);
-		client.batch(() => {
-			c.q.setData(client, vars, (d) => {
+		const invalid = riva.queries.invalid(c.q, vars);
+		riva.batch(() => {
+			c.q.setData(riva, vars, (d) => {
 				const { pages, params } = d ?? now.data ?? { pages: [], params: [] };
 				return dir === 'next'
 					? { pages: [...pages, next], params: [...params, param] }
 					: { pages: [next, ...pages], params: [param, ...params] };
 			});
-			c.slots.setFlag(client, key, dir, false);
+			c.slots.setFlag(riva, key, dir, false);
 		});
-		if (invalid) c.q.invalidate(client, vars); // an invalidation is never lost
+		if (invalid) c.q.invalidate(riva, vars); // an invalidation is never lost
 		return;
 	}
 }
 
-/** Appends or prepends one page. Deduped per client, entry and direction. */
+/** Appends or prepends one page. Deduped per riva, entry and direction. */
 export function fetchMore<V, P, N>(
 	c: More<V, P, N>,
 	dir: Dir,
-	client: RivaClient,
+	riva: Riva,
 	vars: V,
 ): Promise<void> {
 	const key = stableKey(c.id, vars);
-	const s = c.slots.slot(client);
+	const s = c.slots.slot(riva);
 	const id = `${dir}:${key}`;
 	const running = s.runs.get(id);
 	if (running) return running;
-	const st = client.untracked(() => client.queries.state(c.q, vars));
+	const st = riva.untracked(() => riva.queries.state(c.q, vars));
 	if (!st.isFetching && cursorBeyond(c.connection, st.data, dir) === undefined)
 		return Promise.resolve();
 	const ctl = new AbortController();
-	c.slots.setFlag(client, key, dir, true);
+	c.slots.setFlag(riva, key, dir, true);
 	s.ctls.set(id, ctl);
-	const run = load(c, dir, client, vars, key, ctl.signal)
+	const run = load(c, dir, riva, vars, key, ctl.signal)
 		.catch((error) => {
-			if (!ctl.signal.aborted) client.queries.fail(c.q, vars, error);
+			if (!ctl.signal.aborted) riva.queries.fail(c.q, vars, error);
 			throw error;
 		})
 		.finally(() => {
 			s.runs.delete(id);
 			s.ctls.delete(id);
-			c.slots.setFlag(client, key, dir, false);
+			c.slots.setFlag(riva, key, dir, false);
 		});
 	s.runs.set(id, run);
 	run.catch(noop);

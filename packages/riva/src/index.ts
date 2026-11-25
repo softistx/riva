@@ -1,8 +1,8 @@
 export { batch, untracked } from './batch';
 export {
-	type ClientOptions,
-	createRivaClient,
-	RivaClient,
+	createRiva,
+	Riva,
+	type RivaOptions,
 	type SubscribeOptions,
 } from './client';
 export {
@@ -14,9 +14,16 @@ export {
 	type ReadonlySignal,
 } from './computed';
 export type { DataOperation, DataSource } from './data/types';
+export {
+	type ClientEvents,
+	type ClientOptions,
+	createRivaClient,
+	RivaClient,
+	setDefaultClient,
+} from './deprecated';
 export type { Duration } from './duration';
 export { effect } from './effect';
-export type { ClientEvents, Scheduler } from './env';
+export type { RivaEvents, Scheduler } from './env';
 export {
 	isRetryableStatus,
 	RivaAbortError,
@@ -48,7 +55,7 @@ export {
 	query,
 	type VarsArgs,
 } from './query';
-export { setDefaultClient } from './scope';
+export { setDefaultRiva } from './scope';
 export {
 	type Listener,
 	type Signal,

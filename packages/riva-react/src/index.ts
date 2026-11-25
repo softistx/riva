@@ -1,4 +1,9 @@
-export { RivaProvider, type RivaProviderProps, useClient } from './context';
+export {
+	RivaProvider,
+	type RivaProviderProps,
+	useClient,
+	useRiva,
+} from './context';
 export {
 	type MutationResult,
 	useMutation,

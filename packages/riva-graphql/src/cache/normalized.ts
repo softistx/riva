@@ -15,8 +15,8 @@ export interface NormalizedOptions extends EntitiesOptions {
 
 /**
  * The selection-aware normalized cache, for `query(DOC, { cache: normalized() })`
- * and `mutation(DOC, { cache: normalized() })`. Share one between a client's
- * definitions: it fixes the entity identity rules the client's store uses.
+ * and `mutation(DOC, { cache: normalized() })`. Share one between a riva's
+ * definitions: it fixes the entity identity rules the riva's store uses.
  */
 export function normalized(opts: NormalizedOptions = {}): OperationCache {
 	const matches = typeMatcher(opts.possibleTypes);

@@ -65,7 +65,7 @@ describe('readResult', () => {
 	test('a reference to an evicted entity is a miss', () => {
 		const store = newStore();
 		const root = writeInto(store, walkOf(patientQuery, { id: '1' }), ada);
-		evict(store.client, 'Doctor:d');
+		evict(store.riva, 'Doctor:d');
 		expect(
 			readResult(walkOf(patientQuery, { id: '1' }), store, root),
 		).toBeUndefined();

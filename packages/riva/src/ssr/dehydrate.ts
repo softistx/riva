@@ -1,4 +1,4 @@
-import type { RivaClient } from '../client';
+import type { Riva } from '../client';
 import { RivaError, type RivaRequestError } from '../errors';
 import { committed, peek } from '../query-entry';
 import { encodeAt, ssrError } from './codec';
@@ -33,7 +33,7 @@ export interface Snapshot {
 	/** Type-only: a hand-made literal does not compile. */
 	readonly [brand]: true;
 	readonly v: 1;
-	/** The clock of the dehydrating client, in ms. */
+	/** The clock of the dehydrating riva, in ms. */
 	readonly t: number;
 	readonly q: readonly SnapshotEntry[];
 	readonly a: Readonly<Record<string, unknown>>;
@@ -46,9 +46,9 @@ const errorOf = (e: unknown): SnapshotError => {
 		: { code: 'RIVA_UNKNOWN' };
 };
 
-/** The settled query entries and the changed named signals of a client, as a JSON-safe snapshot. */
-export function dehydrate(client: RivaClient): Snapshot {
-	const c = client.queries.ctx;
+/** The settled query entries and the changed named signals of a riva, as a JSON-safe snapshot. */
+export function dehydrate(riva: Riva): Snapshot {
+	const c = riva.queries.ctx;
 	const now = c.sched.now();
 	const q: SnapshotEntry[] = [];
 	for (const e of c.entries.values()) {
@@ -66,7 +66,7 @@ export function dehydrate(client: RivaClient): Snapshot {
 		});
 	}
 	const a: Record<string, unknown> = {};
-	for (const [name, n] of client.graph.named) {
+	for (const [name, n] of riva.graph.named) {
 		if (n === null)
 			throw ssrError(
 				`Cannot dehydrate: two signals are named "${name}". Give each SSR signal a unique name, or set ssr: false.`,

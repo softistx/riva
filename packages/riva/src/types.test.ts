@@ -2,7 +2,7 @@ import { expectTypeOf, test } from 'bun:test';
 import {
 	type Computed,
 	computed,
-	createRivaClient,
+	createRiva,
 	type Signal,
 	signal,
 } from './index';
@@ -10,7 +10,7 @@ import {
 test('types', () => {
 	const a = signal(0);
 	const flag = computed((get) => get(a) > 0);
-	const c = createRivaClient();
+	const c = createRiva();
 	expectTypeOf(a).toEqualTypeOf<Signal<number>>();
 	expectTypeOf(flag).toEqualTypeOf<Computed<boolean>>();
 	expectTypeOf(c.get(a)).toEqualTypeOf<number>();

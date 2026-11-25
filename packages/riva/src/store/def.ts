@@ -1,11 +1,11 @@
-import type { RivaClient } from '../client';
+import type { Riva } from '../client';
 import type { Readable } from '../computed';
 import { computed, type Getter } from '../computed';
 import { type Signal, signal } from '../signal';
 import type { Action } from './types';
 import { refuse, view } from './view';
 
-/** The data of one store definition, shared by its action runner and its per-client instance. */
+/** The data of one store definition, shared by its action runner and its per-riva instance. */
 export interface StoreDef {
 	readonly name: string;
 	/** The state keys' signals, named `<name>.<key>`. */
@@ -47,14 +47,10 @@ let writing = 0;
 export const writable = (): boolean => writing > 0;
 
 /** Writes one state key through its signal, with the guard raised. */
-export const put = (
-	client: RivaClient,
-	sig: Signal<unknown>,
-	value: unknown,
-): void => {
+export const put = (riva: Riva, sig: Signal<unknown>, value: unknown): void => {
 	writing++;
 	try {
-		client.set(sig, () => value);
+		riva.set(sig, () => value);
 	} finally {
 		writing--;
 	}

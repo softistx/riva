@@ -3,14 +3,14 @@ import { describe, expect, expectTypeOf, test } from 'bun:test';
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import {
 	query as coreQuery,
-	createRivaClient,
+	createRiva,
 	type Query,
-	type RivaClient,
+	type Riva,
 	RivaError,
 } from '@softistx/riva';
 import { evict, readEntity, writeEntity } from '@softistx/riva/entities';
 import { parse } from 'graphql';
-import { storeOfClient } from '../../test/cache';
+import { storeOfRiva } from '../../test/cache';
 import { fakeTransport } from '../../test/fixtures';
 import { infinite } from '../infinite';
 import { mutation, query } from '../query';
@@ -52,10 +52,10 @@ const deferred = <T>() => {
 };
 
 function setup(answer: Parameters<typeof fakeTransport>[0]) {
-	const client = createRivaClient();
+	const riva = createRiva();
 	const transport = fakeTransport(answer);
-	provideGraphQL(client, transport);
-	return { client, transport };
+	provideGraphQL(riva, transport);
+	return { riva, transport };
 }
 
 const cache = normalized();
@@ -77,74 +77,74 @@ const answers = (current: { ada: string }) => (call: { name: string }) =>
 describe('normalized() over the entity store', () => {
 	test('two queries sharing an entity update each other', async () => {
 		const name = { ada: 'Ada' };
-		const { client } = setup(answers(name));
-		await patient.ensure(client, { id: '1' });
-		await patients.ensure(client);
+		const { riva } = setup(answers(name));
+		await patient.ensure(riva, { id: '1' });
+		await patients.ensure(riva);
 		const seen: string[] = [];
-		const off = client.subscribe(patient, { id: '1' }, (s) =>
+		const off = riva.subscribe(patient, { id: '1' }, (s) =>
 			seen.push(s.data?.patient.name ?? '-'),
 		);
 		name.ada = 'Ada L.';
-		patients.invalidate(client);
+		patients.invalidate(riva);
 		await Promise.resolve();
-		await patients.ensure(client);
-		expect(client.get(patient, { id: '1' }).data?.patient.name).toBe('Ada L.');
+		await patients.ensure(riva);
+		expect(riva.get(patient, { id: '1' }).data?.patient.name).toBe('Ada L.');
 		expect(seen).toEqual(['Ada L.']);
 		off();
 	});
 
 	test('a query unrelated to an entity is not notified by its change', async () => {
-		const { client } = setup(answers({ ada: 'Ada' }));
-		await patient.ensure(client, { id: '1' });
+		const { riva } = setup(answers({ ada: 'Ada' }));
+		await patient.ensure(riva, { id: '1' });
 		let calls = 0;
-		const off = client.subscribe(patient, { id: '1' }, () => calls++);
-		writeEntity(client, 'Patient:2', { name: 'Robert' });
+		const off = riva.subscribe(patient, { id: '1' }, () => calls++);
+		writeEntity(riva, 'Patient:2', { name: 'Robert' });
 		expect(calls).toBe(0);
-		writeEntity(client, 'Patient:1', { name: 'Ada L.' });
+		writeEntity(riva, 'Patient:1', { name: 'Ada L.' });
 		expect(calls).toBe(1);
 		off();
 	});
 
 	test("a mutation's result commits into every query reading the entity", async () => {
-		const { client } = setup((call) =>
+		const { riva } = setup((call) =>
 			call.name === 'RenamePatient'
 				? { renamePatient: { ...ada, name: 'Zed' } }
 				: answers({ ada: 'Ada' })(call),
 		);
-		await patient.ensure(client, { id: '1' });
-		await patients.ensure(client);
-		await rename.run(client, { id: '1', name: 'Zed' });
-		expect(client.get(patient, { id: '1' }).data?.patient.name).toBe('Zed');
-		expect(client.get(patients).data?.patients[0]?.name).toBe('Zed');
+		await patient.ensure(riva, { id: '1' });
+		await patients.ensure(riva);
+		await rename.run(riva, { id: '1', name: 'Zed' });
+		expect(riva.get(patient, { id: '1' }).data?.patient.name).toBe('Zed');
+		expect(riva.get(patients).data?.patients[0]?.name).toBe('Zed');
 	});
 
 	test('the optimistic layer shows over the normalized data, then rolls back', async () => {
-		const { client, transport } = setup(answers({ ada: 'Ada' }));
-		await patient.ensure(client, { id: '1' });
-		await patients.ensure(client);
+		const { riva, transport } = setup(answers({ ada: 'Ada' }));
+		await patient.ensure(riva, { id: '1' });
+		await patients.ensure(riva);
 		const d = deferred<unknown>();
 		transport.execute = async () => d.promise as never;
-		const p = rename.run(client, { id: '1', name: 'Zed' });
-		expect(client.get(patient, { id: '1' }).data?.patient.name).toBe('Zed');
-		expect(client.get(patients).data?.patients[0]?.name).toBe('Zed');
-		expect(storeOfClient(client).peek('Patient:1')).toMatchObject({
+		const p = rename.run(riva, { id: '1', name: 'Zed' });
+		expect(riva.get(patient, { id: '1' }).data?.patient.name).toBe('Zed');
+		expect(riva.get(patients).data?.patients[0]?.name).toBe('Zed');
+		expect(storeOfRiva(riva).peek('Patient:1')).toMatchObject({
 			name: 'Ada',
 		});
 		d.reject(new Error('refused'));
 		await p.catch(() => {});
-		expect(client.get(patient, { id: '1' }).data?.patient.name).toBe('Ada');
-		expect(client.get(patients).data?.patients[0]?.name).toBe('Ada');
+		expect(riva.get(patient, { id: '1' }).data?.patient.name).toBe('Ada');
+		expect(riva.get(patients).data?.patients[0]?.name).toBe('Ada');
 	});
 
 	test('an entity created by the optimistic layer exists only until it settles', async () => {
-		const { client, transport } = setup(() => ({}));
+		const { riva, transport } = setup(() => ({}));
 		const d = deferred<unknown>();
 		transport.execute = async () => d.promise as never;
-		const p = rename.run(client, { id: '9', name: 'New' });
-		expect(readEntity(client, 'Patient:9')).toMatchObject({ name: 'New' });
+		const p = rename.run(riva, { id: '9', name: 'New' });
+		expect(readEntity(riva, 'Patient:9')).toMatchObject({ name: 'New' });
 		d.reject(new Error('x'));
 		await p.catch(() => {});
-		expect(readEntity(client, 'Patient:9')).toBeUndefined();
+		expect(readEntity(riva, 'Patient:9')).toBeUndefined();
 	});
 });
 
@@ -163,16 +163,16 @@ describe('aliases and arguments', () => {
 	});
 
 	test('stored under the field name, read back under the response key', async () => {
-		const { client } = setup(() => friends(1));
-		const data = await aliased.ensure(client, { id: '1', n: 1 });
+		const { riva } = setup(() => friends(1));
+		const data = await aliased.ensure(riva, { id: '1', n: 1 });
 		expect(data.me.label).toBe('Ada');
 		// The argument field is in the store; a plain `readEntity` leaves it out.
-		expect(storeOfClient(client).peek('Patient:1')).toMatchObject({
+		expect(storeOfRiva(riva).peek('Patient:1')).toMatchObject({
 			name: 'Ada',
 			'friends({"first":1})': [{ __ref: 'Patient:2' }],
 		});
-		expect(storeOfClient(client).peek('Patient:1')).not.toHaveProperty('label');
-		expect(readEntity(client, 'Patient:1')).toEqual({
+		expect(storeOfRiva(riva).peek('Patient:1')).not.toHaveProperty('label');
+		expect(readEntity(riva, 'Patient:1')).toEqual({
 			__typename: 'Patient',
 			id: '1',
 			name: 'Ada',
@@ -180,59 +180,57 @@ describe('aliases and arguments', () => {
 	});
 
 	test('one stored field per argument set, both readable', async () => {
-		const { client } = setup((call) =>
+		const { riva } = setup((call) =>
 			friends((call.variables as { n: number }).n),
 		);
-		await aliased.ensure(client, { id: '1', n: 1 });
-		await aliased.ensure(client, { id: '1', n: 2 });
-		const stored = storeOfClient(client).peek('Patient:1') ?? {};
+		await aliased.ensure(riva, { id: '1', n: 1 });
+		await aliased.ensure(riva, { id: '1', n: 2 });
+		const stored = storeOfRiva(riva).peek('Patient:1') ?? {};
 		expect(stored['friends({"first":1})']).toHaveLength(1);
 		expect(stored['friends({"first":2})']).toHaveLength(2);
-		expect(
-			client.get(aliased, { id: '1', n: 1 }).data?.me.friends,
-		).toHaveLength(1);
-		expect(
-			client.get(aliased, { id: '1', n: 2 }).data?.me.friends,
-		).toHaveLength(2);
+		expect(riva.get(aliased, { id: '1', n: 1 }).data?.me.friends).toHaveLength(
+			1,
+		);
+		expect(riva.get(aliased, { id: '1', n: 2 }).data?.me.friends).toHaveLength(
+			2,
+		);
 	});
 
 	test('readEntity and writeEntity see the entity under its field names', async () => {
-		const { client } = setup(() => friends(0));
-		await aliased.ensure(client, { id: '1', n: 0 });
-		writeEntity(client, 'Patient:1', { name: 'Ada L.' });
-		expect(client.get(aliased, { id: '1', n: 0 }).data?.me.label).toBe(
-			'Ada L.',
-		);
+		const { riva } = setup(() => friends(0));
+		await aliased.ensure(riva, { id: '1', n: 0 });
+		writeEntity(riva, 'Patient:1', { name: 'Ada L.' });
+		expect(riva.get(aliased, { id: '1', n: 0 }).data?.me.label).toBe('Ada L.');
 	});
 });
 
 describe('policy behaviours', () => {
 	test('an evicted entity makes the query data missing', async () => {
-		const { client } = setup(answers({ ada: 'Ada' }));
-		await patient.ensure(client, { id: '1' });
-		evict(client, 'Patient:1');
-		expect(client.get(patient, { id: '1' }).data).toBeUndefined();
+		const { riva } = setup(answers({ ada: 'Ada' }));
+		await patient.ensure(riva, { id: '1' });
+		evict(riva, 'Patient:1');
+		expect(riva.get(patient, { id: '1' }).data).toBeUndefined();
 	});
 
 	test('an evicted entity is refetched once an observer needs it', async () => {
-		const { client, transport } = setup(answers({ ada: 'Ada' }));
-		await patient.ensure(client, { id: '1' });
-		const off = client.subscribe(patient, { id: '1' }, () => {});
-		evict(client, 'Patient:1');
+		const { riva, transport } = setup(answers({ ada: 'Ada' }));
+		await patient.ensure(riva, { id: '1' });
+		const off = riva.subscribe(patient, { id: '1' }, () => {});
+		evict(riva, 'Patient:1');
 		await new Promise((r) => setTimeout(r, 20));
 		expect(transport.calls.length).toBe(2);
-		expect(client.get(patient, { id: '1' }).data?.patient.name).toBe('Ada');
+		expect(riva.get(patient, { id: '1' }).data?.patient.name).toBe('Ada');
 		off();
 	});
 
 	test('a server that omits a selected field ends in RIVA_CACHE, not a loop', async () => {
-		const { client, transport } = setup(() => ({
+		const { riva, transport } = setup(() => ({
 			patient: { __typename: 'Patient', id: '1' },
 		}));
-		const off = client.subscribe(patient, { id: '1' }, () => {});
-		await patient.ensure(client, { id: '1' }).catch(() => {});
+		const off = riva.subscribe(patient, { id: '1' }, () => {});
+		await patient.ensure(riva, { id: '1' }).catch(() => {});
 		await new Promise((r) => setTimeout(r, 50));
-		const state = client.get(patient, { id: '1' });
+		const state = riva.get(patient, { id: '1' });
 		expect(transport.calls.length).toBe(1);
 		expect(state.status).toBe('error');
 		expect((state.error as RivaError).code).toBe('RIVA_CACHE');
@@ -257,11 +255,11 @@ describe('policy behaviours', () => {
 			{ patient: { mrn: string; name: string } },
 			{ [k: string]: never }
 		>;
-		const { client } = setup(() => ({
+		const { riva } = setup(() => ({
 			patient: { __typename: 'Patient', mrn: '78', name: 'Ada' },
 		}));
-		await query(DOC, { cache: byMrn }).ensure(client);
-		expect(readEntity(client, 'Patient:78')).toMatchObject({ name: 'Ada' });
+		await query(DOC, { cache: byMrn }).ensure(riva);
+		expect(readEntity(riva, 'Patient:78')).toMatchObject({ name: 'Ada' });
 	});
 
 	test('possibleTypes decide a fragment on a union', async () => {
@@ -274,13 +272,13 @@ describe('policy behaviours', () => {
 				{ __typename: 'Doctor', id: '2', ward: 'ER' },
 			],
 		};
-		const { client } = setup(() => data);
+		const { riva } = setup(() => data);
 		const q = query(DOC, {
 			cache: normalized({ possibleTypes: { Person: ['Patient', 'Doctor'] } }),
 		});
-		await q.ensure(client);
-		expect(client.get(q).data).toEqual(data as never);
-		expect(readEntity(client, 'Doctor:2')).toEqual({
+		await q.ensure(riva);
+		expect(riva.get(q).data).toEqual(data as never);
+		expect(readEntity(riva, 'Doctor:2')).toEqual({
 			__typename: 'Doctor',
 			id: '2',
 			ward: 'ER',
@@ -288,19 +286,19 @@ describe('policy behaviours', () => {
 	});
 
 	test('data JSON cannot hold is refused as a RIVA_CACHE error state', async () => {
-		const { client } = setup(() => ({
+		const { riva } = setup(() => ({
 			patient: { ...ada, born: new Date(0) },
 		}));
 		const DOC = parse(
 			'query Born($id: ID!) { patient(id: $id) { __typename id born } }',
 		) as TypedDocumentNode<{ patient: unknown }, { id: string }>;
 		const q = query(DOC, { cache, retry: 0 });
-		await q.ensure(client, { id: '1' }).catch(() => {});
-		const state = client.get(q, { id: '1' });
+		await q.ensure(riva, { id: '1' }).catch(() => {});
+		const state = riva.get(q, { id: '1' });
 		expect(state.status).toBe('error');
 		expect(state.error).toBeInstanceOf(RivaError);
 		expect((state.error as RivaError).code).toBe('RIVA_CACHE');
-		expect(readEntity(client, 'Patient:1')).toBeUndefined();
+		expect(readEntity(riva, 'Patient:1')).toBeUndefined();
 	});
 
 	test('a core policy is still accepted as is', () => {
@@ -351,4 +349,4 @@ const rejected = () => {
 };
 void types;
 void rejected;
-void (null as unknown as RivaClient);
+void (null as unknown as Riva);

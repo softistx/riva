@@ -37,13 +37,13 @@ export function useInfiniteQuery(
 		vars,
 		opts?.enabled !== false,
 	);
-	const { client, vars: v } = q;
+	const { riva, vars: v } = q;
 	const more = (method: 'fetchNext' | 'fetchPrevious') =>
-		(def[method] as (c: typeof client, v: unknown) => Promise<void>)(client, v);
-	const fetchNext = useCallback(() => more('fetchNext'), [client, def, v]);
+		(def[method] as (c: typeof riva, v: unknown) => Promise<void>)(riva, v);
+	const fetchNext = useCallback(() => more('fetchNext'), [riva, def, v]);
 	const fetchPrevious = useCallback(
 		() => more('fetchPrevious'),
-		[client, def, v],
+		[riva, def, v],
 	);
 	return useMemo(
 		() => ({ ...q.state, fetchNext, fetchPrevious, refetch: q.refetch }),

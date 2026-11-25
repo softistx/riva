@@ -9,7 +9,7 @@
 - [Infinite lists](./guide/infinite.md): read for cursor pagination and infinite scroll.
 - [Stores](./guide/store.md): read to group a domain's state, computeds and actions.
 - [Server rendering](./guide/ssr.md): read for dehydrate, hydrate and the ambient scope on a server.
-- [Data route client](./guide/data.md): read to write a transport that posts to a `/_data` route.
+- [Data route riva](./guide/data.md): read to write a transport that posts to a `/_data` route.
 - [Errors](./guide/errors.md): read to catch riva's errors by class and code.
 
 ## Reference

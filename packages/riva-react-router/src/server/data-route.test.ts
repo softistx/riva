@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import {
-	createRivaClient,
-	type RivaClient,
+	createRiva,
+	type Riva,
 	RivaHttpError,
 	RivaNetworkError,
 	RivaRequestError,
@@ -53,7 +53,7 @@ function setup(
 		...extra,
 	});
 	const context = new RouterContextProvider();
-	context.set(rivaContext, createRivaClient());
+	context.set(rivaContext, createRiva());
 	const call = (init: RequestInit & { url?: string } = {}) =>
 		route.action({
 			request: withHeaders(
@@ -97,15 +97,15 @@ test('the variables are decoded before they reach the operation', async () => {
 	expect((calls[0] as { at: Date }).at).toBeInstanceOf(Date);
 });
 
-test('the operation gets the request client and the request signal', async () => {
-	let seen: { client?: RivaClient; signal?: AbortSignal } = {};
-	const { call, context } = setup(async (client, _v, signal) => {
-		seen = { client, signal };
+test('the operation gets the request riva and the request signal', async () => {
+	let seen: { riva?: Riva; signal?: AbortSignal } = {};
+	const { call, context } = setup(async (riva, _v, signal) => {
+		seen = { riva, signal };
 		return 1;
 	});
 	const controller = new AbortController();
 	await call({ signal: controller.signal });
-	expect(seen.client).toBe(context.get(rivaContext) ?? undefined);
+	expect(seen.riva).toBe(context.get(rivaContext) ?? undefined);
 	controller.abort();
 	expect(seen.signal?.aborted).toBe(true);
 });
@@ -268,7 +268,7 @@ test('the sources are asked in order and the first that knows the id runs it', a
 		sources: [source('a', false), source('b', true), source('c', true)],
 	});
 	const context = new RouterContextProvider();
-	context.set(rivaContext, createRivaClient());
+	context.set(rivaContext, createRiva());
 	const res = await route.action({
 		request: new Request(URL_, {
 			method: 'POST',

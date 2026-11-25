@@ -1,4 +1,4 @@
-import type { RivaClient } from '../client';
+import type { Riva } from '../client';
 import { stableKey } from '../key';
 import { type Query, query } from '../query';
 import { fetchMore } from './more';
@@ -48,18 +48,18 @@ export function infinite<
 		...d,
 		nodes: d.pages.flatMap((p) => connection(p).edges.map((e) => e.node)),
 	});
-	const read = (client: RivaClient, vars: Vars) =>
-		client.untracked(() => client.queries.state(q, vars).data);
+	const read = (riva: Riva, vars: Vars) =>
+		riva.untracked(() => riva.queries.state(q, vars).data);
 
 	const q: Query<Vars, InfiniteData<Page>> = query<Vars, InfiniteData<Page>>({
 		...rest,
 		fetch: (vars, ctx) =>
-			refetchAll({ page, connection }, vars, ctx, read(ctx.client, vars)),
-		derive: (client, s, vars) => {
+			refetchAll({ page, connection }, vars, ctx, read(ctx.riva, vars)),
+		derive: (riva, s, vars) => {
 			const data = s.data;
 			const list = data && (lists.get(data) ?? withNodes(data));
 			if (data && list) lists.set(data, list);
-			const [n, p] = client.get(slots.flags)[stableKey(o.id, vars)] ?? NONE;
+			const [n, p] = riva.get(slots.flags)[stableKey(o.id, vars)] ?? NONE;
 			return {
 				...s,
 				data: list,
@@ -82,19 +82,19 @@ export function infinite<
 
 	return Object.freeze({
 		...q,
-		ensure: (client: RivaClient, ...args: unknown[]) =>
-			(q.ensure as (...a: unknown[]) => Promise<unknown>)(client, ...args).then(
-				() => read(client, args[0] as Vars),
+		ensure: (riva: Riva, ...args: unknown[]) =>
+			(q.ensure as (...a: unknown[]) => Promise<unknown>)(riva, ...args).then(
+				() => read(riva, args[0] as Vars),
 			),
-		cancel(client: RivaClient, vars?: Vars) {
+		cancel(riva: Riva, vars?: Vars) {
 			const key = stableKey(o.id, vars);
 			for (const d of ['next', 'previous'])
-				slots.slot(client).ctls.get(`${d}:${key}`)?.abort();
-			client.queries.cancel(q, vars);
+				slots.slot(riva).ctls.get(`${d}:${key}`)?.abort();
+			riva.queries.cancel(q, vars);
 		},
-		fetchNext: (client: RivaClient, vars?: Vars) =>
-			fetchMore(more, 'next', client, vars as Vars),
-		fetchPrevious: (client: RivaClient, vars?: Vars) =>
-			fetchMore(more, 'previous', client, vars as Vars),
+		fetchNext: (riva: Riva, vars?: Vars) =>
+			fetchMore(more, 'next', riva, vars as Vars),
+		fetchPrevious: (riva: Riva, vars?: Vars) =>
+			fetchMore(more, 'previous', riva, vars as Vars),
 	}) as unknown as Infinite<Vars, Page, Node>;
 }

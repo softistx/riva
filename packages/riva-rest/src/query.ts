@@ -66,7 +66,7 @@ export type FreeMutationOptions<Vars, Data> = Omit<
 const callOf =
 	(route: Route) =>
 	async (vars: unknown, ctx: FetchContext): Promise<unknown> =>
-		transportOf(ctx.client).call(route, vars, { signal: ctx.signal });
+		transportOf(ctx.riva).call(route, vars, { signal: ctx.signal });
 
 const guarded =
 	<Vars, Data>(fn: (vars: Vars, ctx: RestContext) => Promise<Data>) =>

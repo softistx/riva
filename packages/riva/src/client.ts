@@ -1,15 +1,15 @@
 import { computed, type Readable } from './computed';
 import { type Duration, toMs } from './duration';
 import {
-	type ClientEvents,
 	defaultEvents,
 	defaultScheduler,
+	type RivaEvents,
 	type Scheduler,
 } from './env';
 import * as graph from './graph';
 import type { Query, QueryState, VarsArgs } from './query';
 import { createQueryCache, type QueryCache } from './query-cache';
-import { withClient } from './scope';
+import { withRiva } from './scope';
 import type { Listener, Signal, Unsubscribe } from './signal';
 
 // biome-ignore lint/suspicious/noConfusingVoidType: an effect may return nothing or a cleanup
@@ -23,23 +23,23 @@ export interface SubscribeOptions {
 	staleTime?: Duration;
 }
 
-export interface ClientOptions {
+export interface RivaOptions {
 	/** Timers and clock; defaults to the host's. Inject a fake in tests. */
 	scheduler?: Scheduler;
 	/** Focus and reconnect events; defaults to the browser's, nothing on the server. */
-	events?: ClientEvents;
+	events?: RivaEvents;
 }
 
 /** Holds every value. One per request on the server, one in the browser. */
-export class RivaClient {
+export class Riva {
 	/** @internal */
 	readonly graph: graph.Graph = graph.createGraph(this);
 	/** @internal */
 	readonly queries: QueryCache;
-	/** @internal Per-client state of opt-in modules, by their own key. */
+	/** @internal Per-riva state of opt-in modules, by their own key. */
 	readonly slots = new Map<unknown, unknown>();
 
-	constructor(options: ClientOptions = {}) {
+	constructor(options: RivaOptions = {}) {
 		this.queries = createQueryCache(
 			this,
 			options.scheduler ?? defaultScheduler,
@@ -121,9 +121,9 @@ export class RivaClient {
 		};
 	}
 
-	/** Runs `fn` with this client as the ambient scope. */
+	/** Runs `fn` with this riva as the ambient scope. */
 	run<R>(fn: () => R): R {
-		return withClient(this, fn);
+		return withRiva(this, fn);
 	}
 
 	/** Defers notifications until the outermost batch ends. */
@@ -136,5 +136,4 @@ export class RivaClient {
 	}
 }
 
-export const createRivaClient = (options?: ClientOptions): RivaClient =>
-	new RivaClient(options);
+export const createRiva = (options?: RivaOptions): Riva => new Riva(options);

@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { createRivaClient } from './client';
+import { createRiva } from './client';
 import { entities } from './entities/policy';
 import type { Scheduler } from './env';
 import { type CachePolicy, query } from './query';
@@ -20,9 +20,9 @@ function setup(gcTime?: number) {
 			if (i >= 0) timers.splice(i, 1);
 		},
 	};
-	const client = createRivaClient();
+	const riva = createRiva();
 	const c: Ctx = {
-		client,
+		riva,
 		sched,
 		events: { onFocus: () => () => {}, onReconnect: () => () => {} },
 		entries: new Map(),
@@ -109,13 +109,13 @@ test('a cache policy stores, reads (tracked) and releases the entry data', async
 	};
 	let n = 0;
 	const q = query<void, number>({ id: 'p', cache, fetch: async () => ++n });
-	const client = createRivaClient();
-	expect(await q.ensure(client)).toBe(10);
-	expect(client.get(q).data).toBe(10);
-	q.invalidate(client);
-	await q.ensure(client);
-	q.setData(client, undefined, (prev) => (prev ?? 0) / 10 + 5);
-	expect(client.get(q).data).toBe(70);
+	const riva = createRiva();
+	expect(await q.ensure(riva)).toBe(10);
+	expect(riva.get(q).data).toBe(10);
+	q.invalidate(riva);
+	await q.ensure(riva);
+	q.setData(riva, undefined, (prev) => (prev ?? 0) / 10 + 5);
+	expect(riva.get(q).data).toBe(70);
 	expect(log).toEqual([
 		'write 1',
 		'write 2',
@@ -156,7 +156,7 @@ test('in a browser the newest definition takes the entry over', () => {
 });
 
 test('after a takeover, reads follow the new definition derive and cache', async () => {
-	const client = createRivaClient();
+	const riva = createRiva();
 	const a = query<void, { id: string; n: number }>({
 		id: 'hot',
 		fetch: async () => ({ id: '1', n: 1 }),
@@ -170,11 +170,11 @@ test('after a takeover, reads follow the new definition derive and cache', async
 	const g = globalThis as { document?: unknown };
 	g.document = {};
 	try {
-		expect(await a.ensure(client)).toEqual({ id: '1', n: 1 });
-		expect(client.get(a).data).toEqual({ id: '1', n: 1 });
-		expect(client.get(b)).toMatchObject({ tag: 'b' });
-		expect(await b.ensure(client)).toEqual({ id: '1', n: 2 });
-		expect(client.get(b).data).toEqual({ id: '1', n: 2 });
+		expect(await a.ensure(riva)).toEqual({ id: '1', n: 1 });
+		expect(riva.get(a).data).toEqual({ id: '1', n: 1 });
+		expect(riva.get(b)).toMatchObject({ tag: 'b' });
+		expect(await b.ensure(riva)).toEqual({ id: '1', n: 2 });
+		expect(riva.get(b).data).toEqual({ id: '1', n: 2 });
 	} finally {
 		delete g.document;
 	}

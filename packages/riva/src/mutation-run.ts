@@ -1,4 +1,4 @@
-import type { RivaClient } from './client';
+import type { Riva } from './client';
 import { RivaAbortError } from './errors';
 import type { MutationOptions, RunOptions } from './mutation';
 import type { Lay } from './query-entry';
@@ -8,7 +8,7 @@ const SEQ = {};
 
 /** The optimistic data and the server result, in the order mutations started. */
 export async function execute<Vars, Data>(
-	client: RivaClient,
+	riva: Riva,
 	o: MutationOptions<Vars, Data>,
 	vars: Vars,
 	opts?: RunOptions,
@@ -17,23 +17,22 @@ export async function execute<Vars, Data>(
 	if (signal.aborted) throw new RivaAbortError();
 	const drops: Array<() => void> = [];
 	const drop = () =>
-		client.batch(() => {
+		riva.batch(() => {
 			for (const d of drops.splice(0)) d();
 		});
 	// Settles only once the mutations started before this one have settled.
-	const before =
-		(client.slots.get(SEQ) as Promise<unknown>) ?? Promise.resolve();
+	const before = (riva.slots.get(SEQ) as Promise<unknown>) ?? Promise.resolve();
 	let settled!: () => void;
-	client.slots.set(
+	riva.slots.set(
 		SEQ,
 		Promise.all([before, new Promise<void>((r) => (settled = r))]),
 	);
 	try {
-		client.batch(() => {
+		riva.batch(() => {
 			const out = o.optimistic?.(vars, {
 				set: (q, v, d) =>
 					drops.push(
-						client.queries.lay(
+						riva.queries.lay(
 							q,
 							v,
 							typeof d === 'function' ? (d as Lay) : () => d,
@@ -41,13 +40,13 @@ export async function execute<Vars, Data>(
 					),
 			});
 			if (out !== undefined && o.cache?.layer)
-				drops.push(o.cache.layer(client, out, vars).drop);
+				drops.push(o.cache.layer(riva, out, vars).drop);
 		});
 		const data = await withRetry(
-			client.queries.sched,
+			riva.queries.sched,
 			{ retry: o.retry ?? 0, retryDelay: o.retryDelay },
 			signal,
-			() => o.run(vars, { signal, client }),
+			() => o.run(vars, { signal, riva }),
 		);
 		// A throw here rolls back like a failed run.
 		const inv =
@@ -57,18 +56,18 @@ export async function execute<Vars, Data>(
 		await raceAbort(before, signal);
 		if (signal.aborted) throw new RivaAbortError();
 		let bad: { e: unknown } | undefined;
-		client.batch(() => {
-			o.cache?.commit?.(client, data, vars);
+		riva.batch(() => {
+			o.cache?.commit?.(riva, data, vars);
 			drop();
 			// The server committed: a throwing helper keeps it and still invalidates.
 			try {
-				o.updates?.({ set: (q, v, d) => q.setData(client, v, d) }, data, vars);
+				o.updates?.({ set: (q, v, d) => q.setData(riva, v, d) }, data, vars);
 			} catch (e) {
 				bad = { e };
 			}
 			for (const t of inv)
-				if ('query' in t) t.query.invalidate(client, t.vars);
-				else t.invalidate(client);
+				if ('query' in t) t.query.invalidate(riva, t.vars);
+				else t.invalidate(riva);
 		});
 		if (bad) throw bad.e;
 		return data;

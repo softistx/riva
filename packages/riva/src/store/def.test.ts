@@ -1,5 +1,5 @@
 import { describe, expect, test } from 'bun:test';
-import { createRivaClient } from '../client';
+import { createRiva } from '../client';
 import { signal } from '../signal';
 import { freeze, put, RESERVED, writable } from './def';
 
@@ -16,7 +16,7 @@ describe('freeze', () => {
 
 describe('put', () => {
 	test('writes through the guard and lowers it, even when the write throws', () => {
-		const c = createRivaClient();
+		const c = createRiva();
 		const seen: boolean[] = [];
 		const sig = signal(0, {
 			equals: (a, b) => {

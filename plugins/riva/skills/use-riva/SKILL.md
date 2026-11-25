@@ -5,7 +5,7 @@ description: >-
   package and subpath by need (signals, queries, mutations, the normalized
   cache, infinite lists, stores, SSR, React hooks, a GraphQL or REST
   transport, React Router), install the right peers, and respect the
-  invariants (one RivaClient per request, derived keys, errors defined in the
+  invariants (one Riva per request, derived keys, errors defined in the
   core, the SSR scope guard). This is the index: the packages ship the detail.
   Use when an app depends on any @softistx/riva* package; when it adds a
   query, a mutation, an optimistic update, a store, a /_data route or SSR
@@ -39,7 +39,7 @@ Install the core and one package per need. Every adapter peers
 
 | Need | Package and subpath |
 | --- | --- |
-| Signals, computeds, effects, `RivaClient`, `query`, `mutation` | `@softistx/riva` |
+| Signals, computeds, effects, `Riva`, `query`, `mutation` | `@softistx/riva` |
 | A normalized cache shared by queries (one copy per entity) | `@softistx/riva/entities` |
 | Cursor pagination, infinite lists | `@softistx/riva/infinite` |
 | A domain's state, computeds and actions | `@softistx/riva/store` |
@@ -50,7 +50,7 @@ Install the core and one package per need. Every adapter peers
 | GraphQL allowlist for a BFF (codegen, server source, browser transport) | `@softistx/riva-graphql/codegen`, `/server`, `/bff` |
 | REST typed by OpenAPI, or a free fetcher | `@softistx/riva-rest` (`/entities`) |
 | REST through a BFF | `@softistx/riva-rest/server`, `/bff` |
-| React Router 8: one client per request, SSR hydration, `/_data`, revalidation | `@softistx/riva-react-router` (`/server`) |
+| React Router 8: one riva per request, SSR hydration, `/_data`, revalidation | `@softistx/riva-react-router` (`/server`) |
 
 The peers each package adds, with their ranges, are in
 `references/packages.md` and in each README's install section.
@@ -59,11 +59,11 @@ The peers each package adds, with their ranges, are in
 
 1. Read `node_modules/@softistx/riva/README.md`, then the guide of each area
    the app needs (`docs/guide/`).
-2. Create one `RivaClient` (`createRivaClient()`): one in the browser, **one per
+2. Create one `Riva` (`createRiva()`): one in the browser, **one per
    request on the server**. Give it its transport (`provideGraphQL` or
    `provideRest`) when you create it.
 3. Define queries and mutations once, as stateless module-level definitions;
-   read them through the client (`client.get`, `def.ensure(client, vars)`) or
+   read them through the riva (`riva.get`, `def.ensure(riva, vars)`) or
    through the hooks.
 4. In a React Router 8 app, add `rivaMiddleware` on the root route and
    `RivaRouterProvider` in the root component; loaders `ensure` their data and
@@ -74,10 +74,10 @@ The peers each package adds, with their ranges, are in
 
 ## 3. The invariants an app respects
 
-- **Definitions are stateless, values live per `RivaClient`.** No module-level
-  client on the server: a read with no client in scope throws `RIVA_SCOPE`
-  (the SSR leak guard). Fix it with `client.get(def)`, `client.run(...)` or the
-  host's middleware, never by sharing a client between requests.
+- **Definitions are stateless, values live per `Riva`.** No module-level
+  riva on the server: a read with no riva in scope throws `RIVA_SCOPE`
+  (the SSR leak guard). Fix it with `riva.get(def)`, `riva.run(...)` or the
+  host's middleware, never by sharing a riva between requests.
 - **Keys are derived**: the definition's `id` plus the stable-serialized
   variables. Never write a key by hand; two definitions must not share an `id`.
 - **Errors are defined once, in the core** (`RivaError`, `RivaRequestError`,
@@ -101,7 +101,7 @@ The peers each package adds, with their ranges, are in
 - A GraphQL document with `normalized()` must select `__typename` below the
   root (the client preset's `addTypenameSelectionDocumentTransform` adds it).
 - Two `entities()` or `restEntities()` calls with other identity rules on one
-  client throw `RIVA_CACHE`: share one policy object.
+  riva throw `RIVA_CACHE`: share one policy object.
 - `rivaMiddleware` goes on the root route once; `riva(context)` is returned
   from one loader per request.
 - Free REST fetchers run on the server only; with `bffTransport` they throw.

@@ -1,9 +1,9 @@
 # Mutations
 
-`mutation({ id, run, optimistic?, updates?, invalidates?, cache?, retry?, retryDelay? })` sends a change and shows its expected result at once. The definition is stateless; `run(client, vars, { signal? })` resolves with the server data, or rejects with the error after the rollback.
+`mutation({ id, run, optimistic?, updates?, invalidates?, cache?, retry?, retryDelay? })` sends a change and shows its expected result at once. The definition is stateless; `run(riva, vars, { signal? })` resolves with the server data, or rejects with the error after the rollback.
 
 ```ts
-import { at, createRivaClient, mutation, query } from '@softistx/riva';
+import { at, createRiva, mutation, query } from '@softistx/riva';
 
 const todos = query({ id: 'todos', fetch: async () => (await fetch('/api/todos')).json() as Promise<string[]> });
 
@@ -19,8 +19,8 @@ const addTodo = mutation<string, string>({
 	invalidates: [todos], // or [at(todos, vars)] for one entry, or (data, vars) => [...]
 });
 
-const client = createRivaClient();
-await addTodo.run(client, 'Buy milk'); // rejects, with the layer dropped, on failure
+const riva = createRiva();
+await addTodo.run(riva, 'Buy milk'); // rejects, with the layer dropped, on failure
 ```
 
 ## Options
@@ -55,10 +55,10 @@ const renamePatient = mutation<{ id: string; name: string }, Patient>({
 
 ## How it behaves
 
-- **The layer.** While a mutation is in flight its optimistic writes sit above the committed cache. `client.get`, `subscribe` and computeds see the committed data with the layers applied in start order; the committed data is never mutated. A keyed layer never changes `status` or `isFetching`. A refetch that lands meanwhile updates the committed value and the layer stays on top.
+- **The layer.** While a mutation is in flight its optimistic writes sit above the committed cache. `riva.get`, `subscribe` and computeds see the committed data with the layers applied in start order; the committed data is never mutated. A keyed layer never changes `status` or `isFetching`. A refetch that lands meanwhile updates the committed value and the layer stays on top.
 - **Rollback.** On failure (after the retries, on an abort, or when the commit is refused with `RIVA_CACHE`) the layers are dropped and readers go back to the value below. Nothing else runs: no `updates`, no `invalidates`. A throwing `invalidates` function counts as a failure.
 - **Success.** In one batch: the result is committed through `cache`, the layers are dropped, `updates` writes the committed data, then `invalidates` runs. If `updates` throws, the server result stays committed, the layers are dropped, the invalidations still run, and `run` rejects with the thrown error.
-- **Order.** Mutations on one client resolve in start order. If B (started after A) succeeds first, its layer stays visible and its commit waits until A settles. If A fails, A's layer is dropped at once and B's still applies. Clients never share the order.
+- **Order.** Mutations on one riva resolve in start order. If B (started after A) succeeds first, its layer stays visible and its commit waits until A settles. If A fails, A's layer is dropped at once and B's still applies. Clients never share the order.
 - **Abort.** `signal` aborts with `RivaAbortError` and rolls back, also while the mutation waits for an earlier one.
 - **Server.** `run` works in a React Router action: layers are applied there too but nobody observes them.
 

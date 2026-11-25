@@ -13,7 +13,7 @@ import { query, mutation } from '@softistx/riva-rest';
 import { restEntities } from '@softistx/riva-rest/entities';
 import { api } from './api';
 
-// One policy for the client's queries and mutations.
+// One policy for the riva's queries and mutations.
 export const cache = restEntities({
 	Invoice: { is: (o) => 'number' in o, key: (o) => o['id'] as string },
 });
@@ -36,9 +36,9 @@ Recognised objects get a `__typename`; the core's `readEntity('Invoice:7')`, `wr
 
 ## Traps
 
-- **Share the `restEntities()` result itself**, not its arguments: two calls throw `RIVA_CACHE` on one client, even with the same `types`.
+- **Share the `restEntities()` result itself**, not its arguments: two calls throw `RIVA_CACHE` on one riva, even with the same `types`.
 - **`is` must tell the types apart**: the first type that matches wins, so `'id' in o` for two resources tags both as the first one.
 - **The injected `__typename` shows up in the data.** Send it back to the API (an edit form's value as a request body) and request validation fails on the unknown field: drop it first.
-- **REST and GraphQL policies cannot share one client's store** in v1: a client holds one set of identity rules.
+- **REST and GraphQL policies cannot share one riva's store** in v1: a riva holds one set of identity rules.
 
 Fixes: [troubleshooting](../troubleshooting.md).

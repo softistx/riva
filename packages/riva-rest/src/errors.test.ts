@@ -89,8 +89,8 @@ test('riva errors and unknown errors pass through', () => {
 	expect(toRivaError(http)).toBe(http);
 	const other = new Error('boom');
 	expect(toRivaError(other)).toBe(other);
-	const client = new ClientError(ctx, 'x');
-	expect(toRivaError(client)).toBe(client);
+	const riva = new ClientError(ctx, 'x');
+	expect(toRivaError(riva)).toBe(riva);
 });
 
 test("a ValidationError or TimeoutError that is not httpyz's passes through unchanged", () => {

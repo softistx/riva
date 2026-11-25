@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { fakeEnv, settle } from '../../test/ssr';
-import { createRivaClient } from '../client';
+import { createRiva } from '../client';
 import { entities } from '../entities';
 import { readEntity } from '../entities/api';
 import {
@@ -33,7 +33,7 @@ const roundTrip = <T>(v: T): T => JSON.parse(JSON.stringify(v));
 
 async function served(page = 1) {
 	const env = fakeEnv();
-	const server = env.client();
+	const server = env.riva();
 	const { q, calls } = counted();
 	await q.ensure(server, { page });
 	return { env, q, calls, snap: roundTrip(dehydrate(server)) };
@@ -43,7 +43,7 @@ describe('seeding', () => {
 	test('an entry is seeded before its definition is known, and a fresh one never refetches', async () => {
 		const { env, q, calls, snap } = await served();
 		calls.length = 0;
-		const browser = env.client();
+		const browser = env.riva();
 		expect(hydrate(browser, snap)).toBeUndefined();
 		const seen: unknown[] = [];
 		const off = browser.subscribe(q, { page: 1 }, (s) => seen.push(s.status));
@@ -58,12 +58,12 @@ describe('seeding', () => {
 
 	test('a stale entry shows its data and refetches on subscribing', async () => {
 		const env = fakeEnv();
-		const server = env.client();
+		const server = env.riva();
 		const { q, calls } = counted('stale', 0);
 		await q.ensure(server, { page: 1 });
 		const snap = roundTrip(dehydrate(server));
 		calls.length = 0;
-		const browser = env.client();
+		const browser = env.riva();
 		hydrate(browser, snap);
 		expect(browser.get(q, { page: 1 }).data?.n).toBe(1);
 		const off = browser.subscribe(q, { page: 1 }, () => {});
@@ -74,13 +74,13 @@ describe('seeding', () => {
 
 	test('the age travels, not the server clock', async () => {
 		const env = fakeEnv(5_000_000);
-		const server = env.client();
+		const server = env.riva();
 		const { q, calls } = counted('aged', 10_000);
 		await q.ensure(server, { page: 1 });
 		env.sched.advance(6_000);
 		const snap = roundTrip(dehydrate(server));
 		const skewed = fakeEnv(42);
-		const browser = skewed.client();
+		const browser = skewed.riva();
 		hydrate(browser, snap);
 		expect(browser.get(q, { page: 1 }).updatedAt).toBe(42 - 6_000);
 		calls.length = 0;
@@ -98,11 +98,11 @@ describe('seeding', () => {
 
 	test('an invalidated entry stays invalidated', async () => {
 		const env = fakeEnv();
-		const server = env.client();
+		const server = env.riva();
 		const { q, calls } = counted();
 		await q.ensure(server, { page: 1 });
 		q.invalidate(server, { page: 1 });
-		const browser = env.client();
+		const browser = env.riva();
 		hydrate(browser, roundTrip(dehydrate(server)));
 		calls.length = 0;
 		const off = browser.subscribe(q, { page: 1 }, () => {});
@@ -113,7 +113,7 @@ describe('seeding', () => {
 
 	test('an error entry comes back as the error it was', async () => {
 		const env = fakeEnv();
-		const server = env.client();
+		const server = env.riva();
 		const failing = query<void, string>({
 			id: 'failing',
 			retry: 0,
@@ -133,7 +133,7 @@ describe('seeding', () => {
 		});
 		await failing.ensure(server).catch(() => {});
 		await plain.ensure(server).catch(() => {});
-		const browser = env.client();
+		const browser = env.riva();
 		hydrate(browser, roundTrip(dehydrate(server)));
 		const a = browser.get(failing).error as RivaRequestError;
 		expect(a).toBeInstanceOf(RivaRequestError);
@@ -160,7 +160,7 @@ describe('seeding', () => {
 		['RIVA_ABORT', () => new RivaAbortError(), RivaAbortError],
 	])('%s keeps its class, with no message', async (code, make, Class) => {
 		const env = fakeEnv();
-		const server = env.client();
+		const server = env.riva();
 		const failing = query<void, string>({
 			id: `class-${code}`,
 			retry: 0,
@@ -171,7 +171,7 @@ describe('seeding', () => {
 		await failing.ensure(server).catch(() => {});
 		const wire = roundTrip(dehydrate(server));
 		expect(JSON.stringify(wire)).not.toContain('ECONNREFUSED');
-		const browser = env.client();
+		const browser = env.riva();
 		hydrate(browser, wire);
 		const e = browser.get(failing).error as RivaError;
 		expect(e).toBeInstanceOf(Class);
@@ -180,15 +180,15 @@ describe('seeding', () => {
 	});
 
 	test('a snapshot that is not one throws', () => {
-		const client = createRivaClient();
+		const riva = createRiva();
 		for (const bad of [{}, { v: 2, t: 0, q: [], a: {} }, null, undefined]) {
-			expect(() => hydrate(client, bad as never)).toThrow(RivaError);
+			expect(() => hydrate(riva, bad as never)).toThrow(RivaError);
 		}
-		expect(() => hydrate(client, { v: 2 } as never)).toThrow(
+		expect(() => hydrate(riva, { v: 2 } as never)).toThrow(
 			'Cannot hydrate: this is not a snapshot dehydrate() made (version 2).',
 		);
 		try {
-			hydrate(client, {} as never);
+			hydrate(riva, {} as never);
 		} catch (e) {
 			expect((e as RivaError).code).toBe('RIVA_SSR');
 		}
@@ -199,10 +199,10 @@ describe('merging into existing entries', () => {
 	test('a newer snapshot replaces, an older one is kept out', async () => {
 		const env = fakeEnv();
 		const { q } = counted('merge');
-		const browser = env.client();
+		const browser = env.riva();
 		q.setData(browser, { page: 1 }, { n: 10, at: new Date(0) });
 		env.sched.advance(1_000);
-		const older = env.client();
+		const older = env.riva();
 		q.setData(older, { page: 1 }, { n: 20, at: new Date(0) });
 		env.sched.advance(1_000);
 		// older was written 1000 ms before now; the browser's entry 2000 ms before.
@@ -224,10 +224,10 @@ describe('merging into existing entries', () => {
 					release = r;
 				}),
 		});
-		const src = env.client();
+		const src = env.riva();
 		slow.setData(src, { page: 1 }, { n: 1, at: new Date(0) });
 		const snap = roundTrip(dehydrate(src));
-		const browser = env.client();
+		const browser = env.riva();
 		const run = slow.ensure(browser, { page: 1 });
 		hydrate(browser, snap);
 		expect(browser.get(slow, { page: 1 }).status).not.toBe('success');
@@ -238,10 +238,10 @@ describe('merging into existing entries', () => {
 	test('an entry with an optimistic layer is left alone', async () => {
 		const env = fakeEnv();
 		const { q } = counted('layered');
-		const src = env.client();
+		const src = env.riva();
 		q.setData(src, { page: 1 }, { n: 1, at: new Date(0) });
 		env.sched.advance(10);
-		const browser = env.client();
+		const browser = env.riva();
 		q.setData(browser, { page: 1 }, { n: 0, at: new Date(0) });
 		browser.queries.lay(q, { page: 1 }, () => ({ n: 99, at: new Date(0) }));
 		hydrate(browser, roundTrip(dehydrate(src)));
@@ -254,13 +254,13 @@ describe('merging into existing entries', () => {
 	test('deferObserved returns what an observer watches instead of applying it', async () => {
 		const env = fakeEnv();
 		const { q } = counted('observed');
-		const browser = env.client();
+		const browser = env.riva();
 		q.setData(browser, { page: 1 }, { n: 1, at: new Date(0) });
 		q.setData(browser, { page: 2 }, { n: 2, at: new Date(0) });
 		const off = browser.subscribe(q, { page: 1 }, () => {});
 		await settle();
 		env.sched.advance(100);
-		const src = env.client();
+		const src = env.riva();
 		q.setData(src, { page: 1 }, { n: 5, at: new Date(0) });
 		q.setData(src, { page: 2 }, { n: 6, at: new Date(0) });
 		const deferred = hydrate(browser, roundTrip(dehydrate(src)), {
@@ -276,9 +276,9 @@ describe('merging into existing entries', () => {
 	test('with deferObserved an entry seeded on creation is not written again by the deferred pass', async () => {
 		const env = fakeEnv();
 		const { q } = counted('twice');
-		const server = env.client();
+		const server = env.riva();
 		q.setData(server, { page: 1 }, { n: 5, at: new Date(0) });
-		const browser = env.client();
+		const browser = env.riva();
 		const deferred = hydrate(browser, roundTrip(dehydrate(server)), {
 			deferObserved: true,
 		});
@@ -302,12 +302,12 @@ describe('pending entries', () => {
 	test('a newer snapshot entry is kept over an older one', async () => {
 		const env = fakeEnv();
 		const { q } = counted('pend');
-		const older = env.client();
+		const older = env.riva();
 		q.setData(older, { page: 1 }, { n: 1, at: new Date(0) });
 		env.sched.advance(5_000);
-		const newer = env.client();
+		const newer = env.riva();
 		q.setData(newer, { page: 1 }, { n: 2, at: new Date(0) });
-		const browser = env.client();
+		const browser = env.riva();
 		hydrate(browser, roundTrip(dehydrate(newer)));
 		hydrate(browser, roundTrip(dehydrate(older)));
 		expect(browser.get(q, { page: 1 }).data?.n).toBe(2);
@@ -317,7 +317,7 @@ describe('pending entries', () => {
 describe('signals', () => {
 	test('a signal not created yet is seeded, once', () => {
 		const env = fakeEnv();
-		const server = env.client();
+		const server = env.riva();
 		const draft = signal(
 			{ text: '', at: new Date(0) },
 			{ name: 'draft', ssr: true },
@@ -325,7 +325,7 @@ describe('signals', () => {
 		server.get(draft);
 		server.set(draft, { text: 'hi', at: new Date(7) });
 		const snap = roundTrip(dehydrate(server));
-		const browser = env.client();
+		const browser = env.riva();
 		hydrate(browser, snap);
 		expect(browser.get(draft)).toEqual({ text: 'hi', at: new Date(7) });
 		browser.set(draft, { text: 'edited', at: new Date(8) });
@@ -335,11 +335,11 @@ describe('signals', () => {
 
 	test('a signal that exists is never overwritten', () => {
 		const env = fakeEnv();
-		const server = env.client();
+		const server = env.riva();
 		const count = signal(0, { name: 'count', ssr: true });
 		server.set(count, 5);
 		const snap = roundTrip(dehydrate(server));
-		const browser = env.client();
+		const browser = env.riva();
 		browser.set(count, 1);
 		hydrate(browser, snap);
 		expect(browser.get(count)).toBe(1);
@@ -347,12 +347,12 @@ describe('signals', () => {
 
 	test('a seeded signal is dehydrated again and an ssr: false signal is never seeded', () => {
 		const env = fakeEnv();
-		const server = env.client();
+		const server = env.riva();
 		const kept = signal(0, { name: 'kept', ssr: true });
 		const local = signal(0, { name: 'local', ssr: false });
 		server.set(kept, 3);
 		const snap = { ...dehydrate(server), a: { kept: 3, local: 9 } };
-		const browser = env.client();
+		const browser = env.riva();
 		hydrate(browser, snap);
 		browser.get(kept);
 		expect(browser.get(local)).toBe(0);
@@ -382,11 +382,11 @@ describe('through the cache policies', () => {
 			cache: entities(),
 			fetch: async () => ({ patients: [ada], top: ada }),
 		});
-		const server = env.client();
+		const server = env.riva();
 		await patients.ensure(server);
 		const snap = roundTrip(dehydrate(server));
 		expect(JSON.stringify(snap)).not.toContain('"refs"');
-		const browser = env.client();
+		const browser = env.riva();
 		hydrate(browser, snap);
 		const data = browser.get(patients).data;
 		expect(data?.patients[0]?.seenAt).toBeInstanceOf(Date);
@@ -406,11 +406,11 @@ describe('through the cache policies', () => {
 			});
 		const one = make('one');
 		const two = make('two');
-		const server = env.client();
+		const server = env.riva();
 		const renamed = { ...ada, name: 'Grace' };
 		one.setData(server, undefined, { p: renamed });
 		two.setData(server, undefined, { p: renamed });
-		const browser = env.client();
+		const browser = env.riva();
 		one.setData(browser, undefined, { p: ada });
 		const seen: string[] = [];
 		const off = browser.subscribe(one, undefined, (s) =>
@@ -459,10 +459,10 @@ describe('through the cache policies', () => {
 			},
 			connection: (p) => p.c,
 		});
-		const server = env.client();
+		const server = env.riva();
 		await feed.ensure(server);
 		await feed.fetchNext(server);
-		const browser = env.client();
+		const browser = env.riva();
 		hydrate(browser, roundTrip(dehydrate(server)));
 		const s = browser.get(feed);
 		expect(s.data?.nodes.map((n) => n.id)).toEqual(['0', '1', '2', '3']);
@@ -480,11 +480,11 @@ describe('through the cache policies', () => {
 });
 
 describe('requests stay apart', () => {
-	test('two clients never see each other, hydrated or not', async () => {
+	test('two riva instances never see each other, hydrated or not', async () => {
 		const env = fakeEnv();
 		const { q } = counted('leak');
-		const a = env.client();
-		const b = env.client();
+		const a = env.riva();
+		const b = env.riva();
 		const secret = signal('', { name: 'who', ssr: true });
 		q.setData(a, { page: 1 }, { n: 1, at: new Date(0) });
 		a.set(secret, 'alice');

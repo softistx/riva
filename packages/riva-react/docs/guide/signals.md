@@ -20,8 +20,8 @@ function Search() {
 | `useValue(readable)` | a signal or a computed | the current value, read-only |
 
 - The component re-renders when the value changes by the definition's `equals` (default `Object.is`).
-- Values are held by the provider's client, so two requests, or two clients in a test, never share one.
-- Under `renderToString` the hooks read the provider's client.
+- Values are held by the provider's riva, so two requests, or two riva instances in a test, never share one.
+- Under `renderToString` the hooks read the provider's riva.
 - `useValue(Store.key)` reads one value of a store; see [store](./store.md) for `useStore`.
 
 Definitions, options (`name`, `equals`, `ssr`) and effects: the core's [signals guide](https://github.com/softistx/riva/blob/develop/packages/riva/docs/guide/signals.md).

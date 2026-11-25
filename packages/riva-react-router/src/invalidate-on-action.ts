@@ -1,4 +1,4 @@
-import type { Invalidation, RivaClient } from '@softistx/riva';
+import type { Invalidation, Riva } from '@softistx/riva';
 import { useEffect, useRef } from 'react';
 import { useFetchers, useNavigation } from 'react-router';
 
@@ -11,7 +11,7 @@ const isWrite = (method: string | undefined) =>
  * included.
  */
 export function useInvalidateOnAction(
-	client: RivaClient,
+	riva: Riva,
 	list: readonly Invalidation[] | undefined,
 ): void {
 	const navigation = useNavigation();
@@ -26,10 +26,10 @@ export function useInvalidateOnAction(
 		const settled = [...running.current].some((k) => !now.has(k));
 		running.current = now;
 		if (!settled || !list?.length) return;
-		client.batch(() => {
+		riva.batch(() => {
 			for (const t of list)
-				if ('query' in t) t.query.invalidate(client, t.vars);
-				else t.invalidate(client);
+				if ('query' in t) t.query.invalidate(riva, t.vars);
+				else t.invalidate(riva);
 		});
 	});
 }

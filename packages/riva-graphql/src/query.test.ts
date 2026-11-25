@@ -1,6 +1,6 @@
 import { expect, test } from 'bun:test';
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
-import { createRivaClient, RivaRequestError } from '@softistx/riva';
+import { createRiva, RivaRequestError } from '@softistx/riva';
 import { parse } from 'graphql';
 import {
 	fakeTransport,
@@ -12,18 +12,18 @@ import { mutation, query } from './query';
 import { provideGraphQL } from './transport';
 
 const setup = (answer?: Parameters<typeof fakeTransport>[0]) => {
-	const client = createRivaClient();
+	const riva = createRiva();
 	const transport = fakeTransport(answer);
-	provideGraphQL(client, transport);
-	return { client, transport };
+	provideGraphQL(riva, transport);
+	return { riva, transport };
 };
 
 test('a query takes its id from the document and fetches through the transport', async () => {
 	const patients = query(PATIENTS_QUERY, { staleTime: '30s' });
 	expect(patients.id).toBe('Patients');
 	expect(patients.options.staleTime).toBe(30_000);
-	const { client, transport } = setup(() => ({ patients: 1 }));
-	await expect(patients.ensure(client, { school: 's' })).resolves.toEqual({
+	const { riva, transport } = setup(() => ({ patients: 1 }));
+	await expect(patients.ensure(riva, { school: 's' })).resolves.toEqual({
 		patients: 1,
 	} as never);
 	expect(transport.calls).toHaveLength(1);
@@ -32,14 +32,14 @@ test('a query takes its id from the document and fetches through the transport',
 		kind: 'query',
 		variables: { school: 's' },
 	});
-	await patients.ensure(client, { school: 's' });
+	await patients.ensure(riva, { school: 's' });
 	expect(transport.calls).toHaveLength(1);
 });
 
 test('a query with no variables takes none', async () => {
 	const viewer = query(VIEWER_QUERY);
-	const { client, transport } = setup(() => ({ viewer: { id: '1' } }));
-	await viewer.ensure(client);
+	const { riva, transport } = setup(() => ({ viewer: { id: '1' } }));
+	await viewer.ensure(riva);
 	expect(transport.calls).toHaveLength(1);
 });
 
@@ -59,19 +59,19 @@ test('a document with no name is refused at definition time', () => {
 });
 
 test('a definition with no transport rejects naming provideGraphQL', async () => {
-	const client = createRivaClient();
-	await expect(
-		query(VIEWER_QUERY, { retry: 0 }).ensure(client),
-	).rejects.toThrow(/provideGraphQL/);
+	const riva = createRiva();
+	await expect(query(VIEWER_QUERY, { retry: 0 }).ensure(riva)).rejects.toThrow(
+		/provideGraphQL/,
+	);
 });
 
 test('retries a retryable error, never a refusal', async () => {
 	const calls = (retryable: boolean) => {
-		const { client, transport } = setup(() => {
+		const { riva, transport } = setup(() => {
 			throw new RivaRequestError('X', 'no', { retryable });
 		});
 		return query(VIEWER_QUERY, { retry: 2, retryDelay: () => 0 })
-			.ensure(client)
+			.ensure(riva)
 			.catch(() => transport.calls.length);
 	};
 	expect(await calls(true)).toBe(3);
@@ -79,12 +79,12 @@ test('retries a retryable error, never a refusal', async () => {
 });
 
 test('aborting cancels the transport call', async () => {
-	const { client, transport } = setup(
+	const { riva, transport } = setup(
 		(c) => new Promise(() => c.signal.addEventListener('abort', () => {})),
 	);
 	const viewer = query(VIEWER_QUERY, { retry: 0 });
 	const ctl = new AbortController();
-	const p = viewer.ensure(client, undefined, { signal: ctl.signal });
+	const p = viewer.ensure(riva, undefined, { signal: ctl.signal });
 	await Promise.resolve();
 	ctl.abort();
 	await expect(p).rejects.toThrow();
@@ -97,12 +97,12 @@ test('a mutation runs through the transport, with optimistic and invalidates', a
 		invalidates: [patients],
 	});
 	expect(rename.id).toBe('RenamePatient');
-	const { client, transport } = setup((c) =>
+	const { riva, transport } = setup((c) =>
 		c.kind === 'mutation'
 			? { renamePatient: { id: '1', name: 'New' } }
 			: { patients: 1 },
 	);
-	await rename.run(client, { id: '1', name: 'New' });
+	await rename.run(riva, { id: '1', name: 'New' });
 	expect(transport.calls[0]).toMatchObject({
 		name: 'RenamePatient',
 		kind: 'mutation',

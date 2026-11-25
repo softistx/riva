@@ -2,30 +2,30 @@
 
 Each entry is headed by the message you will see.
 
-## `No RivaClient in scope: wrap the tree in <RivaProvider client={client}>`
+## `No Riva in scope: wrap the tree in <RivaProvider riva={riva}>`
 
 Code: `RIVA_SCOPE` (`RivaScopeError`).
 
-The full message: `No RivaClient in scope: wrap the tree in <RivaProvider client={client}>. On the server, create one client per request.`
+The full message: `No Riva in scope: wrap the tree in <RivaProvider riva={riva}>. On the server, create one per request.`
 
-**When:** a hook (`useSignal`, `useValue`, `useQuery`, `useMutation`, `useInfiniteQuery`, `useFragment` or `useClient`) rendered with no `RivaProvider` above it.
+**When:** a hook (`useSignal`, `useValue`, `useQuery`, `useMutation`, `useInfiniteQuery`, `useFragment` or `useRiva`) rendered with no `RivaProvider` above it.
 
-**Why:** definitions are stateless and values live in a `RivaClient`. The hooks take it from the provider, never from a module-level default, so two server requests can never share one.
+**Why:** definitions are stateless and values live in a `Riva`. The hooks take it from the provider, never from a module-level default, so two server requests can never share one.
 
-**Fix:** wrap the tree in a provider. On the server, create the client per request.
+**Fix:** wrap the tree in a provider. On the server, create the riva per request.
 
 ```tsx
-import { createRivaClient } from '@softistx/riva';
+import { createRiva } from '@softistx/riva';
 import { RivaProvider } from '@softistx/riva-react';
 
 export const Root = () => (
-	<RivaProvider client={createRivaClient() /* inside the request handler on the server */}>
+	<RivaProvider riva={createRiva() /* inside the request handler on the server */}>
 		<App />
 	</RivaProvider>
 );
 ```
 
-This is not the core's "No RivaClient in scope: read through client.get(def)…" error, which `signal.get()` and the like throw outside React: see the [core troubleshooting](https://github.com/softistx/riva/blob/develop/packages/riva/docs/troubleshooting.md#no-rivaclient-in-scope).
+This is not the core's "No Riva in scope: read through riva.get(def)…" error, which `signal.get()` and the like throw outside React: see the [core troubleshooting](https://github.com/softistx/riva/blob/develop/packages/riva/docs/troubleshooting.md#no-rivaclient-in-scope).
 
 ## A query fetches twice around Suspense
 
@@ -50,13 +50,13 @@ const patients = query({ id: 'patients', staleTime: '30s', fetch });
 ```tsx
 import { Suspense } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
-import { useClient } from '@softistx/riva-react';
+import { useRiva } from '@softistx/riva-react';
 
 export function Page({ school }: { school: string }) {
-	const client = useClient();
+	const riva = useRiva();
 	return (
 		<ErrorBoundary
-			onReset={() => patients.prefetch(client, { school })}
+			onReset={() => patients.prefetch(riva, { school })}
 			fallbackRender={({ resetErrorBoundary }) => (
 				<button onClick={resetErrorBoundary}>Retry</button>
 			)}

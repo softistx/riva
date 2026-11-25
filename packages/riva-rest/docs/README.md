@@ -6,7 +6,7 @@ The package's [README](../README.md) is the short path. These pages go deeper.
 
 | Page | Read it when |
 |---|---|
-| [Transport](./guide/transport.md) | You wire a client to the API, per request on a server. |
+| [Transport](./guide/transport.md) | You wire a riva to the API, per request on a server. |
 | [OpenAPI mode](./guide/openapi.md) | You have a spec and want typed `query` and `mutation` from it. |
 | [Free fetcher](./guide/free-fetcher.md) | The API has no schema and you write the function. |
 | [Errors](./guide/errors.md) | You branch on a failure or map httpyz errors. |

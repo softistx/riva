@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { createRivaClient } from '../client';
+import { createRiva } from '../client';
 import { computed } from '../computed';
 import { denormalize } from './denormalize';
 import { EntityStore } from './store';
@@ -8,8 +8,8 @@ const dn = (s: EntityStore, v: unknown, memo = new Map<string, unknown>()) =>
 	denormalize(s, v, memo);
 
 const make = () => {
-	const client = createRivaClient();
-	return { client, store: new EntityStore(client) };
+	const riva = createRiva();
+	return { riva, store: new EntityStore(riva) };
 };
 
 test('resolves refs, nested, in arrays and in plain objects', () => {
@@ -40,7 +40,7 @@ test('a reference cycle is cut where it loops back', () => {
 });
 
 test('unchanged entities keep their identity when another one changes', () => {
-	const { client, store } = make();
+	const { riva, store } = make();
 	store.merge('A:1', { tags: ['x'] });
 	store.merge('A:2', { tags: ['y'] });
 	const memo = new Map<string, unknown>();
@@ -48,16 +48,16 @@ test('unchanged entities keep their identity when another one changes', () => {
 	const read = computed(
 		() => dn(store, roots, memo) as { list: { tags: string[] }[] },
 	);
-	const first = client.get(read);
+	const first = riva.get(read);
 	store.merge('A:2', { tags: ['z'] });
-	const second = client.get(read);
+	const second = riva.get(read);
 	expect(second).not.toBe(first);
 	expect(second.list[0]).toBe(first.list[0]);
 	expect(second.list[1]?.tags).toEqual(['z']);
 });
 
 test('the read is tracked: only a reached entity re-evaluates it', () => {
-	const { client, store } = make();
+	const { riva, store } = make();
 	store.merge('A:1', { n: 1 });
 	store.merge('A:2', { n: 1 });
 	let runs = 0;
@@ -65,7 +65,7 @@ test('the read is tracked: only a reached entity re-evaluates it', () => {
 		runs++;
 		return dn(store, { __ref: 'A:1' });
 	});
-	client.subscribe(read, () => {});
+	riva.subscribe(read, () => {});
 	store.merge('A:2', { n: 2 });
 	expect(runs).toBe(1);
 	store.merge('A:1', { n: 2 });
@@ -73,14 +73,14 @@ test('the read is tracked: only a reached entity re-evaluates it', () => {
 });
 
 test('an untracked read of a missing entity leaves no signal; a tracked one does', () => {
-	const { client, store } = make();
+	const { riva, store } = make();
 	expect(dn(store, { __ref: 'X:1' })).toBeUndefined();
 	expect(store.signals.has('X:1')).toBe(false);
 	const read = computed(() => dn(store, { __ref: 'X:1' }));
-	client.subscribe(read, () => {});
+	riva.subscribe(read, () => {});
 	expect(store.signals.has('X:1')).toBe(true);
 	store.merge('X:1', { n: 1 });
-	expect(client.get(read)).toEqual({ n: 1 });
+	expect(riva.get(read)).toEqual({ n: 1 });
 });
 
 test('a memo per reader: a cut cycle does not flip the identity between readers', () => {

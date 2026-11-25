@@ -20,7 +20,7 @@ The original error is the `cause`, with its `fields`, `params` and `errors`.
 import { RivaRequestError } from '@softistx/riva';
 import { isApiError } from '@softistx/graphql-client';
 
-const state = client.get(patients, { school: 'north' });
+const state = riva.get(patients, { school: 'north' });
 if (state.error instanceof RivaRequestError) {
 	state.error.code; // 'patient.errors.not-found', as the API sent it
 	if (isApiError(state.error.cause)) state.error.cause.fields; // the refused fields
