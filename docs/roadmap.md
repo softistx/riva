@@ -3,6 +3,7 @@
 ## Now
 
 - **Simple API** — `riva.graphql` and `riva.rest`: one `createRiva({ graphql, rest })`, calls that return the data, hooks per namespace.
+  - Reactive resources: tracked variables, `enabled`, built-in `idle / loading / success / error`.
 - **Deprecate the graphql-client cache and React layer** — consumers of `@softistx/graphql-client` are pointed to riva for caching and React bindings, once riva has its first release.
 - **Pilot in a BFF app** — riva run end to end in a server-rendered app with a backend-for-frontend, to validate the API before wider adoption.
 

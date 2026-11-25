@@ -27,10 +27,10 @@ function Rename({ id }: { id: string }) {
 | Field | Meaning |
 | --- | --- |
 | `run(vars, opts?)` | Runs the mutation; `opts` is `{ signal? }`. Resolves with the data, rejects with the error. |
-| `status` | `idle`, `pending`, `success` or `error`. |
+| `status` | `idle`, `loading`, `success` or `error`. |
 | `data` | The last result of the latest run. |
 | `error` | The last error of the latest run. |
-| `isPending` | `status === 'pending'`. |
+| `isPending` | `status === 'loading'`. |
 | `reset()` | Back to `idle`, clears `data` and `error`. |
 
 The definition's own options (`optimistic`, `updates`, `invalidates`, `cache`, `retry`) apply: see the core's [mutations guide](https://github.com/softistx/riva/blob/develop/packages/riva/docs/guide/mutations.md).
