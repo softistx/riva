@@ -1,4 +1,5 @@
 import { type Riva, stableKey } from '@softistx/riva';
+import { isReactive } from '@softistx/riva/resource';
 import { useMemo } from 'react';
 import { useRiva } from '../context';
 
@@ -21,11 +22,6 @@ const idOf = (x: object): number => {
 	if (known !== undefined) return known;
 	ids.set(x, ++seq);
 	return seq;
-};
-
-const isSignal = (x: unknown): boolean => {
-	const kind = (x as { kind?: unknown } | null)?.kind;
-	return typeof x === 'object' && (kind === 'signal' || kind === 'computed');
 };
 
 /**
@@ -59,7 +55,7 @@ export function useStableInput(
 					riva.untracked(() =>
 						typeof input === 'function'
 							? (input as () => unknown)()
-							: isSignal(input)
+							: isReactive(input)
 								? `#${idOf(input as object)}`
 								: input,
 					),

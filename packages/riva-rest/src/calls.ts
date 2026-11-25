@@ -8,9 +8,14 @@ import {
 	type Query,
 	type Riva,
 } from '@softistx/riva';
-import { mutationHandle, resource } from '@softistx/riva/resource';
+import {
+	callResource,
+	mutateInvalidating,
+	mutationHandle,
+	trackedInput,
+} from '@softistx/riva/resource';
 import { callOf } from './query';
-import { abortable, type InputArg, inputReader } from './resources';
+import type { InputArg } from './resources';
 import type { Route } from './transport';
 
 /** Options of one `riva.rest.get` call. */
@@ -76,46 +81,20 @@ export function callsOf(
 		}
 		return def;
 	};
-	const stale = (t: string | Invalidation): (() => void) =>
-		typeof t === 'string'
-			? (
-					(d) => () =>
-						d.invalidate(riva)
-				)(queryOf(t))
-			: 'query' in t
-				? () => t.query.invalidate(riva, t.vars)
-				: () => (t as Query<unknown, unknown>).invalidate(riva);
 	const mutate = async (
 		method: string,
 		path: string,
 		input?: unknown,
 		call?: MutateCall,
-	) => {
-		const def = mutationOf(method, path);
-		// Resolved first: a bad entry throws before anything was written.
-		const after = (call?.invalidates ?? []).map(stale);
-		const data = await (def.run as (...a: unknown[]) => Promise<unknown>)(
-			riva,
-			input,
-			{ signal: call?.signal },
+	) =>
+		mutateInvalidating(riva, mutationOf(method, path), input, call, (t) =>
+			typeof t === 'string' ? queryOf(t) : t,
 		);
-		for (const f of after) f();
-		return data;
-	};
 	return {
 		mutate,
 		get(path: string, input?: InputArg<unknown>, call?: GetCall) {
 			const def = queryOf(path);
-			const read = inputReader(riva, input);
-			const { enabled, keepPrevious, staleTime } = call ?? {};
-			return abortable(
-				resource(riva, () => [def, read()] as never, {
-					...(enabled !== undefined && { enabled }),
-					...(keepPrevious !== undefined && { keepPrevious }),
-					...(staleTime !== undefined && { staleTime }),
-				}),
-				call?.signal,
-			);
+			return callResource(riva, def, trackedInput(riva, input), call);
 		},
 		mutation(method: string, path: string) {
 			mutationOf(method, path); // an unknown route throws now, not at the first save

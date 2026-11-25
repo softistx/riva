@@ -60,7 +60,7 @@ The REST equivalents are `useRest('get', path, input)` and `useRestMutation(meth
 `@softistx/riva-react/resource` holds the generic blocks the adapters' hooks (`useGraphQL`, `useRest`, ...) are built on; use them to make a hook for your own resource.
 
 ```ts
-import { useMutationHandle, useResource, useStableInput } from '@softistx/riva-react/resource';
+import { useCallResource, useMutationHandle, useResource, useStableInput } from '@softistx/riva-react/resource';
 
 // BOOKS_QUERY and ADD_BOOK_MUTATION are documents written with graphql(); the names are schematic.
 function Books({ first }: { first: number }) {
@@ -77,7 +77,7 @@ function Books({ first }: { first: number }) {
 }
 ```
 
-`useResource(key, make, { suspense?, keepPrevious? })` makes one resource per riva and key, as a discriminated state; `suspense: true` suspends and types it as success, and `suspenseStaleTime(riva, staleTime?)` is the `staleTime` such a fetch should use (yours or the riva's, at least 1000 ms). `useStableInput` returns `{ key, input, enabled }`; a function input is evaluated at each render (untracked) to derive the key, so it follows props, and the resource still tracks the signals it reads. A disabled hook never calls it. The callable of `useMutationHandle` and its `reset` change identity with the state: call them from handlers, never list them in effect dependencies. [Guide](./docs/guide/resource.md).
+`useResource(key, make, { suspense?, keepPrevious? })` makes one resource per riva and key, as a discriminated state; `suspense: true` suspends and types it as success, and `suspenseStaleTime(riva, staleTime?)` is the `staleTime` such a fetch should use (yours or the riva's, at least 1000 ms). `useStableInput` returns `{ key, input, enabled }`; a function input is evaluated at each render (untracked) to derive the key, so it follows props, and the resource still tracks the signals it reads. A disabled hook never calls it. The callable of `useMutationHandle` and its `reset` change identity with the state: call them from handlers, never list them in effect dependencies. For adapter authors: `useCallResource(id, input, options, make)` is what `useGraphQL` and `useRest` share (stable key, `enabled`, `keepPrevious`, Suspense `staleTime`). [Guide](./docs/guide/resource.md).
 
 ## Signals and computeds
 
@@ -241,9 +241,9 @@ A hook never starts a fetch during a server render, except through `suspense: tr
 | `@softistx/riva-react/infinite` | `useInfiniteQuery` |
 | `@softistx/riva-react/entities` | `useFragment` |
 | `@softistx/riva-react/store` | `useStore` |
-| `@softistx/riva-react/resource` | `useResource`, `useMutationHandle`, `useStableInput`, `suspenseStaleTime` (the blocks the adapters' hooks are built on) |
+| `@softistx/riva-react/resource` | `useResource`, `useCallResource`, `useMutationHandle`, `useStableInput`, `suspenseStaleTime` (the blocks the adapters' hooks are built on) |
 
-Types: `MutationResult` (what `useMutation` returns), `RivaProviderProps`, `SuspendedState` and `UseQueryOptions` (main entry), `InfiniteResult` and `UseInfiniteQueryOptions` (`/infinite`), `UseResourceOptions`, `StableInput`, `MutationHook` and `SuspendedState` (`/resource`).
+Types: `MutationResult` (what `useMutation` returns), `RivaProviderProps`, `SuspendedState` and `UseQueryOptions` (main entry), `InfiniteResult` and `UseInfiniteQueryOptions` (`/infinite`), `UseResourceOptions`, `CallResourceOptions`, `ResourceCall`, `StableInput`, `MutationHook` and `SuspendedState` (`/resource`).
 
 Core plus the main entry stays under 9 kB gzipped; the subpaths cost nothing until imported.
 

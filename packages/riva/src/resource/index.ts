@@ -1,4 +1,7 @@
+export { abortable } from './abortable';
+export { type CallOptions, callResource, mutateInvalidating } from './call';
 export { GraphQLError, type GraphQLErrorEntry } from './graphql-error';
+export { isReactive, type TrackedInput, trackedInput } from './input';
 export { type MutationHandle, mutationHandle } from './mutation-handle';
 export {
 	type Resource,
