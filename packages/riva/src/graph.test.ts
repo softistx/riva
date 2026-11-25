@@ -148,3 +148,15 @@ test('batch keeps a frozen or primitive body error and does not throw from the a
 	}
 	expect(thrown).toBe('text');
 });
+
+test('write asks equals before assigning, so an equals that throws refuses the write', () => {
+	const guarded = signal(1, {
+		equals: () => {
+			throw new Error('refused');
+		},
+	});
+	const c = createRivaClient();
+	expect(() => c.set(guarded, 2)).toThrow('refused');
+	expect(c.get(guarded)).toBe(1);
+	expect(c.graph.epoch).toBe(0);
+});

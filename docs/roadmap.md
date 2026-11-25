@@ -14,7 +14,8 @@ v1, on the integration branch `feat/v1`. What a consumer gets, slice by slice:
 8. A GraphQL transport over `@softistx/graphql-client`, persisted ids and a codegen plugin that emits the allowlist manifest.
 9. A REST transport typed by OpenAPI, plus a free fetcher for schema-less APIs.
 10. React Router integration: one client per request, dehydrate and hydrate, the `/_data` route for BFF apps, an action-result helper and a revalidation bridge.
-11. A guide for each package and a Claude Code plugin to adopt and upgrade riva.
+11. Domain stores: state, computeds and actions with `useStore`.
+12. A guide for each package and a Claude Code plugin to adopt and upgrade riva.
 
 ## Next
 
