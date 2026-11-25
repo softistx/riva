@@ -1,11 +1,13 @@
 import { computed, type Readable } from './computed';
-import { type Duration, toMs } from './duration';
+import { type Duration, ms } from './duration';
 import {
 	defaultEvents,
 	defaultScheduler,
+	noop,
 	type RivaEvents,
 	type Scheduler,
 } from './env';
+import { RivaError } from './errors';
 import * as graph from './graph';
 import type { Query, QueryState, VarsArgs } from './query';
 import { createQueryCache, type QueryCache } from './query-cache';
@@ -28,7 +30,26 @@ export interface RivaOptions {
 	scheduler?: Scheduler;
 	/** Focus and reconnect events; defaults to the browser's, nothing on the server. */
 	events?: RivaEvents;
+	/** Riva-wide defaults, under a definition's own options. */
+	defaults?: {
+		/** Used by a query that sets no `staleTime`; built-in default 0. */
+		staleTime?: Duration;
+	};
 }
+
+/** What an adapter hands to `createRiva`: `install` runs once and its result becomes `riva[key]`. */
+export interface RivaExtension<A> {
+	install(riva: Riva): A;
+}
+
+/** The members `createRiva` adds for its extension options. */
+export type Installed<O> = string extends keyof O
+	? unknown
+	: {
+			readonly [K in keyof O as O[K] extends RivaExtension<unknown>
+				? K
+				: never]: O[K] extends RivaExtension<infer A> ? A : never;
+		};
 
 /** Holds every value. One per request on the server, one in the browser. */
 export class Riva {
@@ -38,13 +59,26 @@ export class Riva {
 	readonly queries: QueryCache;
 	/** @internal Per-riva state of opt-in modules, by their own key. */
 	readonly slots = new Map<unknown, unknown>();
+	/** @internal Default `staleTime` (ms) of a query that sets none. */
+	readonly staleTime: number;
 
 	constructor(options: RivaOptions = {}) {
+		this.staleTime = ms(options.defaults?.staleTime, 0) as number;
 		this.queries = createQueryCache(
 			this,
 			options.scheduler ?? defaultScheduler,
 			options.events ?? defaultEvents,
 		);
+		for (const k in options) {
+			const x = (options as Record<string, RivaExtension<unknown> | undefined>)[
+				k
+			];
+			if (x?.install) {
+				if (k in this)
+					throw new RivaError('RIVA_DEFINITION', `"${k}" is reserved.`);
+				(this as Record<string, unknown>)[k] = x.install(this);
+			}
+		}
 	}
 
 	/** A query's state: a pure read, tracked in a computed or effect, never fetches. */
@@ -90,14 +124,7 @@ export class Riva {
 			return graph.subscribe(this.graph, def, a as Listener<unknown>);
 		return typeof a === 'function'
 			? this.queries.observe(def, undefined, a as Listener<QueryState<unknown>>)
-			: this.queries.observe(
-					def,
-					a,
-					b as Listener<QueryState<unknown>>,
-					o?.staleTime === undefined
-						? undefined
-						: { staleTime: toMs(o.staleTime) },
-				);
+			: this.queries.observe(def, a, b as Listener<QueryState<unknown>>, o);
 	}
 
 	/** Re-runs `fn` when what it read changes; the returned cleanup runs before each re-run and on dispose. */
@@ -112,7 +139,7 @@ export class Riva {
 		};
 		const def = computed(run, { equals: () => false });
 		this.get(def);
-		const stop = this.subscribe(def, () => {});
+		const stop = this.subscribe(def, noop);
 		return () => {
 			stop();
 			const previous = cleanup;
@@ -136,4 +163,15 @@ export class Riva {
 	}
 }
 
-export const createRiva = (options?: RivaOptions): Riva => new Riva(options);
+/** A riva, with its extensions installed and typed: `createRiva({ graphql })` gives `riva.graphql`. */
+export const createRiva: {
+	(options?: RivaOptions): Riva;
+	<
+		O extends RivaOptions & {
+			// A key that is not an option must be an extension: a misspelt option is a type error.
+			[K in Exclude<keyof O, keyof RivaOptions>]: RivaExtension<unknown>;
+		} & { [K in keyof Riva]?: never },
+	>(
+		options: O,
+	): Riva & Installed<O>;
+} = (options?: RivaOptions) => new Riva(options) as never;

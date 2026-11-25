@@ -34,7 +34,7 @@ const types = () => {
 	const s = useQuery(users, { school: 's' }, { suspense: true });
 	expectTypeOf(s.data).toEqualTypeOf<string[]>();
 	expectTypeOf(s.status).toEqualTypeOf<
-		'idle' | 'pending' | 'success' | 'error'
+		'idle' | 'loading' | 'success' | 'error'
 	>();
 	const sp = useQuery(plain, undefined, { suspense: true });
 	expectTypeOf(sp.data).toEqualTypeOf<number>();

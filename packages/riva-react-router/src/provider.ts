@@ -26,23 +26,14 @@ interface RivaRouterProviderBase {
 	children?: ReactNode;
 }
 
-export type RivaRouterProviderProps = RivaRouterProviderBase &
-	(
-		| {
-				/**
-				 * The riva of this tree. By default one is created per mount. It must stay
-				 * the same object for the lifetime of the mount: the provider reads it once
-				 * and does not follow a new one.
-				 */
-				riva?: Riva;
-				client?: undefined;
-		  }
-		| {
-				riva?: undefined;
-				/** @deprecated Use `riva`. Removed in the next minor. */
-				client: Riva;
-		  }
-	);
+export interface RivaRouterProviderProps extends RivaRouterProviderBase {
+	/**
+	 * The riva of this tree. By default one is created per mount. It must stay
+	 * the same object for the lifetime of the mount: the provider reads it once
+	 * and does not follow a new one.
+	 */
+	riva?: Riva;
+}
 
 /** What a loader's data holds under `~riva`; React Router's serialized types do not keep the `Snapshot` brand. */
 const snapshotOf = (data: unknown): Snapshot | undefined =>
@@ -58,12 +49,11 @@ const snapshotOf = (data: unknown): Snapshot | undefined =>
  */
 export function RivaRouterProvider({
 	riva: given,
-	client,
 	setup,
 	invalidateOnAction,
 	children,
 }: RivaRouterProviderProps): ReactElement {
-	const riva = given ?? client;
+	const riva = given;
 	const [own] = useState(() => {
 		const c = riva ?? createRiva();
 		setup?.(c, { server: typeof document === 'undefined' });

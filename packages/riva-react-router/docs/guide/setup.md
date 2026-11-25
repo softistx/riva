@@ -6,74 +6,61 @@ One `Riva` per request on the server, hydrated in the browser. The middleware cr
 
 ## Wire the root
 
-`middleware` on a route module needs React Router 8 framework mode. The middleware goes on the root route, the provider in the root component:
+`middleware` on a route module needs React Router 8 framework mode. Build the riva in one module both sides can import, put the middleware on the root route, and hand the same factory to the provider:
 
 ```ts
-// app/riva.server.ts: built in a *.server.ts module, so /server stays out of the browser bundle
+// app/riva.ts: one factory, so the request, the render and the browser build the same riva
 import { createGraphQLClient } from '@softistx/graphql-client';
-import { graphqlClientTransport, provideGraphQL } from '@softistx/riva-graphql';
-import { rivaMiddleware } from '@softistx/riva-react-router/server';
+import { createRiva } from '@softistx/riva';
+import { graphql } from '@softistx/riva-graphql';
+import { type ContextLike, rivaOf } from '@softistx/riva-react-router';
 
 const API_URL = 'https://api.example.com/graphql'; // schematic: your API
 
+export function createAppRiva(cookie?: string) {
+	return createRiva({
+		graphql: graphql(createGraphQLClient({ url: API_URL, headers: cookie ? { cookie } : {} })),
+		defaults: { staleTime: '30s' }, // fresh server data is not fetched again at hydration
+	});
+}
+export type AppRiva = ReturnType<typeof createAppRiva>;
+
+// `rivaOf` returns the base `Riva`; this one carries `riva.graphql` in its type.
+export const appRivaOf = (context: ContextLike) => rivaOf(context) as AppRiva;
+```
+
+```ts
+// app/riva.server.ts: built in a *.server.ts module, so /server stays out of the browser bundle
+import { rivaMiddleware } from '@softistx/riva-react-router/server';
+import { createAppRiva } from './riva';
+
 export const rivaMw = rivaMiddleware({
 	// the caller port of the request: here its session cookie goes to the API
-	setup: (riva, { request }) =>
-		provideGraphQL(
-			riva,
-			graphqlClientTransport(
-				createGraphQLClient({
-					url: API_URL,
-					headers: { cookie: request.headers.get('cookie') ?? '' },
-				}),
-			),
-		),
+	create: ({ request }) => createAppRiva(request.headers.get('cookie') ?? undefined),
 });
 ```
 
 ```tsx
 // app/root.tsx
-import { createGraphQLClient } from '@softistx/graphql-client';
-import { graphqlClientTransport, provideGraphQL } from '@softistx/riva-graphql';
 import { RivaRouterProvider } from '@softistx/riva-react-router';
+import { useState } from 'react';
 import { Outlet } from 'react-router';
+import { createAppRiva } from './riva';
 import { rivaMw } from './riva.server';
-
-const API_URL = 'https://api.example.com/graphql'; // schematic: your API
 
 export const middleware = [rivaMw];
 
 export default function Root() {
+	const [riva] = useState(() => createAppRiva()); // the browser's riva, made once
 	return (
-		<RivaRouterProvider
-			// the riva the render and the browser use; the data itself comes from the loaders
-			setup={(riva) =>
-				provideGraphQL(riva, graphqlClientTransport(createGraphQLClient({ url: API_URL })))
-			}
-		>
+		<RivaRouterProvider riva={riva}>
 			<Outlet />
 		</RivaRouterProvider>
 	);
 }
 ```
 
-## Options
-
-`rivaMiddleware(options?)` (from `/server`):
-
-| Option | Default | Meaning |
-|---|---|---|
-| `create(args)` | `createRiva()` | Makes the request's riva. `args` are the middleware's (`request`, `context`, `params`). |
-| `setup(riva, { request, context })` | none | Wires the riva before the loaders run: the caller port of the request (a transport with the session). May be async. |
-
-`<RivaRouterProvider>` props:
-
-| Prop | Default | Meaning |
-|---|---|---|
-| `riva` | a riva made once per mount | The riva the render and the browser use. |
-| `setup(riva)` | none | Wires it (a browser transport). |
-| `invalidateOnAction` | none | Definitions invalidated each time a non-GET navigation or fetcher settles ([after a write](./after-a-write.md)). |
-| `children` | required | The app. |
+The `graphql` extension installs the transport itself: no `provideGraphQL` call. For REST, add `rest: rest(api)` to the same `createRiva` ([REST transport](https://github.com/softistx/riva/blob/develop/packages/riva-rest/docs/guide/transport.md)). A riva without extensions wires its transport in `setup` instead: [transport](https://github.com/softistx/riva/blob/develop/packages/riva-graphql/docs/guide/transport.md).
 
 ## Keep `/server` out of the browser
 
@@ -82,7 +69,8 @@ export default function Root() {
 ## Traps
 
 - Declare the middleware once, on the root route: a second run in one request throws `rivaMiddleware ran twice in one request: declare it once, on the root route.`
-- The `riva` prop must stay the same object for the lifetime of the mount, and `setup` must be idempotent: React StrictMode runs it twice in development.
+- The `riva` prop must stay the same object for the lifetime of the mount (hold it in `useState`, as above), and `setup` must be idempotent: React StrictMode runs it twice in development.
+- A provider without a `riva` prop makes a bare one: `riva.graphql` is then missing in the browser. Pass the factory's riva.
 - The ambient scope is one `AsyncLocalStorage` per process, wired by importing `/server` (`setScopeResolver` is one per process: another resolver replaces it).
 - With `@softistx/alxia-react-router`, put `rivaMiddleware` in the root route's `middleware`, beside alxia's own.
 

@@ -6,11 +6,22 @@ The transport maps `@softistx/graphql-client`'s errors to riva's, so `instanceof
 
 | graphql-client | riva | `code` | retried |
 |---|---|---|---|
-| `ApiError` (the response had `errors`) | `RivaRequestError` | the API's `extensions.code`, untouched (`GRAPHQL_ERROR` when it sent none) | 5xx, 408, 429 |
+| `ApiError` (the response had `errors`) | `GraphQLError` (a `RivaRequestError`) | the API's `extensions.code`, untouched (`GRAPHQL_ERROR` when it sent none) | 5xx, 408, 429 |
 | `ApiStatusError` | `RivaHttpError` | `HTTP_<status>` | 5xx, 408, 429 |
 | `ApiUnavailableError` (unreachable, timeout) | `RivaNetworkError` | `RIVA_NETWORK` | yes |
 | `ApiUnavailableError` (no data, no errors) | `RivaRequestError` | `RIVA_INVALID_RESPONSE` | no |
 | the call's abort | `RivaAbortError` | `RIVA_ABORT` | never |
+
+## Partial results
+
+A response with data and errors becomes a `GraphQLError`: `errors` lists each error (`message`, `path`, `code`), `data` is what the API resolved, `cause` the `ApiError`. In a `riva.graphql.query` resource the state is `error` with that `data` kept; the message lists every error with its path.
+
+```ts
+import { GraphQLError } from '@softistx/riva-graphql';
+
+const s = riva.graphql.query(VIEWER_QUERY).state;
+if (s.status === 'error' && s.error instanceof GraphQLError) s.error.errors[0]?.path; // ['viewer', 'avatar']
+```
 
 ## Read the cause
 

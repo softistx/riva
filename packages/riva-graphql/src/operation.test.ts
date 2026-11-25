@@ -49,7 +49,10 @@ test('rejects a document with no operation, several, or an unnamed one', () => {
 	);
 	expect(() => operationOf(doc('{ a }'))).toThrow(/no name/);
 	expect(() => operationOf(doc('subscription S { s }'))).toThrow(
-		/subscription/,
+		/subscription; run it with riva.graphql.subscribe/,
+	);
+	expect(operationOf(doc('subscription S { s }'), 'subscription').kind).toBe(
+		'subscription',
 	);
 });
 

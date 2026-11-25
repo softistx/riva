@@ -2,6 +2,7 @@ export { batch, untracked } from './batch';
 export {
 	createRiva,
 	Riva,
+	type RivaExtension,
 	type RivaOptions,
 	type SubscribeOptions,
 } from './client';
@@ -14,13 +15,6 @@ export {
 	type ReadonlySignal,
 } from './computed';
 export type { DataOperation, DataSource } from './data/types';
-export {
-	type ClientEvents,
-	type ClientOptions,
-	createRivaClient,
-	RivaClient,
-	setDefaultClient,
-} from './deprecated';
 export type { Duration } from './duration';
 export { effect } from './effect';
 export type { RivaEvents, Scheduler } from './env';

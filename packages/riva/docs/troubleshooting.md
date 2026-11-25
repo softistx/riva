@@ -18,6 +18,21 @@ riva.get(count);
 riva.run(() => count.get());
 ```
 
+## "<name>" is reserved.
+
+Code: `RIVA_DEFINITION` (`RivaError`).
+
+**When:** `createRiva({ <name>: extension })` was given an extension under the name of a `Riva` member (`get`, `set`, `subscribe`, `run`, `queries`, …).
+
+**Why:** an extension is installed as `riva[name]`; that name is already taken, and overwriting it would break the riva.
+
+**Fix:** rename the key.
+
+```ts
+createRiva({ get: graphql(gql) }); // throws: "get" is reserved.
+createRiva({ graphql: graphql(gql) }); // riva.graphql
+```
+
 ## setDefaultRiva is browser-only
 
 Code: `RIVA_SCOPE` (`RivaScopeError`).
@@ -343,3 +358,59 @@ Code: `RIVA_INVALID_RESPONSE` (`RivaRequestError`, not retryable).
 **When:** the data route answered 2xx with JSON that is not `{ data }`, for example a proxy's or a login page's body.
 
 **Fix:** check that the URL given to `postData` (or `bffTransport`) reaches the `dataRoute` action and not another handler; look at the response in the network tab.
+
+## `The resource is disabled: await it once enabled is true.`
+
+Code: `RIVA_DEFINITION` (`RivaError`).
+
+**When:** you `await` a `resource(...)` while its `enabled` option is false.
+
+**Why:** a disabled resource has no key to load, and its `source` is never called.
+
+**Fix:** await it once `enabled` is true, or read `state` (`idle` while disabled) instead of awaiting.
+
+```ts
+const r = resource(riva, source, { enabled: () => riva.get(signedIn) });
+if (riva.get(signedIn)) await r;
+```
+
+## A resource never fetches
+
+**When:** `resource(...).state` stays `loading` and no request starts.
+
+**Why:** a resource is lazy. It observes its entry only while something subscribes to it or an observed computed or effect reads `state`, and only in a browser. A plain read, and any read on the server, starts nothing.
+
+**Fix:** `subscribe` to it, read `state` inside an effect, or `await` it for a one-shot load (the only way on a server).
+
+```ts
+const stop = riva.effect(() => render(books.state));
+```
+
+## A resource stays observed after its reader is gone
+
+**When:** a resource created in a component (or read by a computed or effect that was dropped) keeps its entry observed: no garbage collection, and no refetch stop.
+
+**Why:** a dropped computed or effect reader is noticed only at the entry's next state change. An entry with no polling and no refetch on focus never changes by itself, so it stays observed. Known limitation.
+
+**Fix:** create resources outside render, or subscribe explicitly and unsubscribe.
+
+```ts
+const stop = books.subscribe(() => {});
+// later
+stop();
+```
+
+## A stream resource restarts on every change, or not at all
+
+**When:** `streamResource`'s stream restarts although the variables are equal, or does not restart after a change.
+
+**Why:** the stream restarts when the factory `source` returns is a new function, and `source` runs again only when what it reads changes. Return a new `(signal) => iterable` each time (reading the variables through the tracked getters); returning one shared function never restarts it.
+
+**Fix:** build the factory inside `source`.
+
+```ts
+streamResource(riva, () => {
+	const id = riva.get(roomId);
+	return (signal) => subscribeToRoom(id, signal);
+});
+```

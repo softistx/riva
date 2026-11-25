@@ -1,3 +1,5 @@
+import { type Duration, ms } from './duration';
+import { both } from './env';
 import type { RivaError } from './errors';
 import {
 	type AnyQuery,
@@ -17,8 +19,8 @@ import { isBrowser } from './scope';
 import type { Listener, Unsubscribe } from './signal';
 
 export interface ObserveOptions {
-	/** Replaces the definition's `staleTime` for this observer's first fetch decision only (ms). */
-	staleTime?: number;
+	/** Replaces the definition's `staleTime` for this observer's first fetch decision only. */
+	staleTime?: Duration | undefined;
 }
 
 function poll(c: Ctx, e: Entry): void {
@@ -72,17 +74,14 @@ export function observe(
 	if (c.observed++ === 0) {
 		const a = c.events.onFocus(() => refetch(c, 'refetchOnFocus'));
 		const b = c.events.onReconnect(() => refetch(c, 'refetchOnReconnect'));
-		c.detach = () => {
-			a();
-			b();
-		};
+		c.detach = both(a, b);
 	}
 	if (e.observers++ === 0) poll(c, e);
 	const off = c.riva.subscribe(e.out, (s) => {
 		listener(s);
 		complete(c, e, s);
 	});
-	if (stale(c, e, opts?.staleTime)) join(c, e);
+	if (stale(c, e, ms(opts?.staleTime))) join(c, e);
 	let done = false;
 	return () => {
 		if (done) return;

@@ -30,6 +30,11 @@
 			"import": "./dist/entities/index.js",
 			"default": "./dist/entities/index.js"
 		},
+		"./resource": {
+			"types": "./dist/resource/index.d.ts",
+			"import": "./dist/resource/index.js",
+			"default": "./dist/resource/index.js"
+		},
 		"./store": {
 			"types": "./dist/store/index.d.ts",
 			"import": "./dist/store/index.js",
@@ -70,14 +75,15 @@
 	},
 	"peerDependencies": {
 		"react": "^19.0.0",
-		"@softistx/riva": "^0.2.0"
+		"@softistx/riva": "^0.3.0"
 	},
 	"nxgt": {
 		"entrypoints": [
 			"src/index.ts",
 			"src/infinite/index.ts",
 			"src/entities/index.ts",
-			"src/store/index.ts"
+			"src/store/index.ts",
+			"src/resource/index.ts"
 		]
 	}
 }

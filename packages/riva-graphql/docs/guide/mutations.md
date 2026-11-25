@@ -1,5 +1,7 @@
 # Mutations
 
+> Most call sites use the [simple API](./simple-api.md). This page covers the definition, for settings several call sites share: see [Advanced: shared definitions](https://github.com/softistx/riva/blob/develop/packages/riva/docs/guide/shared-definitions.md).
+
 ## What it is for
 
 `mutation(document, options?)` runs a write typed from its document, with optimistic updates, cache updates and invalidation.

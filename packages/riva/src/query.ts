@@ -1,7 +1,7 @@
 import type { Riva } from './client';
-import { type Duration, toMs } from './duration';
+import { type Duration, ms } from './duration';
 
-export type QueryStatus = 'idle' | 'pending' | 'success' | 'error';
+export type QueryStatus = 'idle' | 'loading' | 'success' | 'error';
 
 /**
  * What a query entry holds. `status` stays `success` with the old data during
@@ -65,6 +65,8 @@ export interface QueryOptions<Vars, Data> {
 
 export interface EnsureOptions {
 	signal?: AbortSignal;
+	/** Replaces the definition's `staleTime` (and the riva's default) for this call's freshness check. */
+	staleTime?: Duration;
 }
 
 /** The variables argument, optional when `Vars` is `void` or `undefined`. */
@@ -88,7 +90,7 @@ export interface Query<
 	/** @internal */
 	readonly options: {
 		readonly fetch: QueryOptions<Vars, Data>['fetch'];
-		readonly staleTime: number;
+		readonly staleTime: number | undefined;
 		readonly gcTime: number | undefined;
 		readonly retry: QueryOptions<Vars, Data>['retry'];
 		readonly retryDelay: QueryOptions<Vars, Data>['retryDelay'];
@@ -117,9 +119,6 @@ export interface Query<
 	cancel(riva: Riva, ...args: VarsArgs<Vars>): void;
 }
 
-const ms = (d: Duration | undefined, fallback?: number) =>
-	d === undefined ? fallback : toMs(d);
-
 export function query<Vars = void, Data = unknown>(
 	opts: QueryOptions<Vars, Data>,
 ): Query<Vars, Data> {
@@ -128,7 +127,7 @@ export function query<Vars = void, Data = unknown>(
 		id: opts.id,
 		options: Object.freeze({
 			...opts,
-			staleTime: ms(opts.staleTime, 0),
+			staleTime: ms(opts.staleTime),
 			gcTime: ms(opts.gcTime),
 			refetchOnFocus: opts.refetchOnFocus ?? true,
 			refetchOnReconnect: opts.refetchOnReconnect ?? true,

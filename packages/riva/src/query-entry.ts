@@ -19,9 +19,9 @@ export interface Inflight {
 	ctl: AbortController;
 	waiters: number;
 	/** Started by a prefetch, a poll or a refetch: a caller abort never cancels it. */
-	pinned: boolean;
+	pinned?: boolean;
 	/** Set by `setData`: the waiters resolve with it instead of rejecting. */
-	set: { v: unknown } | undefined;
+	set?: { v: unknown } | undefined;
 	/** The state to restore on cancel. */
 	prev: State;
 }
@@ -42,10 +42,10 @@ export interface Entry {
 	/** What readers see: the signal's data through the cache policy, under the layers. */
 	out: Readable<State>;
 	observers: number;
-	invalidated: boolean;
-	run: Inflight | undefined;
-	gc: unknown;
-	poll: unknown;
+	invalidated?: boolean;
+	run?: Inflight | undefined;
+	gc?: unknown;
+	poll?: unknown;
 }
 
 /**
@@ -67,7 +67,7 @@ export interface Ctx {
 	entries: Map<string, Entry>;
 	/** Observers over every entry, to attach the window events once. */
 	observed: number;
-	detach: (() => void) | undefined;
+	detach?: (() => void) | undefined;
 	/** Called on a new entry: `@softistx/riva/ssr` seeds it from a snapshot. @internal */
 	seed?: (c: Ctx, e: Entry) => void;
 	/** Snapshot entries waiting for their entry, by key. @internal */
@@ -151,7 +151,7 @@ export const put = (c: Ctx, e: Entry, patch: Partial<State>): void =>
 export const stale = (
 	c: Ctx,
 	e: Entry,
-	staleTime: number = e.def.options.staleTime,
+	staleTime: number = e.def.options.staleTime ?? c.riva.staleTime,
 ): boolean =>
 	peek(c, e).status !== 'success' ||
 	e.invalidated ||
@@ -231,10 +231,6 @@ export function entryOf(c: Ctx, def: AnyQuery, vars: unknown): Entry {
 				{ equals: sameState, name: key },
 			),
 			observers: 0,
-			invalidated: false,
-			run: undefined,
-			gc: undefined,
-			poll: undefined,
 		};
 		e = n;
 		c.entries.set(key, e);

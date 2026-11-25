@@ -15,6 +15,8 @@ const snapshot = dehydrate(riva); // JSON-safe, hand it to the page
 hydrate(riva, snapshot);
 ```
 
+What a server fills is what travels. The simple API fills it: `await riva.graphql.query(DOC, vars)` and `await riva.rest.get(path, input)` settle an entry, `dehydrate` writes it, and the browser's `hydrate` seeds it. Give the hydrating riva a `defaults: { staleTime }` (`createRiva({ ..., defaults: { staleTime: '30s' } })`), or the browser fetches the entry again at once. A query definition does the same through `def.ensure` ([shared definitions](./shared-definitions.md)).
+
 The snapshot's fields are an opaque format that may change: never build or edit one, only pass on what `dehydrate` returned. With React Router, `@softistx/riva-react-router` does both for you.
 
 ## Embedding the snapshot safely

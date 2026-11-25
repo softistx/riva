@@ -1,5 +1,7 @@
 # The normalized cache: `@softistx/riva/entities`
 
+> Most call sites use the simple API (`riva.graphql`, `riva.rest`, the hooks over them). This page covers the definition, for settings several call sites share: see [Advanced: shared definitions](./shared-definitions.md).
+
 By default a query keeps its data as is, keyed by id and variables. Pass `cache: entities()` to store each entity (an object with a string `__typename` and an `id` or `_id`) once, shared by every query that returns it. A refetch of one query then updates the others, and a `riva.get` inside a computed re-evaluates only when an entity it read changed.
 
 ```ts

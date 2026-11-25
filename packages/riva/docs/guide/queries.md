@@ -1,5 +1,7 @@
 # Queries
 
+> Most call sites use the simple API (`riva.graphql`, `riva.rest`, the hooks over them). This page covers the definition, for settings several call sites share: see [Advanced: shared definitions](./shared-definitions.md).
+
 A query is a stateless definition: an `id` and a `fetch` that takes typed variables and returns data. The core is transport-agnostic: the GraphQL and REST adapters supply the id and the fetcher; here it runs over a plain `fetch`. Cache entries live in the `Riva`, keyed by the id and the stable-serialized variables.
 
 ```ts
@@ -27,7 +29,7 @@ const off = riva.subscribe(user, { id: '1' }, (state) => console.log(state.statu
 
 | Call | What it does |
 | --- | --- |
-| `def.ensure(riva, vars, { signal? })` | Fetches if missing or stale and awaits; resolves the cache when fresh. |
+| `def.ensure(riva, vars, { signal?, staleTime? })` | Fetches if missing or stale and awaits; resolves the cache when fresh. A call's `staleTime` wins over the definition's, then `defaults.staleTime`, then 0. |
 | `riva.get(def, vars)` | The state: a pure read, tracked in a computed or effect, never fetches. |
 | `riva.subscribe(def, vars, listener, { staleTime? })` | Observes: fetches when missing or stale, polls, refetches on focus and reconnect. Returns an unsubscribe. |
 | `def.prefetch(riva, vars)` | Fire and forget; never rejects. |
@@ -39,7 +41,7 @@ const off = riva.subscribe(user, { id: '1' }, (state) => console.log(state.statu
 
 `QueryState<Data>` is `{ status, data, error, isFetching, updatedAt }`.
 
-- `status` is `idle | pending | success | error`.
+- `status` is `idle | loading | success | error`.
 - A background refetch keeps `status: 'success'` and the old data with `isFetching: true`. An error keeps the last data.
 - Data the cache can no longer read (an evicted entity) counts as stale: `ensure` fetches it and an observed entry refetches.
 
@@ -49,7 +51,7 @@ const off = riva.subscribe(user, { id: '1' }, (state) => console.log(state.statu
 | --- | --- | --- |
 | `id` | required | Identifies the definition; ids must be unique. |
 | `fetch(vars, { signal, riva })` | required | Returns the data. |
-| `staleTime` | `0` | How long data stays fresh. A `Duration`: a number of ms or `"250ms"`, `"30s"`, `"5m"`, `"2h"`. |
+| `staleTime` | `0` | How long data stays fresh. A `Duration`: a number of ms or `"250ms"`, `"30s"`, `"5m"`, `"2h"`. Unset, it takes `createRiva({ defaults: { staleTime } })`. |
 | `gcTime` | 5 min in a browser, `Infinity` on the server | How long an unobserved entry is kept. No timers on the server: a per-request riva is just dropped. |
 | `retry` | 3 in a browser, 0 on the server | A count, or `(failures, error) => boolean`. |
 | `retryDelay` | `min(1000 * 2 ** failures, 30_000)` | `(failures) => ms`. |
@@ -63,7 +65,7 @@ Never retried: `RivaAbortError`, and a `RivaRequestError` with `retryable: false
 ## Dedupe and abort
 
 - One in-flight fetch per key: concurrent `ensure` and `subscribe` share it.
-- The fetcher gets `signal`. `ensure(riva, vars, { signal })` rejects with `RivaAbortError` when the caller aborts; the shared fetch is aborted only when no other waiter or observer remains, and an aborted fetch never writes an error state.
+- The fetcher gets `signal`. `ensure(riva, vars, { signal })` rejects with `RivaAbortError` when the caller aborts (`ensure`'s `staleTime`, call > definition > `defaults` > 0, decides only this call's freshness check); the shared fetch is aborted only when no other waiter or observer remains, and an aborted fetch never writes an error state.
 - `riva.subscribe(def, vars, listener, { staleTime })` overrides the definition's `staleTime` for this observer's first fetch decision only, for example to trust data an `ensure` just loaded.
 
 ## Tests and other hosts
@@ -88,6 +90,6 @@ Exported types: `Query`, `QueryOptions`, `QueryState`, `QueryStatus`, `EnsureOpt
 
 ## Traps
 
-- With the default `staleTime` of 0, every `ensure` and every new observer refetches. Set a `staleTime` for data that may be reused, especially data hydrated from the server.
+- With the default `staleTime` of 0, every `ensure` and every new observer refetches. Set a `staleTime` (or `createRiva({ defaults: { staleTime } })` for every query) for data that may be reused, especially data hydrated from the server.
 - Two definitions with one `id` share a cache entry.
 - `invalidate` only refetches at once what is observed; an unobserved entry refetches on its next read.

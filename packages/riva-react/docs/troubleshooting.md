@@ -25,13 +25,13 @@ export const Root = () => (
 );
 ```
 
-This is not the core's "No Riva in scope: read through riva.get(def)…" error, which `signal.get()` and the like throw outside React: see the [core troubleshooting](https://github.com/softistx/riva/blob/develop/packages/riva/docs/troubleshooting.md#no-rivaclient-in-scope).
+This is not the core's "No Riva in scope: read through riva.get(def)…" error, which `signal.get()` and the like throw outside React: see the [core troubleshooting](https://github.com/softistx/riva/blob/develop/packages/riva/docs/troubleshooting.md#no-riva-in-scope).
 
 ## A query fetches twice around Suspense
 
 **When:** you mount the same query once with `suspense: true` and once without (or under `Suspense` with `enabled` toggled), and the network shows a second request.
 
-**Why:** a `suspense: true` mount trusts what a Suspense render just fetched for one second, whatever the query's `staleTime`. A mount without it follows the query's own `staleTime`, `0` by default, so it fetches stale data again.
+**Why:** a `suspense: true` mount trusts what a Suspense render just fetched, whatever the query's `staleTime`: the hooks fetch with a `staleTime` of at least 1000 ms (the query's own, else the riva's default, whichever is longer). A mount without it follows the query's own `staleTime`, `0` by default, so it fetches stale data again.
 
 **Fix:** give the query a `staleTime`, or use `suspense: true` on every reader of that query.
 
@@ -114,4 +114,16 @@ const Child = memo(function Child() {
 	const [s] = useStore(BookStore); // its own hook, its own keys
 	return <i>{s.filter}</i>;
 });
+```
+
+## `` useResource: `suspense` needs an awaitable resource, not a stream. ``
+
+**When:** `suspense: true` on a hook whose `make` returned a stream resource (a subscription), which has no `then`.
+
+**Why:** Suspense needs a promise; a stream never settles.
+
+**Fix:** read it without `suspense`.
+
+```ts
+const feed = useGraphQLSubscription(BOOK_ADDED_SUBSCRIPTION, {}); // no suspense option
 ```

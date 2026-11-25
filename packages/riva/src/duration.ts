@@ -15,3 +15,7 @@ export function toMs(d: Duration): number {
 		`Invalid duration ${JSON.stringify(d)}: use ms, Infinity or "30s", "5m".`,
 	);
 }
+
+/** `toMs` that lets an absent duration through (or a fallback in its place). */
+export const ms = (d: Duration | undefined, fallback?: number) =>
+	d === undefined ? fallback : toMs(d);

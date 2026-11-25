@@ -9,11 +9,13 @@ In the browser, `bffTransport` posts `{ id, variables }` to your `dataRoute` (fr
 ## Browser
 
 ```ts
-// app/riva.riva.ts
+// app/riva.ts
+import { createRiva } from '@softistx/riva';
+import { graphql } from '@softistx/riva-graphql';
 import { bffTransport } from '@softistx/riva-graphql/bff';
-import { provideGraphQL } from '@softistx/riva-graphql';
 
-provideGraphQL(riva, bffTransport({ url: '/_data' }));
+export const createBrowserRiva = () =>
+	createRiva({ graphql: graphql(bffTransport({ url: '/_data' })) });
 ```
 
 ## Server
@@ -41,7 +43,7 @@ export const loader = route.loader;
 | `fetch` | global `fetch` | A fetch of your own. |
 | `headers` | none | A function returning `HeadersInit`, called at each request: `headers: () => ({ 'x-csrf': token() })`. |
 
-`allowlist(manifest)` is a `DataSource`: it knows only the manifest's ids, parses each document once, and runs it through the transport `provideGraphQL` set on the request riva.
+`allowlist(manifest)` is a `DataSource`: it knows only the manifest's ids, parses each document once, and runs it through the transport of the request riva (the one `graphql(client)` installed, or `provideGraphQL` set).
 
 ## Errors
 
@@ -51,4 +53,4 @@ The route's refusals and the API's errors come back as `RivaRequestError` with t
 
 - Keep `/bff` and `/server` out of each other's bundle: `/bff` is for the browser, `/server` imports `graphql`.
 - An id that is not in the manifest is refused by the route: regenerate the allowlist after changing a document ([codegen](./codegen.md)).
-- The request riva needs `provideGraphQL` too, in the `rivaMiddleware` `setup`, or the allowlist has no transport to run through.
+- The request riva needs its own transport too (a riva made with `createRiva({ graphql: graphql(client) })`, in `rivaMiddleware`'s `create`), or the allowlist has no transport to run through.

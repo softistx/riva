@@ -13,6 +13,14 @@ export interface RivaEvents {
 	onReconnect(cb: () => void): () => void;
 }
 
+export const noop = (): void => {};
+
+/** One unsubscribe for two. */
+export const both = (a: () => void, b: () => void) => (): void => {
+	a();
+	b();
+};
+
 export const defaultScheduler: Scheduler = {
 	now: Date.now,
 	setTimeout: (fn, ms) => setTimeout(fn, ms),
@@ -42,10 +50,7 @@ export const defaultEvents: RivaEvents = {
 			if (doc()?.visibilityState === 'visible') cb();
 		});
 		const b = on(host, 'focus', cb);
-		return () => {
-			a();
-			b();
-		};
+		return both(a, b);
 	},
 	onReconnect: (cb) => on(host, 'online', cb),
 };

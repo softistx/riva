@@ -54,7 +54,7 @@ export function useMutation<Vars, Data>(
 	const run = useCallback(
 		async (...args: VarsArgs<Vars, [opts?: RunOptions]>) => {
 			const id = ++latest.current;
-			report(id, { status: 'pending', data: undefined, error: undefined });
+			report(id, { status: 'loading', data: undefined, error: undefined });
 			try {
 				const data = await (
 					def.run as (c: typeof riva, ...a: unknown[]) => Promise<Data>
@@ -73,7 +73,7 @@ export function useMutation<Vars, Data>(
 		setState(IDLE);
 	}, []);
 	return useMemo(
-		() => ({ ...state, run, reset, isPending: state.status === 'pending' }),
+		() => ({ ...state, run, reset, isPending: state.status === 'loading' }),
 		[state, run, reset],
 	);
 }

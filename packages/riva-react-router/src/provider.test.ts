@@ -177,29 +177,8 @@ test('a given riva is used, and setup runs once with the environment', async () 
 	container.remove();
 });
 
-test('the deprecated `client` prop is still used as the riva', async () => {
-	const legacy = createRiva();
-	const seenRiva: Riva[] = [];
-	const Probe = () => {
-		seenRiva.push(useRiva());
-		return null;
-	};
-	const router = createMemoryRouter([
-		{
-			path: '/',
-			element: h(RivaRouterProvider, { client: legacy }, h(Probe)),
-		},
-	]);
-	const root = createRoot(document.createElement('div'));
-	await act(async () => {
-		root.render(h(RouterProvider, { router }));
-	});
-	expect(seenRiva[0]).toBe(legacy);
-	await act(async () => root.unmount());
-});
-
-test('RivaRouterProvider rejects `riva` and `client` together', () => {
+test('the removed `client` prop is a type error', () => {
 	const a = createRiva();
-	// @ts-expect-error both `riva` and `client`
-	h(RivaRouterProvider, { riva: a, client: a });
+	// @ts-expect-error `client` was removed: use `riva`
+	h(RivaRouterProvider, { client: a });
 });

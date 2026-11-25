@@ -6,20 +6,21 @@ Each entry is headed by the message you will see.
 
 Code: `RIVA_SCOPE` (`RivaScopeError`).
 
-**When:** a query, mutation or infinite list ran on a `Riva` that was never given a transport.
+**When:** a definition (`query()`, `mutation()`, `infinite()`) ran on a `Riva` that was never given a transport. A riva made with `createRiva({ graphql: graphql(client) })` has one already.
 
-**Why:** definitions are stateless and the transport lives on the riva, so two server requests never share one.
+**Why:** the transport lives on the riva, not on the definition, so two server requests never share one.
 
-**Fix:** provide it where the riva is created, per request on the server.
+**Fix:** create the riva with the extension, per request on the server.
 
 ```ts
 import { createGraphQLClient } from '@softistx/graphql-client';
 import { createRiva } from '@softistx/riva';
-import { graphqlClientTransport, provideGraphQL } from '@softistx/riva-graphql';
+import { graphql } from '@softistx/riva-graphql';
 
-const riva = createRiva();
-provideGraphQL(riva, graphqlClientTransport(createGraphQLClient({ url: 'https://api.example.com/graphql' })));
+const riva = createRiva({ graphql: graphql(createGraphQLClient({ url: 'https://api.example.com/graphql' })) });
 ```
+
+A riva made with `createRiva()` takes its transport with `provideGraphQL(riva, graphqlClientTransport(client))`, but has no `riva.graphql`.
 
 ## `riva-graphql: the operation has no name; name it (query Patients { ... }) so it has an id.`
 
@@ -41,7 +42,7 @@ Code: `RIVA_DEFINITION` (`RivaError`), thrown when the definition is created.
 
 ## `riva-graphql: X is a mutation; use mutation() to define it, not query().`
 
-**Fix:** use the helper that matches the document: `query()` and `infinite()` for queries, `mutation()` for mutations. Subscriptions are not supported yet (`riva-graphql: X is a subscription; …`).
+**Fix:** use the helper that matches the document: `query()` and `infinite()` for queries, `mutation()` for mutations.
 
 ## `riva-graphql: expected a TypedDocumentNode (set documentMode: "documentNode" in the client preset), got something else.`
 
@@ -193,7 +194,7 @@ Code: `RIVA_CACHE` (`RivaError`).
 
 **Why:** two `normalized()` (or `entities()`) policies with different `keys` or `identify` were used on one riva.
 
-**Fix:** create one `normalized(options)` and pass it to every definition. The core explains it in [its troubleshooting page](../../riva/docs/troubleshooting.md#this-client-already-uses-other-entity-identity-rules).
+**Fix:** create one `normalized(options)` and pass it to every definition. The core explains it in [its troubleshooting page](../../riva/docs/troubleshooting.md#this-riva-already-uses-other-entity-identity-rules).
 
 ## A query fetches although another query showed the same entity
 
@@ -201,10 +202,80 @@ Code: `RIVA_CACHE` (`RivaError`).
 
 **Fix:** expected: the query fetches, then reads from the store.
 
-## `riva-graphql: X is a subscription; subscriptions are not supported yet.`
+## `riva-graphql: X is a subscription; run it with riva.graphql.subscribe(), it has no query() or mutation() definition.`
 
-Code: `RIVA_DEFINITION` (`RivaError`), thrown when the definition is created (`X` is the operation's name).
+Code: `RIVA_DEFINITION` (`RivaError`), thrown when `query()`, `mutation()` or `infinite()` is given a subscription document (`X` is the operation's name).
 
 **Why:** a definition runs one request and one reply; a subscription is a stream.
 
-**Fix:** use a query or a mutation. Poll with `refetchEvery` where a stream would have refreshed the data.
+**Fix:** use `riva.graphql.subscribe(DOC, vars, { next, error })` from `graphql()` (and read its `state` or `subscribe` to open it), or poll with `refetchEvery`.
+
+## `riva-graphql: this transport cannot subscribe: give graphql() a @softistx/graphql-client client, or a transport with a subscribe method.`
+
+Code: `RIVA_DEFINITION` (`RivaError`), thrown by `riva.graphql.subscribe`.
+
+**Why:** the transport given to `graphql()` has no optional `subscribe(operation, variables, { signal })` method (a BFF transport, a test double).
+
+**Fix:** pass the `@softistx/graphql-client` client (or `graphqlClientTransport(client)`), or add `subscribe` returning an `AsyncIterable` of results that ends when the signal aborts.
+
+## `riva-graphql: X is a query; use query() to define it, not subscription().`
+
+Code: `RIVA_DEFINITION`, from `riva.graphql.subscribe` given a query or mutation document (`X` is the operation's name; the kind in the message follows the document).
+
+**Fix:** use `riva.graphql.query` or `mutate` for it, or give `subscribe` a subscription document.
+
+## A subscription from `riva.graphql.subscribe` never opens
+
+**Why:** it returns a lazy stream resource: nothing opens until a reader subscribes (`feed.subscribe(listener)`, or a computed or effect that reads `feed.state` and is observed), and never on a server. Before 0.3 `subscribe` opened the stream at once and returned a `stop` function.
+
+**Fix:** call `feed.subscribe(listener)` and keep the unsubscribe it returns; the last unsubscribe closes the stream.
+
+## A query shows `error` and keeps `data`
+
+**Why:** the response carried data and errors (a partial result). The state is `error`, `data` is the partial result and `error` is a `GraphQLError`: `error.errors` lists every error with its `path`, and `error.cause` is the client's `ApiError`.
+
+**Fix:** show the partial data and the problem together, or ignore the error when the partial result is enough:
+
+```ts
+import { GraphQLError } from '@softistx/riva-graphql';
+
+const s = books.state;
+if (s.status === 'error' && s.error instanceof GraphQLError) {
+	s.data; // what the API resolved
+	s.error.errors.map((e) => e.path?.join('.')); // where it failed
+}
+```
+
+## A subscription reconnects each time its variables function runs
+
+**Why:** it should not: variables that derive the same key (deep-equal) keep the stream. If it reconnects, the variables differ in some field (a new `Date`, a fresh id).
+
+**Fix:** derive stable variables, or read only the signals the variables depend on.
+
+## A subscription stays `loading` on a server
+
+**Why:** a stream resource is lazy and browser-only: on a server nothing is observed, so it never opens and its state is `loading`.
+
+**Fix:** subscribe in the browser (an effect or a component), and render the `loading` state on the server.
+
+## `The resource is disabled: await it once `enabled` is true.`
+
+Code: `RIVA_DEFINITION` (`RivaError`), the rejection of `await riva.graphql.query(DOC, vars, { enabled })`.
+
+**Why:** `enabled` is false, so the resource is `idle` and has no key to load.
+
+**Fix:** await it once `enabled` is true, or leave `enabled` out for a one-shot `await`.
+
+## `riva-graphql/react: the riva in scope has no GraphQL: create it with createRiva({ graphql: graphql(client) }).`
+
+Code: `RIVA_DEFINITION` (`RivaError`).
+
+**When:** `useGraphQL`, `useGraphQLMutation` or `useGraphQLSubscription` ran under a `RivaProvider` whose riva was made without the extension.
+
+**Fix:**
+
+```ts
+const riva = createRiva({ graphql: graphql(client) });
+```
+
+A hook outside any provider throws the riva-react `No Riva in scope` error instead (see [riva-react's troubleshooting](https://github.com/softistx/riva/blob/develop/packages/riva-react/docs/troubleshooting.md)).

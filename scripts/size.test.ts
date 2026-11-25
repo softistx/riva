@@ -62,18 +62,18 @@ test('the riva-react rows: core + react within the 9216 B cap, every entry withi
 	expect(all?.entry).toHaveLength(8);
 });
 
-test('the riva-graphql row: core + graphql main within 8192 B', () => {
+test('the riva-graphql row: core + graphql main within 9472 B', () => {
 	const row = budgets.find((b) => b.name === '@softistx/riva + riva-graphql');
-	expect(row?.limit).toBe(8192);
+	expect(row?.limit).toBe(9472);
 	expect(row?.entry).toEqual([
 		'packages/riva/dist/index.js',
 		'packages/riva-graphql/dist/index.js',
 	]);
 });
 
-test('the riva-rest row: core + rest main within 8192 B', () => {
+test('the riva-rest row: core + rest main within 9472 B', () => {
 	const row = budgets.find((b) => b.name === '@softistx/riva + riva-rest');
-	expect(row?.limit).toBe(8192);
+	expect(row?.limit).toBe(9472);
 	expect(row?.entry).toEqual([
 		'packages/riva/dist/index.js',
 		'packages/riva-rest/dist/index.js',

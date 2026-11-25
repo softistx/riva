@@ -1,4 +1,4 @@
-import type { Scheduler } from './env';
+import { noop, type Scheduler } from './env';
 import { RivaAbortError, RivaRequestError } from './errors';
 import { isBrowser } from './scope';
 
@@ -47,7 +47,7 @@ export function sleep(
 		new Promise<void>((r) => (h = sched.setTimeout(r, ms))),
 		signal,
 	)
-		.catch(() => {})
+		.catch(noop)
 		.finally(() => sched.clearTimeout(h));
 }
 

@@ -14,7 +14,7 @@
 - **SSR hydration follow-ups** — deferred hydration no longer notifies an observer twice for the same data. [#31](https://github.com/softistx/riva/issues/31)
 - **Each snapshot key emitted once per request** — several loaders returning the same riva no longer repeat data in the hydration payload. [#36](https://github.com/softistx/riva/issues/36)
 - **Store robustness** — hot reload keeps a store's state, stores behave the same on servers with DOM shims, and `useStore` sees a memoised child's reads. [#40](https://github.com/softistx/riva/issues/40)
-- Subscriptions and server-sent events.
+- **Server-sent events** — a stream over SSE as a resource, beside the GraphQL subscriptions of the simple API.
 - Devtools to inspect the cache, signals and requests.
 
 ## Later
@@ -28,8 +28,10 @@ Nothing yet.
 
 ## Shipped
 
-Landed in `develop` and not yet released; they ship in the next release (0.1.0).
+Landed in `develop`; released from 0.1.0 on, the simple API in the next minor release.
 
+- The simple API: one `createRiva({ graphql: graphql(client), rest: rest(api) })`, then `riva.graphql.query / mutation / subscribe` and `riva.rest.get / mutation` with derived keys, per-call options and `invalidates`, and hooks per namespace (`useGraphQL`, `useGraphQLMutation`, `useGraphQLSubscription`, `useRest`, `useRestMutation`).
+- Reactive resources: tracked variables, an `enabled` option, built-in `idle / loading / success / error` states, previous data kept as a placeholder while the key changes, awaitable on the server, and mutation handles with their own state.
 - A monorepo of five packages that build, typecheck and test, with docs.
 - Signals, computeds and effects with automatic dependency tracking, values held per riva, and a clear error when a server read has no riva in scope.
 - Queries that dedupe in-flight requests, go stale, are garbage collected, retry sensibly, refetch on focus, and can be ensured, prefetched, invalidated and cancelled.

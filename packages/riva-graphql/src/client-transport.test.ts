@@ -6,6 +6,7 @@ import {
 	RivaNetworkError,
 	RivaRequestError,
 } from '@softistx/riva';
+import { parse } from 'graphql';
 import { PATIENTS_QUERY, RENAME_PATIENT_MUTATION } from '../test/fixtures';
 import { graphqlClientTransport } from './client-transport';
 import { operationOf } from './operation';
@@ -113,4 +114,30 @@ test('an abort is a RivaAbortError', async () => {
 	const p = send(transport(), ctl.signal).catch((x) => x);
 	ctl.abort();
 	expect(await p).toBeInstanceOf(RivaAbortError);
+});
+
+test('a subscription yields each result and ends with the signal', async () => {
+	const sse = (events: string[]) =>
+		new Response(events.join(''), {
+			headers: { 'content-type': 'text/event-stream' },
+		});
+	handle = () =>
+		sse([
+			'event: next\ndata: {"data":{"n":1}}\n\n',
+			'event: next\ndata: {"data":{"n":2}}\n\n',
+			'event: complete\ndata:\n\n',
+		]);
+	const t = transport();
+	const Sub = operationOf(
+		parse('subscription Ticks { n }') as never,
+		'subscription',
+	);
+	const seen: unknown[] = [];
+	for await (const d of t.subscribe?.(
+		Sub,
+		{},
+		{ signal: new AbortController().signal },
+	) ?? [])
+		seen.push(d);
+	expect(seen).toEqual([{ n: 1 }, { n: 2 }]);
 });

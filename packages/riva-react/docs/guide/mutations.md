@@ -1,5 +1,7 @@
 # Mutations: `useMutation`
 
+> Most call sites read GraphQL or REST with the hooks of the adapters (`useGraphQL`, `useRest`: see the [resource hooks](./resource.md)). This page covers the hook over a definition, for settings several call sites share: see [Advanced: shared definitions](https://github.com/softistx/riva/blob/develop/packages/riva/docs/guide/shared-definitions.md).
+
 `useMutation(def)` holds its status per hook instance. `run` resolves with the server data and rejects with the error (also in `error`); the mutation finishes even if the component unmounts, it only stops reporting. When runs overlap, the latest owns the state.
 
 ```tsx
@@ -27,10 +29,10 @@ function Rename({ id }: { id: string }) {
 | Field | Meaning |
 | --- | --- |
 | `run(vars, opts?)` | Runs the mutation; `opts` is `{ signal? }`. Resolves with the data, rejects with the error. |
-| `status` | `idle`, `pending`, `success` or `error`. |
+| `status` | `idle`, `loading`, `success` or `error`. |
 | `data` | The last result of the latest run. |
 | `error` | The last error of the latest run. |
-| `isPending` | `status === 'pending'`. |
+| `isPending` | `status === 'loading'`. |
 | `reset()` | Back to `idle`, clears `data` and `error`. |
 
 The definition's own options (`optimistic`, `updates`, `invalidates`, `cache`, `retry`) apply: see the core's [mutations guide](https://github.com/softistx/riva/blob/develop/packages/riva/docs/guide/mutations.md).
