@@ -79,3 +79,17 @@ test('the riva-rest row: core + rest main within 8192 B', () => {
 		'packages/riva-rest/dist/index.js',
 	]);
 });
+
+test('the riva-react-router row: 11264 B, react-router external, main row unchanged', () => {
+	const row = budgets.find(
+		(b) => b.name === '@softistx/riva + riva-react + riva-react-router',
+	);
+	expect(row?.limit).toBe(11264);
+	expect(row?.entry).toEqual([
+		'packages/riva/dist/index.js',
+		'packages/riva/dist/ssr/index.js',
+		'packages/riva-react/dist/index.js',
+		'packages/riva-react-router/dist/index.js',
+	]);
+	expect(budgets.find((b) => b.name === '@softistx/riva')?.limit).toBe(6144);
+});
