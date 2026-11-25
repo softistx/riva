@@ -1,6 +1,6 @@
 {
 	"name": "@softistx/riva-rest",
-	"version": "0.1.1",
+	"version": "0.2.0",
 	"description": "REST transport for riva, typed by OpenAPI through openapi-httpyz, with a free fetcher for schema-less APIs.",
 	"license": "MIT",
 	"type": "module",
@@ -66,7 +66,7 @@
 		"@types/bun": "^1.4.5"
 	},
 	"peerDependencies": {
-		"@softistx/riva": "^0.1.1",
+		"@softistx/riva": "^0.2.0",
 		"@softistx/httpyz": "^0.6.1",
 		"@softistx/openapi-httpyz": "^0.4.1"
 	},
