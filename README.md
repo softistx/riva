@@ -8,13 +8,14 @@ hand-written keys.
 ## API sketch
 
 ```ts
-// One riva per request on the server, one in the browser
+// One riva per request on the server, one in the browser.
+// Schematic names: PATIENTS_QUERY and the other documents, Invoice, Route, appRivaOf (a typed `rivaOf`)
 import { createGraphQLClient } from "@softistx/graphql-client";
 import { createRiva, signal } from "@softistx/riva";
 import { graphql } from "@softistx/riva-graphql";
 import { rest } from "@softistx/riva-rest";
 
-export const riva = createRiva({
+export const appRiva = createRiva({
   graphql: graphql(createGraphQLClient({ url: "https://api.example.com/graphql" })),
   rest: rest({ baseUrl: "https://api.example.com" }), // or rest(openApiClient), typed
   defaults: { staleTime: "30s" },
@@ -24,10 +25,10 @@ export const riva = createRiva({
 export const filter = signal("");
 
 // Server state: call it like a function, no definition, no key
-const patients = await riva.graphql.query(PATIENTS_QUERY, { school: "north" }); // data, or throws
-const live = riva.graphql.query(PATIENTS_QUERY, { school: "north" }); // the same call, as a resource
-await riva.graphql.mutate(RENAME_PATIENT_MUTATION, { id: "1", name: "Ana" }, { invalidates: [PATIENTS_QUERY] });
-const invoice = await riva.rest.get<Invoice>("/invoices/42");
+const patients = await appRiva.graphql.query(PATIENTS_QUERY, { school: "north" }); // data, or throws
+const live = appRiva.graphql.query(PATIENTS_QUERY, { school: "north" }); // the same call, as a resource
+await appRiva.graphql.mutate(RENAME_PATIENT_MUTATION, { id: "1", name: "Ana" }, { invalidates: [PATIENTS_QUERY] });
+const invoice = await appRiva.rest.get<Invoice>("/invoices/42");
 
 // React Router loader: await what the page needs, the cache travels with the payload
 export async function loader({ context, params }: Route.LoaderArgs) {

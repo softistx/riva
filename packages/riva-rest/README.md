@@ -20,6 +20,8 @@ The OpenAPI mode reads the operations the spec describes, which `@softistx/opena
 bunx nxgt-openapi generate -i openapi.yaml   # writes generated/openapi
 ```
 
+The `nxgt-openapi` bin comes from `@softistx/openapi-codegen` (the dev dependency installed above).
+
 [Transport guide](./docs/guide/transport.md).
 
 ## Simple API
@@ -171,7 +173,7 @@ export default function Root() {
 
 ## Entry points
 
-- `@softistx/riva-rest`: `query`, `mutation`, `rest` (the extension; also `{ query, mutation }`), `provideRest`, `httpyzTransport`, `toRivaError`, `operationOf` (reads a route into `{ id, method, path, operationId, hasInput }`) and the types: `RestTransport`, `RestContext`, `Route`, `Operation`, the options (`RestQueryOptions`, `RestMutationOptions`, `FreeQueryOptions`, `FreeMutationOptions`), the routes (`RouteOf`, `QueryRoute`, `MutationRoute`) and `InputOf`, `DataOf`, `SpecOf`, `ClientOf`, `DecodedOf`.
+- `@softistx/riva-rest`: `query`, `mutation`, `rest` (the extension; also `{ query, mutation }`), `provideRest`, `httpyzTransport`, `toRivaError`, `operationOf` (reads a route into `{ id, method, path, operationId, hasInput }`) and the types: `RestTransport`, `RestContext`, `Route`, `Operation`, the simple API (`RestApi`, `UntypedRestApi`, `GetCall`, `MutateCall`, `RestSimpleOptions`, `RestBaseOptions`, `PathsOf`, `MutationMethod`, `InputArg`, `RestInput`), the options (`RestQueryOptions`, `RestMutationOptions`, `FreeQueryOptions`, `FreeMutationOptions`), the routes (`RouteOf`, `QueryRoute`, `MutationRoute`) and `InputOf`, `DataOf`, `SpecOf`, `ClientOf`, `DecodedOf`.
 - `@softistx/riva-rest/react`: `useRest`, `useRestMutation` and the types `Register`, `UseRest`, `UseRestMutation`, `UseRestOptions` (optional peers `react` and `@softistx/riva-react`).
 - `@softistx/riva-rest/entities`: `restEntities` and the types `RestEntity`, `RestEntities`.
 - `@softistx/riva-rest/server`: `operations(api)` (a `DataSource` for `dataRoute`), the constant `PREFIX` (`'rest:'`, the prefix of every id the route serves: `rest:<operationId>`) and the types `DataSource`, `DataOperation`, `OperationsOf`.

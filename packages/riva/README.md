@@ -30,7 +30,7 @@ const books = riva.graphql.query(BOOKS_QUERY, { first: 10 }); // the same call, 
 books.state; // { status: 'idle' | 'loading' | 'success' | 'error', data, error, isFetching, placeholder }
 ```
 
-`@softistx/riva-rest` gives `riva.rest.get(path, input)` the same way, and `@softistx/riva-react` has the hooks (`useGraphQL`, `useRest`). The core holds what they stand on, below.
+`@softistx/riva-rest` gives `riva.rest.get(path, input)` the same way, and the hooks live in the adapters (`useGraphQL` from `@softistx/riva-graphql/react`, `useRest` from `@softistx/riva-rest/react`), over `@softistx/riva-react`. The core holds what they stand on, below.
 
 | Import | Holds | Guide |
 | --- | --- | --- |
@@ -63,17 +63,18 @@ Extensions install once, in key order, so an install sees the extensions before 
 
 ## Resources
 
-What `riva.graphql.query` and `riva.rest.get` return: a reactive, awaitable view of one query entry. The core builds them from a definition, for your own source:
+What `riva.graphql.query` and `riva.rest.get` return: a reactive, awaitable view of one query entry. With a function for the variables and `enabled`, the call tracks signals:
 
 ```ts
 import { signal } from '@softistx/riva';
-import { resource } from '@softistx/riva/resource';
 
+// `riva` is the one of the quick start; BOOKS_QUERY is a typed document (schematic).
 const page = signal(1);
-const books = resource(
-	riva,
-	() => [booksQuery, { page: riva.get(page) }] as const, // tracked: a new page is a new key
-	{ enabled: () => riva.get(signedIn) }, // while false: `idle`, the source is not called
+const signedIn = signal(true);
+const books = riva.graphql.query(
+	BOOKS_QUERY,
+	() => ({ page: riva.get(page) }), // tracked: a new page is a new key
+	{ enabled: () => riva.get(signedIn) }, // while false: `idle`, the function is not called
 );
 
 books.subscribe((s) => {
@@ -81,6 +82,8 @@ books.subscribe((s) => {
 });
 const first = await books; // or a one-shot load that rejects with the error
 ```
+
+`resource(riva, source, options)` from `@softistx/riva/resource` builds the same thing over a query definition of your own.
 
 Also `mutationHandle(riva, run)` (a callable with a reactive `state` and `reset`) and `streamResource(riva, source)` (a subscription as a resource). A resource starts at its first reader and stops at the last; the status is `idle | loading | success | error`. [resources](./docs/guide/resources.md).
 
@@ -137,6 +140,9 @@ Every option: [queries](./docs/guide/queries.md), [mutations](./docs/guide/mutat
 
 ```ts
 import { store, type StoreContext } from '@softistx/riva/store';
+
+// Book is your type; saveBook is a mutation definition (schematic).
+interface Book { isbn: string; title: string }
 
 export const BookStore = store({
 	name: 'books',

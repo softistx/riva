@@ -66,9 +66,10 @@ import { useMutationHandle, useResource, useStableInput } from '@softistx/riva-r
 function Books({ first }: { first: number }) {
 	// useStableInput(id, input, enabled) gives the key and what to hand the call.
 	const input = useStableInput('books', () => ({ first }), undefined);
+	// `StableInput.input` is `unknown`: a generic hook casts it once, to the variables type.
 	// The key identifies the resource: derive it from everything `make` reads.
 	const state = useResource(input.key, (riva) =>
-		riva.graphql.query(BOOKS_QUERY, input.input as never, { enabled: input.enabled }),
+		riva.graphql.query(BOOKS_QUERY, input.input as { first: number }, { enabled: input.enabled }),
 	);
 	// useMutationHandle(key, make): a callable with the mutation state fields and reset().
 	const save = useMutationHandle('add-book', (riva) => riva.graphql.mutation(ADD_BOOK_MUTATION));

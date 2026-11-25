@@ -90,7 +90,7 @@ export default function Patients({ params }: Route.ComponentProps) {
 }
 ```
 
-For REST it is `await appRivaOf(context).rest.get('/patients/{id}', { id: params.id })` and `useRest` from `@softistx/riva-rest/react`. `rivaOf` and `riva` are for server loaders and actions only; return `riva(context)` from one loader per request. [Guide](./docs/guide/loader.md).
+For REST it is `await appRivaOf(context).rest.get('/patients/{id}', { param: { id: params.id } })` and `useRest` from `@softistx/riva-rest/react`. `rivaOf` and `riva` are for server loaders and actions only; return `riva(context)` from one loader per request. [Guide](./docs/guide/loader.md).
 
 ## The `/_data` route
 

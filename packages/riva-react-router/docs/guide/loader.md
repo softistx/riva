@@ -28,7 +28,7 @@ export default function Patients({ params }: Route.ComponentProps) {
 }
 ```
 
-With REST the loader awaits `appRivaOf(context).rest.get('/patients/{id}', { id: params.id })` and the component calls `useRest` of `@softistx/riva-rest/react`.
+With REST the loader awaits `appRivaOf(context).rest.get('/patients/{id}', { param: { id: params.id } })` and the component calls `useRest` of `@softistx/riva-rest/react`.
 
 Several reads in one loader run together:
 
