@@ -7,7 +7,15 @@
 		}
 	],
 	"commit": false,
-	"fixed": [],
+	"fixed": [
+		[
+			"@softistx/riva",
+			"@softistx/riva-react",
+			"@softistx/riva-graphql",
+			"@softistx/riva-rest",
+			"@softistx/riva-react-router"
+		]
+	],
 	"linked": [],
 	"access": "public",
 	"baseBranch": "develop",
