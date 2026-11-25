@@ -30,7 +30,7 @@ Core: signals, Riva, query and mutation engine, normalized and keyed cache, pagi
 GraphQL transport for riva over @softistx/graphql-client, with persisted ids and the allowlist codegen plugin.
 
 - Entry points: `@softistx/riva-graphql`, `@softistx/riva-graphql/infinite`, `@softistx/riva-graphql/cache`, `@softistx/riva-graphql/codegen`, `@softistx/riva-graphql/server`, `@softistx/riva-graphql/bff`
-- Peers: `@softistx/riva` `^0.2.0`, `@softistx/graphql-client` `^0.9.0 || ^0.10.0 || ^0.11.0`, `@graphql-typed-document-node/core` `^3.2.0` (optional), `graphql` `^16.11.0 || ^17.0.0` (optional)
+- Peers: `@softistx/riva` `^0.3.0`, `@softistx/graphql-client` `^0.9.0 || ^0.10.0 || ^0.11.0`, `@graphql-typed-document-node/core` `^3.2.0` (optional), `graphql` `^16.11.0 || ^17.0.0` (optional)
 - Read first: `node_modules/@softistx/riva-graphql/README.md` (one example per section, links to the guides)
 - Shipped docs:
   - `node_modules/@softistx/riva-graphql/docs/README.md`: riva-graphql docs
@@ -42,6 +42,7 @@ GraphQL transport for riva over @softistx/graphql-client, with persisted ids and
   - `node_modules/@softistx/riva-graphql/docs/guide/infinite.md`: Infinite lists
   - `node_modules/@softistx/riva-graphql/docs/guide/mutations.md`: Mutations
   - `node_modules/@softistx/riva-graphql/docs/guide/queries.md`: Queries
+  - `node_modules/@softistx/riva-graphql/docs/guide/simple-api.md`: Simple API
   - `node_modules/@softistx/riva-graphql/docs/guide/transport.md`: Transport
   - `node_modules/@softistx/riva-graphql/docs/troubleshooting.md`: Troubleshooting
 

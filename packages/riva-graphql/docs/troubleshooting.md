@@ -207,7 +207,7 @@ Code: `RIVA_DEFINITION` (`RivaError`), thrown when `query()`, `mutation()` or `i
 
 **Why:** a definition runs one request and one reply; a subscription is a stream.
 
-**Fix:** use `riva.graphql.subscribe(DOC, vars, { next, error })` from `graphql()`, or poll with `refetchEvery`.
+**Fix:** use `riva.graphql.subscribe(DOC, vars, { next, error })` from `graphql()` (and read its `state` or `subscribe` to open it), or poll with `refetchEvery`.
 
 ## `riva-graphql: this transport cannot subscribe: give graphql() a @softistx/graphql-client client, or a transport with a subscribe method.`
 
@@ -222,3 +222,29 @@ Code: `RIVA_DEFINITION` (`RivaError`), thrown by `riva.graphql.subscribe`.
 Code: `RIVA_DEFINITION`, from `riva.graphql.subscribe` given a query or mutation document (`X` is the operation's name; the kind in the message follows the document).
 
 **Fix:** use `riva.graphql.query` or `mutate` for it, or give `subscribe` a subscription document.
+
+## A subscription from `riva.graphql.subscribe` never opens
+
+**Why:** it returns a lazy stream resource: nothing opens until a reader subscribes (`feed.subscribe(listener)`, or a computed or effect that reads `feed.state` and is observed), and never on a server. Before 0.3 `subscribe` opened the stream at once and returned a `stop` function.
+
+**Fix:** call `feed.subscribe(listener)` and keep the unsubscribe it returns; the last unsubscribe closes the stream.
+
+## A query shows `error` and keeps `data`
+
+**Why:** the response carried data and errors (a partial result). The state is `error`, `data` is the partial result and `error` is a `GraphQLError`: `error.errors` lists every error with its `path`, and `error.cause` is the client's `ApiError`.
+
+**Fix:** show the partial data and the problem together, or ignore the error when the partial result is enough:
+
+```ts
+const s = books.state;
+if (s.status === 'error' && s.error instanceof GraphQLError) {
+	s.data; // what the API resolved
+	s.error.errors.map((e) => e.path?.join('.')); // where it failed
+}
+```
+
+## A subscription reconnects each time its variables function runs
+
+**Why:** it should not: variables that derive the same key (deep-equal) keep the stream. If it reconnects, the variables differ in some field (a new `Date`, a fresh id).
+
+**Fix:** derive stable variables, or read only the signals the variables depend on.
