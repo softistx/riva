@@ -1,12 +1,5 @@
 export const VERSION = '0.0.0';
 
-export {
-	type Signal,
-	type SignalOptions,
-	signal,
-	type Listener,
-	type Unsubscribe,
-} from './signal';
 export { batch, untracked } from './batch';
 export {
 	type ClientOptions,
@@ -21,6 +14,7 @@ export {
 	type Getter,
 	type Readable,
 } from './computed';
+export type { DataOperation, DataSource } from './data';
 export type { Duration } from './duration';
 export { effect } from './effect';
 export type { ClientEvents, Scheduler } from './env';
@@ -55,3 +49,10 @@ export {
 	type VarsArgs,
 } from './query';
 export { setDefaultClient } from './scope';
+export {
+	type Listener,
+	type Signal,
+	type SignalOptions,
+	signal,
+	type Unsubscribe,
+} from './signal';

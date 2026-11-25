@@ -1,15 +1,22 @@
-import { createRivaClient, type RivaClient } from '@softistx/riva';
+import {
+	createRivaClient,
+	type Invalidation,
+	type RivaClient,
+} from '@softistx/riva';
 import { hydrate, type Snapshot } from '@softistx/riva/ssr';
 import { RivaProvider } from '@softistx/riva-react';
 import {
 	createElement,
 	type ReactElement,
 	type ReactNode,
+	useEffect,
 	useLayoutEffect,
 	useRef,
 	useState,
 } from 'react';
-import { useMatches } from 'react-router';
+import { useMatches, useRevalidator } from 'react-router';
+import { useInvalidateOnAction } from './invalidate-on-action';
+import { REVALIDATOR, revalidate } from './revalidate';
 
 export interface RivaRouterProviderProps {
 	/**
@@ -24,6 +31,8 @@ export interface RivaRouterProviderProps {
 	 * initial state twice in development, so it can be called twice.
 	 */
 	setup?: (client: RivaClient, env: { server: boolean }) => void;
+	/** Invalidated each time a non-GET navigation or fetcher settles. */
+	invalidateOnAction?: readonly Invalidation[];
 	children?: ReactNode;
 }
 
@@ -42,6 +51,7 @@ const snapshotOf = (data: unknown): Snapshot | undefined =>
 export function RivaRouterProvider({
 	client,
 	setup,
+	invalidateOnAction,
 	children,
 }: RivaRouterProviderProps): ReactElement {
 	const [own] = useState(() => {
@@ -66,6 +76,24 @@ export function RivaRouterProvider({
 		);
 		if (rest) later.current.push(rest);
 	}
+	const router = useRevalidator();
+	const run = useRef(router.revalidate);
+	run.current = router.revalidate;
+	useEffect(() => {
+		let runs = 0;
+		active.slots.set(REVALIDATOR, async () => {
+			await run.current();
+			runs += 1;
+			return runs;
+		});
+		revalidate.setData(active, undefined, 0);
+		const stop = active.subscribe(revalidate, () => {});
+		return () => {
+			stop();
+			active.slots.delete(REVALIDATOR);
+		};
+	}, [active]);
+	useInvalidateOnAction(active, invalidateOnAction);
 	useLayoutEffect(() => {
 		for (const rest of later.current.splice(0)) hydrate(active, rest);
 	});

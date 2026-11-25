@@ -72,6 +72,38 @@ Related: `the persisted document <hash> must hold exactly one operation.` and `â
 
 **Fix:** run `writeAllowlist` from `hooks.afterAllFileWrite` (see "Allowlist codegen" in the [README](../README.md#allowlist-codegen)) so it follows each codegen run. With no `persistedDocuments`, use `ids: 'name'`.
 
+## `RIVA_DATA_*` refusals from the `/_data` route
+
+Raised by `dataRoute` (`@softistx/riva-react-router/server`) and rethrown by `bffTransport` as a `RivaRequestError` with that `code` and `status`. The checks run in this order:
+
+| Code | Status | When | Fix |
+|---|---|---|---|
+| `RIVA_DATA_METHOD` | 405 | A GET, or any method but POST | Call it through `bffTransport`; never link to it. |
+| `RIVA_DATA_CROSS_SITE` | 403 | `Origin` is not the route's origin, or `Sec-Fetch-Site` is cross-site | Call from the same origin; behind a proxy set `origin` on `dataRoute`. |
+| `RIVA_DATA_MEDIA_TYPE` | 415 | `content-type` is not `application/json` | Do not override the header in `bffTransport`'s `headers`. |
+| `RIVA_DATA_TOO_LARGE` | 413 | The body is over `maxBytes` (262144) | Send less, or raise `maxBytes`. |
+| `RIVA_DATA_BAD_REQUEST` | 400 | The body is not `{ "id": string, "variables"?: object }` | Use `bffTransport`. |
+| `RIVA_DATA_UNKNOWN` | 404 | No source knows the id | See below. |
+| `RIVA_DATA_INTERNAL` | 500 | An operation threw something that is not a `RivaRequestError` | The browser sees only this generic answer; read the cause through `dataRoute`'s `onError`, which also receives the API's network and HTTP failures (sent to the browser with their own code and the message "The API is unavailable."). |
+
+## `The data route answered <status> with a body that is not JSON.`
+
+Code: `RIVA_INVALID_RESPONSE` (`RivaRequestError`), or `RivaHttpError` (`HTTP_<status>`) when the body is JSON without the route's `{ error }` shape.
+
+**When:** `bffTransport` got a reply `dataRoute` did not write: a proxy's 502 or 504 HTML page, a login redirect, a CDN error, or a `/_data` URL that no route serves.
+
+**Why:** the transport reads `{ data }` or `{ error: { code, message, status } }`; anything else is not the route's answer, so it keeps the HTTP status and nothing of the body.
+
+**Fix:** check that `url` is the route's path and that the proxy forwards POSTs to it untouched. 5xx, 408 and 429 are marked retryable, so the query retries on its own.
+
+## 404 on an operation that exists
+
+**When:** `RIVA_DATA_UNKNOWN` for a query or mutation the app defines.
+
+**Why:** the id the browser sends (the document's `__meta__.hash`, else its operation name) is not a key of the manifest. Either the manifest is stale, or it was built with the other `ids` mode (`'persisted'` keys by hash, `'name'` by operation name).
+
+**Fix:** rebuild the manifest from codegen's `afterAllFileWrite` hook with the `ids` mode that matches the documents (see "Allowlist codegen" in the [README](../README.md#allowlist-codegen)).
+
 ## `ENOENT` or a `SyntaxError` from `writeAllowlist` reading `persisted-documents.json`
 
 **When:** `writeAllowlist` (or the `afterAllFileWrite` hook running it) fails with a missing file, or invalid JSON.

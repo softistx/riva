@@ -7,7 +7,11 @@ import {
 	RENAME_PATIENT_MUTATION,
 	VIEWER_QUERY,
 } from '../test/fixtures';
+import { bffTransport } from './bff/index';
+import { type AllowlistManifest, buildAllowlist } from './codegen/index';
 import { mutation, query } from './query';
+import { allowlist, type DataSource } from './server/index';
+import type { GraphQLTransport } from './transport';
 import type { VarsOf } from './types';
 
 // Type tests only: nothing here runs.
@@ -46,4 +50,15 @@ test('VarsOf maps a document without variables to void', () => {
 	expectTypeOf<VarsOf<Record<never, never>>>().toEqualTypeOf<void>();
 	expectTypeOf<VarsOf<{ id: string }>>().toEqualTypeOf<{ id: string }>();
 	expectTypeOf<VarsOf<{ id?: string }>>().toEqualTypeOf<{ id?: string }>();
+});
+
+test('bffTransport is a GraphQLTransport and allowlist takes buildAllowlist output', () => {
+	expectTypeOf(bffTransport()).toEqualTypeOf<GraphQLTransport>();
+	expectTypeOf(
+		bffTransport({ url: '/x', fetch, headers: () => ({}) }),
+	).toExtend<GraphQLTransport>();
+	expectTypeOf(allowlist(buildAllowlist({}))).toEqualTypeOf<DataSource>();
+	expectTypeOf<
+		Parameters<typeof allowlist>[0]
+	>().toEqualTypeOf<AllowlistManifest>();
 });

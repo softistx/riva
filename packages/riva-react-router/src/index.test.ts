@@ -6,9 +6,11 @@ test('the barrel exports the browser-safe surface and its version', () => {
 	expect(Object.keys(barrel).sort()).toEqual([
 		'RivaRouterProvider',
 		'VERSION',
+		'revalidate',
 		'riva',
 		'rivaContext',
 		'rivaOf',
+		'useActionResult',
 	]);
 });
 

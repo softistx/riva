@@ -13,7 +13,7 @@ test('the main entry exports the transport and the definitions, nothing from the
 	]);
 });
 
-test('the runtime entries never import graphql, the codegen or the graphql-client at runtime', async () => {
+test('the runtime entries never import graphql, the codegen or the graphql-client at runtime (the codegen may; the server allowlist may import graphql only)', async () => {
 	const files = [...new Bun.Glob('**/*.ts').scanSync('src')].filter(
 		(f) => !f.endsWith('.test.ts') && !f.startsWith('codegen/'),
 	);
@@ -25,7 +25,9 @@ test('the runtime entries never import graphql, the codegen or the graphql-clien
 		];
 		for (const [, from] of imports)
 			expect(from).not.toMatch(
-				/^(graphql|@graphql-codegen|@softistx\/graphql-client)/,
+				f.startsWith('server/')
+					? /^(@graphql-codegen|@softistx\/graphql-client)/
+					: /^(graphql|@graphql-codegen|@softistx\/graphql-client)/,
 			);
 	}
 });
