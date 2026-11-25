@@ -8,7 +8,7 @@ Code: `RIVA_SCOPE` (`RivaScopeError`).
 
 The full message: `No RivaClient in scope: wrap the tree in <RivaProvider client={client}>. On the server, create one client per request.`
 
-**When:** a hook (`useAtom`, `useValue`, `useQuery`, `useMutation`, `useInfiniteQuery`, `useFragment` or `useClient`) rendered with no `RivaProvider` above it.
+**When:** a hook (`useSignal`, `useValue`, `useQuery`, `useMutation`, `useInfiniteQuery`, `useFragment` or `useClient`) rendered with no `RivaProvider` above it.
 
 **Why:** definitions are stateless and values live in a `RivaClient`. The hooks take it from the provider, never from a module-level default, so two server requests can never share one.
 
@@ -25,7 +25,7 @@ export const Root = () => (
 );
 ```
 
-This is not the core's "No RivaClient in scope: read through client.get(def)…" error, which `atom.get()` and the like throw outside React: see the [core troubleshooting](https://github.com/softistx/riva/blob/develop/packages/riva/docs/troubleshooting.md#no-rivaclient-in-scope).
+This is not the core's "No RivaClient in scope: read through client.get(def)…" error, which `signal.get()` and the like throw outside React: see the [core troubleshooting](https://github.com/softistx/riva/blob/develop/packages/riva/docs/troubleshooting.md#no-rivaclient-in-scope).
 
 ## A query fetches twice around Suspense
 

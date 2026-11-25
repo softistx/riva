@@ -1,12 +1,12 @@
 export const VERSION = '0.0.0';
 
 export {
-	type Atom,
-	type AtomOptions,
-	atom,
+	type Signal,
+	type SignalOptions,
+	signal,
 	type Listener,
 	type Unsubscribe,
-} from './atom';
+} from './signal';
 export { batch, untracked } from './batch';
 export {
 	type ClientOptions,

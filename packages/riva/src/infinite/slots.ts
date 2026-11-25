@@ -1,4 +1,4 @@
-import { type Atom, atom } from '../atom';
+import { type Signal, signal } from '../signal';
 import type { RivaClient } from '../client';
 import type { Dir } from './refetch';
 
@@ -14,10 +14,10 @@ export const NONE: Flags = [false, false];
 
 /**
  * The per-client state of one feed definition. The fetching flags live in one
- * atom holding only the entries fetching now, so nothing outlives a fetch.
+ * signal holding only the entries fetching now, so nothing outlives a fetch.
  */
 export function createSlots() {
-	const flags: Atom<Readonly<Record<string, Flags>>> = atom({});
+	const flags: Signal<Readonly<Record<string, Flags>>> = signal({});
 	const slots = new WeakMap<RivaClient, Slot>();
 	return {
 		flags,

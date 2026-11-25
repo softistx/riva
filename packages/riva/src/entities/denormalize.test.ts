@@ -72,13 +72,13 @@ test('the read is tracked: only a reached entity re-evaluates it', () => {
 	expect(runs).toBe(2);
 });
 
-test('an untracked read of a missing entity leaves no atom; a tracked one does', () => {
+test('an untracked read of a missing entity leaves no signal; a tracked one does', () => {
 	const { client, store } = make();
 	expect(dn(store, { __ref: 'X:1' })).toBeUndefined();
-	expect(store.atoms.has('X:1')).toBe(false);
+	expect(store.signals.has('X:1')).toBe(false);
 	const read = computed(() => dn(store, { __ref: 'X:1' }));
 	client.subscribe(read, () => {});
-	expect(store.atoms.has('X:1')).toBe(true);
+	expect(store.signals.has('X:1')).toBe(true);
 	store.merge('X:1', { n: 1 });
 	expect(client.get(read)).toEqual({ n: 1 });
 });

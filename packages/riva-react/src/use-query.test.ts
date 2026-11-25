@@ -1,5 +1,5 @@
 import { expect, spyOn, test } from 'bun:test';
-import { atom, type CachePolicy, query, RivaScopeError } from '@softistx/riva';
+import { signal, type CachePolicy, query, RivaScopeError } from '@softistx/riva';
 import { Component, type ReactNode, Suspense } from 'react';
 import { deferred, flush, h, mount, newClient } from '../test/render';
 import { RivaProvider } from './context';
@@ -227,7 +227,7 @@ test('suspense with data already cached renders at once', async () => {
 });
 
 test('suspense suspends again while an observed hidden entity is refetched', async () => {
-	const holes = atom(false);
+	const holes = signal(false);
 	const cache: CachePolicy<unknown> = {
 		write: (_c, data) => data,
 		read: (c, stored) => (c.get(holes) ? undefined : stored),
@@ -263,7 +263,7 @@ test('suspense suspends again while an observed hidden entity is refetched', asy
 });
 
 test('a fresh suspense mount after an eviction never renders undefined data', async () => {
-	const holes = atom(false);
+	const holes = signal(false);
 	const cache: CachePolicy<unknown> = {
 		write: (_c, data) => data,
 		read: (c, stored) => (c.get(holes) ? undefined : stored),

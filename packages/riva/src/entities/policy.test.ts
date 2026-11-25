@@ -77,7 +77,7 @@ describe('entities() as a query cache policy', () => {
 		expect(data).toEqual({ items: Object.values(db), total: 2 });
 		expect(client.get(all).data).toEqual(data);
 		const store = storeOf(client);
-		expect([...store.atoms.keys()].sort()).toEqual([
+		expect([...store.signals.keys()].sort()).toEqual([
 			'Doctor:d',
 			'Patient:1',
 			'Patient:2',
@@ -174,7 +174,7 @@ describe('entities() as a query cache policy', () => {
 		// both entries are collected: nothing holds any entity
 		expect(store.peek('Patient:1')).toBeUndefined();
 		expect(store.peek('Doctor:d')).toBeUndefined();
-		expect(store.atoms.size).toBe(0);
+		expect(store.signals.size).toBe(0);
 	});
 
 	test('GC keeps an entity another entry still holds', async () => {
@@ -255,9 +255,9 @@ describe('entities() as a query cache policy', () => {
 			}),
 		});
 		await cyc.ensure(client);
-		expect(storeOf(client).atoms.size).toBe(2);
+		expect(storeOf(client).signals.size).toBe(2);
 		sched.advance(1001);
-		expect(storeOf(client).atoms.size).toBe(0);
+		expect(storeOf(client).signals.size).toBe(0);
 	});
 
 	test('a policy with other identity rules than the client already uses is refused', async () => {
@@ -288,7 +288,7 @@ describe('entities() as a query cache policy', () => {
 			});
 		await mk('a').ensure(client);
 		await mk('b').ensure(client);
-		expect([...storeOf(client).atoms.keys()]).toEqual(['Book:x']);
+		expect([...storeOf(client).signals.keys()]).toEqual(['Book:x']);
 	});
 
 	test('a store made by writeEntity binds to a later policy only while empty', async () => {
@@ -316,7 +316,7 @@ describe('entities() as a query cache policy', () => {
 		await all.ensure(client);
 		all.setData(client, undefined as never, undefined as never);
 		expect(client.get(all).data).toBeUndefined();
-		expect(storeOf(client).atoms.size).toBe(0);
+		expect(storeOf(client).signals.size).toBe(0);
 	});
 
 	test('a root that is an array keeps its identity when a refetch changes nothing', async () => {
@@ -343,13 +343,13 @@ describe('entities() as a query cache policy', () => {
 			all.setData(client, undefined as never, { items: [() => 1] } as never),
 		).toThrow(RivaError);
 		expect(client.get(all)).toBe(before);
-		expect(storeOf(client).atoms.size).toBe(3);
+		expect(storeOf(client).signals.size).toBe(3);
 	});
 
-	test('a missing entity read outside a computed leaves no atom', () => {
+	test('a missing entity read outside a computed leaves no signal', () => {
 		const client = createRivaClient({ scheduler: fakeScheduler() });
 		expect(readEntity(client, 'Patient:404')).toBeUndefined();
-		expect(storeOf(client).atoms.size).toBe(0);
+		expect(storeOf(client).signals.size).toBe(0);
 	});
 
 	test('without a cache option the state is stored as is, the same object', async () => {

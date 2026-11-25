@@ -6,7 +6,7 @@ Each entry is headed by the message you will see.
 
 Code: `RIVA_SCOPE` (`RivaScopeError`).
 
-**When:** `atom.get()`, `.set()`, `.subscribe()` or `computed.get()` ran outside any client, on the server or in a browser with no default client.
+**When:** `signal.get()`, `.set()`, `.subscribe()` or `computed.get()` ran outside any client, on the server or in a browser with no default client.
 
 **Why:** definitions are stateless and hold no value; values live in a `RivaClient`. A module-level client on the server would leak between requests, so none is assumed.
 
@@ -40,7 +40,7 @@ Code: `RIVA_CYCLE`.
 
 **Why:** its value would depend on itself and can never settle.
 
-**Fix:** break the loop: derive from atoms, or move one side to an atom you set explicitly. Name computeds (`computed(fn, { name })`) so the message names the culprit.
+**Fix:** break the loop: derive from signals, or move one side to a signal you set explicitly. Name computeds (`computed(fn, { name })`) so the message names the culprit.
 
 ```ts
 const total = computed((get) => get(price) * get(quantity)); // not get(total)
@@ -54,7 +54,7 @@ Code: `RIVA_LOOP`.
 
 **Why:** each write re-triggers the node, so the flush never ends. The loop is cut and the error is thrown after the other notifications ran.
 
-**Fix:** make the write converge (guard it with a condition), write to a different atom, or read the source with `untracked`. Name the node with `{ name }` to find it.
+**Fix:** make the write converge (guard it with a condition), write to a different signal, or read the source with `untracked`. Name the node with `{ name }` to find it.
 
 ```ts
 client.effect(() => {
@@ -135,32 +135,32 @@ Code: `RIVA_CACHE` (`RivaError`).
 
 Code: `RIVA_SSR` (`RivaError`).
 
-**When:** `dehydrate` meets a bigint, a function, a symbol, a `Map`, a `Set`, a class instance (other than `Date`), an invalid `Date` or a circular reference in a query entry's data or a named atom's value. `<path>` names the entry (or the atom) and the field, e.g. `invoices:{"year":2026}.data.items[0].total`.
+**When:** `dehydrate` meets a bigint, a function, a symbol, a `Map`, a `Set`, a class instance (other than `Date`), an invalid `Date` or a circular reference in a query entry's data or a named signal's value. `<path>` names the entry (or the signal) and the field, e.g. `invoices:{"year":2026}.data.items[0].total`.
 
 **Why:** a snapshot travels as JSON, so it can hold only what JSON holds, plus Dates, `NaN` and the infinities, which riva tags and restores.
 
-**Fix:** return plain data from `fetch` (a string or a number for a bigint, an array for a `Set`), or keep that query or atom out of the snapshot (leave `ssr: true` off the atom).
+**Fix:** return plain data from `fetch` (a string or a number for a bigint, an array for a `Set`), or keep that query or signal out of the snapshot (leave `ssr: true` off the signal).
 
 ```ts
 fetch: async () => (await res.json()).items.map((i) => ({ ...i, total: Number(i.total) })),
 ```
 
-## `Cannot dehydrate: two atoms are named "<name>". Give each SSR atom a unique name, or set ssr: false.`
+## `Cannot dehydrate: two signals are named "<name>". Give each SSR signal a unique name, or set ssr: false.`
 
 Code: `RIVA_SSR` (`RivaError`).
 
-**When:** `dehydrate` finds two atoms with the same `name` that the client has used.
+**When:** `dehydrate` finds two signals with the same `name` that the client has used.
 
-**Why:** atoms travel by name, so a snapshot could not tell which one a value belongs to.
+**Why:** signals travel by name, so a snapshot could not tell which one a value belongs to.
 
 **Fix:** rename one, or drop `ssr: true` from the one that stays local.
 
 ```ts
-const a = atom('', { name: 'draft', ssr: true });
-const b = atom('', { name: 'draft', ssr: true }); // collides with a
+const a = signal('', { name: 'draft', ssr: true });
+const b = signal('', { name: 'draft', ssr: true }); // collides with a
 
 // fix: rename b, or drop ssr: true from the one that stays local
-const local = atom('', { name: 'draft' });
+const local = signal('', { name: 'draft' });
 ```
 
 ## `Cannot hydrate: this is not a snapshot dehydrate() made (version <v>).`

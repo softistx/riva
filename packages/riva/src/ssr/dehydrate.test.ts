@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { fakeEnv, settle } from '../../test/ssr';
-import { atom } from '../atom';
+import { signal } from '../signal';
 import { RivaError, RivaHttpError } from '../errors';
 import { query } from '../query';
 import { dehydrate } from './index';
@@ -131,14 +131,14 @@ describe('entries', () => {
 	});
 });
 
-describe('atoms', () => {
-	test('only changed, named atoms that opted in travel', () => {
+describe('signals', () => {
+	test('only changed, named signals that opted in travel', () => {
 		const client = fakeEnv().client();
-		const changed = atom(1, { name: 'changed', ssr: true });
-		const same = atom(1, { name: 'same', ssr: true });
-		const anonymous = atom(1, { ssr: true });
-		const local = atom(1, { name: 'local' });
-		const when = atom(new Date(0), { name: 'when', ssr: true });
+		const changed = signal(1, { name: 'changed', ssr: true });
+		const same = signal(1, { name: 'same', ssr: true });
+		const anonymous = signal(1, { ssr: true });
+		const local = signal(1, { name: 'local' });
+		const when = signal(new Date(0), { name: 'when', ssr: true });
 		for (const a of [changed, same, anonymous, local]) client.get(a);
 		client.get(when);
 		client.set(changed, 2);
@@ -151,18 +151,18 @@ describe('atoms', () => {
 		});
 	});
 
-	test('internal atoms never travel', async () => {
+	test('internal signals never travel', async () => {
 		const client = fakeEnv().client();
 		await items.ensure(client, { page: 1 });
 		expect(dehydrate(client).a).toEqual({});
 	});
 
-	test('two atoms with one name throw', () => {
+	test('two signals with one name throw', () => {
 		const client = fakeEnv().client();
-		client.get(atom(1, { name: 'twin', ssr: true }));
-		client.get(atom(2, { name: 'twin', ssr: true }));
+		client.get(signal(1, { name: 'twin', ssr: true }));
+		client.get(signal(2, { name: 'twin', ssr: true }));
 		expect(() => dehydrate(client)).toThrow(
-			'Cannot dehydrate: two atoms are named "twin". Give each SSR atom a unique name, or set ssr: false.',
+			'Cannot dehydrate: two signals are named "twin". Give each SSR signal a unique name, or set ssr: false.',
 		);
 		try {
 			dehydrate(client);

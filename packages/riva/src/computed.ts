@@ -1,7 +1,7 @@
-import type { Atom, Listener, Unsubscribe } from './atom';
+import type { Signal, Listener, Unsubscribe } from './signal';
 import { resolve } from './scope';
 
-export type Readable<T> = Atom<T> | Computed<T>;
+export type Readable<T> = Signal<T> | Computed<T>;
 export type Getter = <U>(def: Readable<U>) => U;
 
 export interface ComputedOptions<T> {

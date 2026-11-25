@@ -15,9 +15,9 @@ Zero runtime dependencies.
 Definitions are stateless; values live in a `RivaClient`. On the server, create one per request, so values never leak between requests.
 
 ```ts
-import { atom, batch, computed, createRivaClient, untracked } from '@softistx/riva';
+import { signal, batch, computed, createRivaClient, untracked } from '@softistx/riva';
 
-const count = atom(0);
+const count = signal(0);
 const double = computed((get) => get(count) * 2); // lazy, cached, tracked dynamically
 
 const client = createRivaClient();
@@ -25,7 +25,7 @@ client.subscribe(double, (v) => console.log('double', v));
 client.set(count, 2); // logs "double 4"
 client.set(count, (n) => n + 1); // logs "double 6"
 
-// Ambient reads: inside client.run, atoms and computeds read through that client.
+// Ambient reads: inside client.run, signals and computeds read through that client.
 client.run(() => {
 	count.set(10);
 	batch(() => { count.set(11); count.set(12); }); // one notification at the end
@@ -39,10 +39,10 @@ client.effect(() => {
 });
 ```
 
-- `atom(initial, { name?, equals?, ssr? })` (`ssr: true` with a `name` sends the value in an SSR snapshot), `computed(fn, { name?, equals? })`: stateless definitions. Subscribers fire only when the value changes (`equals`, default `Object.is`), once per change, never on a half-updated graph.
+- `signal(initial, { name?, equals?, ssr? })` (`ssr: true` with a `name` sends the value in an SSR snapshot), `computed(fn, { name?, equals? })`: stateless definitions. Subscribers fire only when the value changes (`equals`, default `Object.is`), once per change, never on a half-updated graph.
 - `client.get / set / subscribe / effect / run / batch`: the whole API outside any ambient scope.
 - `effect(() => …)` (free function) re-runs on the ambient client in a browser and is a no-op on the server; `client.effect` always runs.
-- Exported types: `Atom`, `AtomOptions`, `Computed`, `ComputedOptions`, `Readable`, `Getter`, `Listener`, `Unsubscribe`, `EffectFn`.
+- Exported types: `Signal`, `SignalOptions`, `Computed`, `ComputedOptions`, `Readable`, `Getter`, `Listener`, `Unsubscribe`, `EffectFn`.
 
 ### Errors
 
@@ -57,7 +57,7 @@ See [troubleshooting](./docs/troubleshooting.md).
 
 ### Scope errors
 
-Calling `atom.get()` (or `set`, `subscribe`) with no client in scope throws `RivaScopeError` (`RIVA_SCOPE`): "No RivaClient in scope". Fix it by reading through `client.get(def)` or wrapping the code in `client.run(() => …)`. In a browser you can set one default client with `setDefaultClient(client)`; on the server it throws, since a module-level client would leak between requests. `setDefaultClient(undefined)` clears the default.
+Calling `signal.get()` (or `set`, `subscribe`) with no client in scope throws `RivaScopeError` (`RIVA_SCOPE`): "No RivaClient in scope". Fix it by reading through `client.get(def)` or wrapping the code in `client.run(() => …)`. In a browser you can set one default client with `setDefaultClient(client)`; on the server it throws, since a module-level client would leak between requests. `setDefaultClient(undefined)` clears the default.
 
 ## Queries
 
@@ -308,8 +308,8 @@ html = `<script id="riva" type="application/json">${json}</script>`;
 ```
 
 - `dehydrate(client)` writes the settled query entries (successes and errors; idle and in-flight ones are skipped), read as readers see the committed data, so a normalized or infinite entry travels denormalized and is stored again by its own cache policy on arrival. Optimistic layers never travel. Each entry carries its age, not the server's clock, so a skewed clock cannot make fresh data stale.
-- Atoms travel only when they opt in with `ssr: true`, have a unique `name` and changed from their initial value (`atom(0, { name: 'cart', ssr: true })`). Every other atom stays local, riva's own included.
-- `hydrate(client, snapshot)` seeds entries and atoms the client has not created yet, at the moment their definition is first used, so the hydrating code needs none of the definitions. An entry the client already has is replaced only by a newer snapshot, and never while it is fetching or carries optimistic layers; an existing atom is never overwritten. With `{ deferObserved: true }` (for a render) nothing that could reach an observed entry is written: the entries something observes, those with a cache policy (they share entities) and those not created yet are returned as a snapshot to apply later, outside the render, with `hydrate(client, deferred)`. Its ages are understated by the delay.
+- Signals travel only when they opt in with `ssr: true`, have a unique `name` and changed from their initial value (`signal(0, { name: 'cart', ssr: true })`). Every other signal stays local, riva's own included.
+- `hydrate(client, snapshot)` seeds entries and signals the client has not created yet, at the moment their definition is first used, so the hydrating code needs none of the definitions. An entry the client already has is replaced only by a newer snapshot, and never while it is fetching or carries optimistic layers; an existing signal is never overwritten. With `{ deferObserved: true }` (for a render) nothing that could reach an observed entry is written: the entries something observes, those with a cache policy (they share entities) and those not created yet are returned as a snapshot to apply later, outside the render, with `hydrate(client, deferred)`. Its ages are understated by the delay.
 - A fresh entry is not fetched again: data hydrated with the definition's `staleTime` (the default is 0, see [troubleshooting](./docs/troubleshooting.md)) stays fresh for it. A failed entry comes back as a `RivaError` (a `RivaRequestError` when it had a status), with its code, status and `retryable` and an empty message (`RIVA_NETWORK`, `HTTP_<n>` and `RIVA_ABORT` come back as `RivaNetworkError`, `RivaHttpError` and `RivaAbortError`). A message never travels, so a server detail cannot leak; anything that was not a `RivaError` travels as `RIVA_UNKNOWN`, and no stack or cause ever travels.
 - Dates survive (`{ $t: 'D' }`), as do `NaN` and the infinities. A bigint, a function, a symbol, a `Map`, a `Set`, an instance of a class or a cycle is refused with `RIVA_SSR`, naming its path.
 - `setScopeResolver(fn)` lets a host (a request context kept in an `AsyncLocalStorage`, for instance) supply the ambient client. `fn` is `() => RivaClient | undefined`; `client.run` still wins, then the resolver, then the browser's default client. With no resolver, or one that returns `undefined`, a server read with no client throws as before. There is one resolver per process: a second call replaces the first.

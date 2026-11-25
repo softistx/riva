@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { atom } from './atom';
+import { signal } from './signal';
 import { createRivaClient } from './client';
 import type { ClientEvents, Scheduler } from './env';
 import type { RivaError } from './errors';
@@ -138,7 +138,7 @@ const INCOMPLETE = "The cache cannot read the query's data after a fetch.";
 /** A policy that reads `undefined` while `holes` is set (an evicted entity, a missing field). */
 function holey(initial = false) {
 	let leaveHole = initial;
-	const holes = atom(false);
+	const holes = signal(false);
 	const cache: CachePolicy<unknown> = {
 		write: (_c, data) => data,
 		read: (c, stored) => (c.get(holes) ? undefined : stored),

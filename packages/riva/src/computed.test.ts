@@ -1,11 +1,11 @@
 import { expect, test } from 'bun:test';
-import { atom } from './atom';
+import { signal } from './signal';
 import { createRivaClient } from './client';
 import { computed } from './computed';
 import { RivaError } from './errors';
 
 test('is lazy and cached', () => {
-	const a = atom(1);
+	const a = signal(1);
 	let calls = 0;
 	const d = computed((get) => {
 		calls++;
@@ -23,7 +23,7 @@ test('is lazy and cached', () => {
 });
 
 test('is cached per client', () => {
-	const a = atom(1);
+	const a = signal(1);
 	const d = computed((get) => get(a) + 1);
 	const c1 = createRivaClient();
 	const c2 = createRivaClient();
@@ -33,7 +33,7 @@ test('is cached per client', () => {
 });
 
 test('does not re-evaluate when a dependency is set to an equal value', () => {
-	const a = atom(1);
+	const a = signal(1);
 	let calls = 0;
 	const d = computed((get) => {
 		calls++;
@@ -47,7 +47,7 @@ test('does not re-evaluate when a dependency is set to an equal value', () => {
 });
 
 test('a computed whose value is unchanged does not recompute dependents', () => {
-	const a = atom(1);
+	const a = signal(1);
 	const parity = computed((get) => get(a) % 2);
 	let calls = 0;
 	const label = computed((get) => {
@@ -62,9 +62,9 @@ test('a computed whose value is unchanged does not recompute dependents', () => 
 });
 
 test('tracks dependencies dynamically', () => {
-	const flag = atom(true);
-	const x = atom(1);
-	const y = atom(2);
+	const flag = signal(true);
+	const x = signal(1);
+	const y = signal(2);
 	let calls = 0;
 	const d = computed((get) => {
 		calls++;
@@ -84,7 +84,7 @@ test('tracks dependencies dynamically', () => {
 });
 
 test('implicit tracking through ambient get()', () => {
-	const a = atom(1);
+	const a = signal(1);
 	const d = computed(() => a.get() + 1);
 	const c = createRivaClient();
 	const seen: number[] = [];
@@ -94,7 +94,7 @@ test('implicit tracking through ambient get()', () => {
 });
 
 test('diamond: evaluates once per change and never sees a mix', () => {
-	const a = atom(1);
+	const a = signal(1);
 	const b = computed((get) => get(a) + 1);
 	const cc = computed((get) => get(a) * 10);
 	const calls: Array<[number, number]> = [];
@@ -116,7 +116,7 @@ test('diamond: evaluates once per change and never sees a mix', () => {
 });
 
 test('unsubscribing the last listener releases links, then re-evaluates lazily', () => {
-	const a = atom(1);
+	const a = signal(1);
 	let calls = 0;
 	const d = computed((get) => {
 		calls++;
@@ -148,7 +148,7 @@ test('detects a cycle', () => {
 });
 
 test('a throwing computed can be read again', () => {
-	const a = atom(0);
+	const a = signal(0);
 	const d = computed((get) => {
 		if (get(a) === 0) throw new Error('zero');
 		return get(a);

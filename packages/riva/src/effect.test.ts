@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from 'bun:test';
-import { atom } from './atom';
+import { signal } from './signal';
 import { createRivaClient } from './client';
 import { effect } from './effect';
 import { setDefaultClient } from './scope';
@@ -10,7 +10,7 @@ afterEach(() => {
 });
 
 test('re-runs when what it read changes, with cleanup and dispose', () => {
-	const a = atom(0);
+	const a = signal(0);
 	const c = createRivaClient();
 	const log: string[] = [];
 	const stop = c.effect(() => {
@@ -27,8 +27,8 @@ test('re-runs when what it read changes, with cleanup and dispose', () => {
 });
 
 test('an effect does not track what its cleanup reads', () => {
-	const a = atom(0);
-	const b = atom(0);
+	const a = signal(0);
+	const b = signal(0);
 	const c = createRivaClient();
 	let runs = 0;
 	c.effect(() => {
@@ -53,7 +53,7 @@ test('free effect runs through the default client in a browser', () => {
 	g.document = {};
 	const c = createRivaClient();
 	setDefaultClient(c);
-	const a = atom(0);
+	const a = signal(0);
 	const seen: number[] = [];
 	const stop = effect(() => {
 		seen.push(a.get());
