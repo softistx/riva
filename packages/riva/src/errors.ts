@@ -32,6 +32,10 @@ export class RivaRequestError extends RivaError {
 	}
 }
 
+/** Whether a failed HTTP status is worth retrying: 5xx, 408 and 429. */
+export const isRetryableStatus = (status: number): boolean =>
+	status >= 500 || status === 408 || status === 429;
+
 /** An HTTP error status. Retryable for 5xx, 408 and 429. */
 export class RivaHttpError extends RivaRequestError {
 	constructor(
@@ -41,7 +45,7 @@ export class RivaHttpError extends RivaRequestError {
 	) {
 		super(`HTTP_${status}`, message, {
 			status,
-			retryable: status >= 500 || status === 408 || status === 429,
+			retryable: isRetryableStatus(status),
 			...cause,
 		});
 		this.name = 'RivaHttpError';

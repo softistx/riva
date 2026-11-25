@@ -1,6 +1,14 @@
 import { expect, test } from 'bun:test';
-import { VERSION } from './index';
+import * as api from './index';
 
-test('exposes its version', () => {
-	expect(VERSION).toBe('0.0.0');
+test('the main entry exports the client, the definitions and the errors', () => {
+	for (const k of [
+		'createRivaClient',
+		'query',
+		'mutation',
+		'RivaError',
+		'isRetryableStatus',
+	])
+		expect(k in api).toBe(true);
+	expect('VERSION' in api).toBe(false);
 });

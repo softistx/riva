@@ -1,5 +1,5 @@
 import { expect, expectTypeOf, test } from 'bun:test';
-import type { DataOperation, DataSource } from './data';
+import type { DataOperation, DataSource } from './types';
 
 test('a data source finds an operation by id', () => {
 	const op: DataOperation = { kind: 'query', run: async () => 1 };

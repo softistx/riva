@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import {
+	isRetryableStatus,
 	RivaAbortError,
 	RivaError,
 	RivaHttpError,
@@ -55,4 +56,11 @@ test('RivaRequestError carries what an adapter gives it', () => {
 	const e = new RivaRequestError('FORBIDDEN', 'no', { retryable: false });
 	expect(e.code).toBe('FORBIDDEN');
 	expect(e.retryable).toBe(false);
+});
+
+test('isRetryableStatus is true for 5xx, 408 and 429 only', () => {
+	for (const s of [500, 503, 599, 408, 429])
+		expect(isRetryableStatus(s)).toBe(true);
+	for (const s of [200, 400, 401, 404, 499])
+		expect(isRetryableStatus(s)).toBe(false);
 });
