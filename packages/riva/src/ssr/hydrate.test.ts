@@ -273,6 +273,29 @@ describe('merging into existing entries', () => {
 		expect(browser.get(q, { page: 1 }).data?.n).toBe(5);
 		off();
 	});
+	test('with deferObserved an entry seeded on creation is not written again by the deferred pass', async () => {
+		const env = fakeEnv();
+		const { q } = counted('twice');
+		const server = env.client();
+		q.setData(server, { page: 1 }, { n: 5, at: new Date(0) });
+		const browser = env.client();
+		const deferred = hydrate(browser, roundTrip(dehydrate(server)), {
+			deferObserved: true,
+		});
+		// "Render": the definition is first used, the entry is seeded once.
+		const seen: number[] = [];
+		const off = browser.subscribe(q, { page: 1 }, (s) =>
+			seen.push(s.data?.n ?? -1),
+		);
+		await settle();
+		expect(browser.get(q, { page: 1 }).data?.n).toBe(5);
+		seen.length = 0;
+		env.sched.advance(100);
+		if (deferred) hydrate(browser, deferred);
+		await settle();
+		expect(seen).toEqual([]);
+		off();
+	});
 });
 
 describe('pending entries', () => {

@@ -178,8 +178,6 @@ export function read<T>(g: Graph, def: Readable<T>): T {
 	return n.value as T;
 }
 
-const settle = (g: Graph): void => flush(g, refresh);
-
 export function write<T>(
 	g: Graph,
 	def: Signal<T>,
@@ -195,7 +193,7 @@ export function write<T>(
 	n.ver++;
 	g.epoch++;
 	collect(g, n);
-	settle(g);
+	flush(g, refresh);
 }
 
 export function subscribe<T>(
@@ -218,7 +216,7 @@ export function subscribe<T>(
 	if (n.def.kind === 'computed' && n.stamp !== g.epoch) {
 		g.pending.add(n);
 		try {
-			settle(g);
+			flush(g, refresh);
 		} catch (e) {
 			off();
 			throw e;
@@ -235,14 +233,9 @@ export function batch<R>(g: Graph, fn: () => R): R {
 	} catch (e) {
 		g.depth--;
 		try {
-			settle(g);
+			flush(g, refresh);
 		} catch (flushError) {
-			if (
-				typeof e === 'object' &&
-				e !== null &&
-				Object.isExtensible(e) &&
-				!('cause' in e)
-			)
+			if (Object.isExtensible(e) && !('cause' in (e as object)))
 				Object.defineProperty(e, 'cause', {
 					value: flushError,
 					configurable: true,
@@ -252,6 +245,6 @@ export function batch<R>(g: Graph, fn: () => R): R {
 		throw e;
 	}
 	g.depth--;
-	settle(g);
+	flush(g, refresh);
 	return result;
 }
