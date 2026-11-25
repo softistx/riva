@@ -46,7 +46,7 @@ test('a revalidation updates observed entries without a setState-in-render warni
 	await page.unmount();
 });
 
-test('a named atom is seeded once and a local atom survives a navigation', async () => {
+test('a named signal is seeded once and a local signal survives a navigation', async () => {
 	const app = makeApp({ onPatient: (id) => counter.set(Number(id) + 3) });
 	const { loaderData } = await app.serve('/patients/2');
 	const page = await app.boot('/patients/2', loaderData);

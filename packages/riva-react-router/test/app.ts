@@ -1,6 +1,6 @@
 /* biome-ignore-all lint/style/useNamingConvention: GraphQL's field names */
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
-import { atom, type RivaClient } from '@softistx/riva';
+import { type RivaClient, signal } from '@softistx/riva';
 import {
 	type GraphQLTransport,
 	provideGraphQL,
@@ -56,9 +56,9 @@ export const PATIENT = query(
 	{ staleTime: '1m' },
 );
 
-/** Shared with the loaders, the browser and the page: a named atom that travels, and a local one that does not. */
-export const counter = atom(0, { name: 'counter', ssr: true });
-export const local = atom('draft');
+/** Shared with the loaders, the browser and the page: a named signal that travels, and a local one that does not. */
+export const counter = signal(0, { name: 'counter', ssr: true });
+export const local = signal('draft');
 
 /** A transport that counts its calls and stamps each answer with a revision. */
 export function fakeApi(delay: (school: string) => number = () => 0) {
