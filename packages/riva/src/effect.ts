@@ -1,6 +1,6 @@
-import type { Unsubscribe } from './signal';
 import type { EffectFn } from './client';
 import { isBrowser, resolve } from './scope';
+import type { Unsubscribe } from './signal';
 
 const noop = () => {};
 

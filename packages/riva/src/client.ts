@@ -1,4 +1,3 @@
-import type { Signal, Listener, Unsubscribe } from './signal';
 import { computed, type Readable } from './computed';
 import { type Duration, toMs } from './duration';
 import {
@@ -11,6 +10,7 @@ import * as graph from './graph';
 import type { Query, QueryState, VarsArgs } from './query';
 import { createQueryCache, type QueryCache } from './query-cache';
 import { withClient } from './scope';
+import type { Listener, Signal, Unsubscribe } from './signal';
 
 // biome-ignore lint/suspicious/noConfusingVoidType: an effect may return nothing or a cleanup
 export type EffectFn = () => void | (() => void);

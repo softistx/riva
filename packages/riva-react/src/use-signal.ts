@@ -1,4 +1,4 @@
-import type { Signal, Readable } from '@softistx/riva';
+import type { Readable, Signal } from '@softistx/riva';
 import { useCallback, useSyncExternalStore } from 'react';
 import { useClient } from './context';
 

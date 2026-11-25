@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
-import { signal } from './signal';
 import { createRivaClient } from './client';
 import { computed } from './computed';
 import { RivaError } from './errors';
+import { signal } from './signal';
 
 test('is lazy and cached', () => {
 	const a = signal(1);

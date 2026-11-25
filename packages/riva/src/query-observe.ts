@@ -1,4 +1,3 @@
-import type { Listener, Unsubscribe } from './signal';
 import type { RivaError } from './errors';
 import {
 	type AnyQuery,
@@ -15,6 +14,7 @@ import {
 } from './query-entry';
 import { abandon, join, pin } from './query-run';
 import { isBrowser } from './scope';
+import type { Listener, Unsubscribe } from './signal';
 
 export interface ObserveOptions {
 	/** Replaces the definition's `staleTime` for this observer's first fetch decision only (ms). */

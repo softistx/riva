@@ -1,6 +1,5 @@
 import { describe, expect, test } from 'bun:test';
 import { fakeEnv, settle } from '../../test/ssr';
-import { signal } from '../signal';
 import { createRivaClient } from '../client';
 import { entities } from '../entities';
 import { readEntity } from '../entities/api';
@@ -13,6 +12,7 @@ import {
 } from '../errors';
 import { infinite } from '../infinite';
 import { query } from '../query';
+import { signal } from '../signal';
 import { dehydrate, hydrate } from './index';
 
 function counted(id = 'items', staleTime: number | undefined = 60_000) {

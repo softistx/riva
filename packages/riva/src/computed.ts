@@ -1,5 +1,5 @@
-import type { Signal, Listener, Unsubscribe } from './signal';
 import { resolve } from './scope';
+import type { Listener, Signal, Unsubscribe } from './signal';
 
 /** A signal seen without its setter: what a store exposes for its state keys. */
 export interface ReadonlySignal<T> extends Omit<Signal<T>, 'set' | 'equals'> {}

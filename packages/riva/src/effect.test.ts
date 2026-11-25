@@ -1,8 +1,8 @@
 import { afterEach, expect, test } from 'bun:test';
-import { signal } from './signal';
 import { createRivaClient } from './client';
 import { effect } from './effect';
 import { setDefaultClient } from './scope';
+import { signal } from './signal';
 
 const g = globalThis as { document?: unknown };
 afterEach(() => {
