@@ -14,13 +14,7 @@ import { useMatches, useRevalidator } from 'react-router';
 import { useInvalidateOnAction } from './invalidate-on-action';
 import { REVALIDATOR, revalidate } from './revalidate';
 
-export interface RivaRouterProviderProps {
-	/**
-	 * The riva of this tree. By default one is created per mount. It must stay
-	 * the same object for the lifetime of the mount: the provider reads it once
-	 * and does not follow a new one.
-	 */
-	riva?: Riva;
+interface RivaRouterProviderBase {
 	/**
 	 * Runs on the riva of this mount, before any loader snapshot is read
 	 * (e.g. `provideGraphQL`). It must be idempotent: React StrictMode runs the
@@ -31,6 +25,24 @@ export interface RivaRouterProviderProps {
 	invalidateOnAction?: readonly Invalidation[];
 	children?: ReactNode;
 }
+
+export type RivaRouterProviderProps = RivaRouterProviderBase &
+	(
+		| {
+				/**
+				 * The riva of this tree. By default one is created per mount. It must stay
+				 * the same object for the lifetime of the mount: the provider reads it once
+				 * and does not follow a new one.
+				 */
+				riva?: Riva;
+				client?: undefined;
+		  }
+		| {
+				riva?: undefined;
+				/** @deprecated Use `riva`. Removed in the next minor. */
+				client: Riva;
+		  }
+	);
 
 /** What a loader's data holds under `~riva`; React Router's serialized types do not keep the `Snapshot` brand. */
 const snapshotOf = (data: unknown): Snapshot | undefined =>
@@ -45,11 +57,13 @@ const snapshotOf = (data: unknown): Snapshot | undefined =>
  * layout effect. Place it in the root route component.
  */
 export function RivaRouterProvider({
-	riva,
+	riva: given,
+	client,
 	setup,
 	invalidateOnAction,
 	children,
 }: RivaRouterProviderProps): ReactElement {
+	const riva = given ?? client;
 	const [own] = useState(() => {
 		const c = riva ?? createRiva();
 		setup?.(c, { server: typeof document === 'undefined' });

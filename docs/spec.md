@@ -24,11 +24,11 @@ binding until the owner changes it.
 | D9 | **BFF client data path**: one generic resource route (`/_data`) in `riva-react-router` executes, on the server, the persisted operations of a codegen allowlist with the session caller. The browser sends an operation id and variables only. |
 | D10 | **Definitions first**: `query(DOC, opts)` / `mutation(DOC, opts)` are typed objects reused by loaders, hooks, prefetch and invalidation. Keys are derived, never written by hand. |
 | D11 | v1 features beyond the base: **optimistic updates with rollback**, **cursor pagination and infinite lists**. |
-| D12 | **One client per request** on the server, one in the browser. Definitions are stateless; values live in a `Riva`. Reading a value outside a client on the server throws. (Renamed from `RivaClient` by the owner on 2026-11-25: the instance holds local state too, so it is not a client.) |
+| D12 | **One `Riva` per request** on the server, one in the browser. Definitions are stateless; values live in a `Riva`. Reading a value with no `Riva` in scope on the server throws. (Renamed from `RivaClient` by the owner on 2026-11-25: the instance holds local state too, so it is not a client.) |
 | D13 | **Mutations in a BFF** go through `/_data` (allowlisted, same-origin JSON, session). React Router actions stay for forms, with a helper that writes their result into the cache. |
 | D14 | **REST typed by OpenAPI** through `openapi-httpyz`; a free-fetcher mode for schema-less APIs. |
 | D15 | **Pilot: one of our BFF apps.** Subscriptions and SSE in v1.1, devtools in v1.2, persistence/offline in v2. |
-| D16 | Stores (owner, 2026-11-24; validated 2026-11-25): `store({ name, ssr?, state, computed, actions })` from `@softistx/riva/store` groups a domain's state, computeds and actions. Each state key is a signal named `<name>.<key>` and each computed is a riva computed: both are read as definitions. Only actions write, by top-level assignment on `s`, batched; writes elsewhere throw RIVA_STORE, except `hydrate` and `reset()`. Actions get `(s, ...args, { client, fetch, mutate })`, and `s` stays bound to its client across `await`. `ssr: true` makes every key travel. One instance per client. React: `useStore(def)` gives `[s, a]`, tracked per key. Deep signals and store families come later. |
+| D16 | Stores (owner, 2026-11-24; validated 2026-11-25): `store({ name, ssr?, state, computed, actions })` from `@softistx/riva/store` groups a domain's state, computeds and actions. Each state key is a signal named `<name>.<key>` and each computed is a riva computed: both are read as definitions. Only actions write, by top-level assignment on `s`, batched; writes elsewhere throw RIVA_STORE, except `hydrate` and `reset()`. Actions get `(s, ...args, { riva, fetch, mutate })`, and `s` stays bound to its riva across `await`. `ssr: true` makes every key travel. One instance per riva. React: `useStore(def)` gives `[s, a]`, tracked per key. Deep signals and store families come later. |
 
 ## 2. Packages
 
@@ -38,7 +38,7 @@ binding until the owner changes it.
 | `@softistx/riva-react` | `RivaProvider`, hooks, Suspense support. | peer `react`, `@softistx/riva` |
 | `@softistx/riva-graphql` | GraphQL transport over `@softistx/graphql-client`, `TypedDocumentNode` / persisted ids, codegen plugin emitting the allowlist manifest. | peers `@softistx/riva`, `@softistx/graphql-client` |
 | `@softistx/riva-rest` | REST transport over `openapi-httpyz` + free fetcher. | peers `@softistx/riva`, `httpyz`/`openapi-httpyz` |
-| `@softistx/riva-react-router` | Per-request client, dehydrate into the loader payload / hydrate on the client, the `/_data` route, action-result helper, revalidation bridge, alxia-react-router integration. | peers `@softistx/riva`, `@softistx/riva-react`, `react-router`, `@softistx/alxia-react-router` (optional) |
+| `@softistx/riva-react-router` | Per-request riva, dehydrate into the loader payload / hydrate on the client, the `/_data` route, action-result helper, revalidation bridge, alxia-react-router integration. | peers `@softistx/riva`, `@softistx/riva-react`, `react-router`, `@softistx/alxia-react-router` (optional) |
 
 Adapters reach what they wrap **as peers, by range**; the core never imports
 an adapter. A class (`RivaError`…) is defined once in the core and thrown by
@@ -47,7 +47,7 @@ the adapters, so `instanceof` holds.
 ## 3. API sketch (target DX)
 
 ```ts
-// Local state — definitions, no value until a client reads them
+// Local state — definitions, no value until a riva reads them
 import { signal, computed } from "@softistx/riva";
 
 export const filter = signal("");
@@ -80,7 +80,7 @@ export const renamePatient = mutation(RENAME_PATIENT_MUTATION, {
 import { rest } from "@softistx/riva-rest";
 export const invoice = rest.query(api.get("/invoices/{id}"));
 
-// React Router loader (server, per-request client injected by riva-react-router)
+// React Router loader (server, per-request riva injected by riva-react-router)
 export async function loader({ context, params }: Route.LoaderArgs) {
   await patients.ensure(context, { school: params.slug });
   return riva(context); // dehydrated cache travels with the payload
@@ -95,8 +95,8 @@ function PatientList() {
 }
 
 // Outside a component
-patients.invalidate(client, { school });
-renamePatient.run(client, { id, name });
+patients.invalidate(riva, { school });
+renamePatient.run(riva, { id, name });
 ```
 
 Rules of the API:
@@ -107,15 +107,15 @@ Rules of the API:
 - One status model everywhere: `idle | pending | success | error`, plus
   `isFetching` for background refetches; errors are `RivaError` subclasses
   carrying the transport's code (GraphQL error code, HTTP status).
-- No hook is required to read state: `client.get(def, vars)` and
-  `client.subscribe(...)` work outside React (widgets, tests, workers).
+- No hook is required to read state: `riva.get(def, vars)` and
+  `riva.subscribe(...)` work outside React (widgets, tests, workers).
 
 ## 4. Core behaviour
 
 ### 4.1 Signals
 - `signal(initial, opts)`, `computed(fn)`, `effect(fn)` (client-only), `batch(fn)`,
   `untracked(fn)`. Glitch-free, lazy computeds, synchronous propagation.
-- Values are stored per `Riva` (D12). A server-side read with no client in
+- Values are stored per `Riva` (D12). A server-side read with no `Riva` in
   scope throws `RivaScopeError` with a message naming the fix.
 - D16: a store's state keys are signals whose
   `equals` refuses any write made outside an action or `reset()` with
@@ -149,8 +149,8 @@ Rules of the API:
   merge into the normalized cache, refetch of all loaded pages.
 
 ### 4.6 SSR
-- `dehydrate(client)` → serializable snapshot (cache + signals marked
-  `ssr: true`); `hydrate(client, snapshot)` on the browser, before first
+- `dehydrate(riva)` → serializable snapshot (cache + signals marked
+  `ssr: true`); `hydrate(riva, snapshot)` on the browser, before first
   render. Errors are dehydrated as codes, never stack traces.
 - Hydration never refetches data still fresh at hydration time.
 
@@ -206,7 +206,7 @@ Integration branch `feat/v1` off `develop`; one PR per slice into it; one PR
 7. `riva-react`: provider, hooks, Suspense.
 8. `riva-graphql`: graphql-client transport, persisted ids, allowlist codegen plugin.
 9. `riva-rest`: openapi-httpyz transport + free fetcher.
-10. `riva-react-router`: per-request client, dehydrate/hydrate, `/_data`, action helper, revalidation bridge.
+10. `riva-react-router`: per-request riva, dehydrate/hydrate, `/_data`, action helper, revalidation bridge.
 11. Docs and `plugins/riva` (use-riva skill, references/packages.md, riva-upgrade-assistant).
 12. graphql-client: deprecate `normalizedCache` and `./react` in favour of riva (graphql repo).
 13. Pilot: a BFF app adopts riva in place of its hand-made fetch/useFetcher/polling.

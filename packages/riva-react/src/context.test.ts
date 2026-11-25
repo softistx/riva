@@ -50,3 +50,11 @@ test('the deprecated useClient is useRiva, and the provider still takes `client`
 	expect(seen[0]).toBe(legacy);
 	await m.unmount();
 });
+
+test('RivaProvider takes `riva` or `client`, never both and never neither', () => {
+	const a = newRiva();
+	// @ts-expect-error both `riva` and `client`
+	h(RivaProvider, { riva: a, client: a });
+	// @ts-expect-error neither `riva` nor `client`
+	h(RivaProvider, {});
+});

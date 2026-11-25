@@ -45,6 +45,7 @@ The provider hydrates each match's `~riva` once. The first render is seeded befo
 
 ## Traps
 
+- The instance variable and the `riva(context)` helper share a name. In a loader, do not name the instance `riva` (e.g. `const r = rivaOf(context)`), or import the helper under an alias (`import { riva as rivaData } from '@softistx/riva-react-router'`); otherwise the call fails with "riva is not a function".
 - `rivaOf` and `riva` are for server loaders and actions only; `clientLoader` is not supported.
 - Every `riva(context)` call dehydrates the whole request riva: return it from one loader per request (usually the root's), and let the others only `ensure` their data.
 - Only loaders that return `riva(context)` feed the provider.
