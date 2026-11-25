@@ -1,5 +1,0 @@
----
-'@softistx/riva': minor
----
-
-Add the entity cache as the opt-in `@softistx/riva/entities` entry: `entities()` (a `cache` policy that normalizes query data into shared entities, with identity by `__typename` and `id`, `keys` or a custom `identify`, structural sharing and mark-and-sweep collection (cycles included)), `readEntity`, `writeEntity`, `evict`, `invalidateEntity` and `identifyOf`, and the `RIVA_CACHE` error. The main entry gains the `cache` query option and the `CachePolicy` type. A cache policy's `write`, `layer` and `commit` receive the operation's variables; `entities(opts, codec)` takes an `EntityCodec` (over an `EntityReader`) to normalize and denormalize differently, and `@softistx/riva/entities` exports `isPlain`, `isRef` and the types `EntityCodec`, `EntityReader`, `Normalized`, `Ref`. A plain read skips argument-field keys. An observed query whose stored data stops reading through its cache policy is refetched (and `ensure` fetches); a fetch whose result cannot be read back ends in the error status with `RIVA_CACHE` ("The cache cannot read the query's data after a fetch.") and `ensure` rejects, with no loop.
