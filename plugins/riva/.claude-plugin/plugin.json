@@ -1,0 +1,8 @@
+{
+	"name": "riva",
+	"displayName": "riva",
+	"description": "For applications that use @softistx/riva and its adapters (react, graphql, rest, react-router): a skill that picks the package and subpath by need, states the invariants and points at the README and docs each package ships. An agent upgrades an app between two versions from the CHANGELOG.",
+	"author": {
+		"name": "softistx"
+	}
+}

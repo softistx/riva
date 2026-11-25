@@ -1,6 +1,17 @@
 import { expect, test } from 'bun:test';
-import { VERSION } from './index';
+import * as barrel from './index';
 
-test('exposes its version', () => {
-	expect(VERSION).toBe('0.0.0');
+test('the barrel exports the browser-safe surface', () => {
+	expect(Object.keys(barrel).sort()).toEqual([
+		'RivaRouterProvider',
+		'revalidate',
+		'riva',
+		'rivaContext',
+		'rivaOf',
+		'useActionResult',
+	]);
+});
+
+test('the barrel stays free of the server entry', () => {
+	expect('rivaMiddleware' in barrel).toBe(false);
 });

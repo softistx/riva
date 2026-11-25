@@ -6,6 +6,7 @@
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
+	"sideEffects": false,
 	"files": [
 		"dist",
 		"docs",
@@ -18,6 +19,21 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/index.js",
 			"default": "./dist/index.js"
+		},
+		"./entities": {
+			"types": "./dist/entities/index.d.ts",
+			"import": "./dist/entities/index.js",
+			"default": "./dist/entities/index.js"
+		},
+		"./server": {
+			"types": "./dist/server/index.d.ts",
+			"import": "./dist/server/index.js",
+			"default": "./dist/server/index.js"
+		},
+		"./bff": {
+			"types": "./dist/bff/index.d.ts",
+			"import": "./dist/bff/index.js",
+			"default": "./dist/bff/index.js"
 		},
 		"./package.json": "./package.json"
 	},
@@ -44,6 +60,9 @@
 		"typecheck": "bun check"
 	},
 	"devDependencies": {
+		"@softistx/httpyz": "^0.6.1",
+		"@softistx/openapi-httpyz": "^0.4.1",
+		"@softistx/riva": "workspace:*",
 		"@types/bun": "^1.4.5"
 	},
 	"peerDependencies": {
@@ -55,5 +74,13 @@
 		"@softistx/openapi-httpyz": {
 			"optional": true
 		}
+	},
+	"nxgt": {
+		"entrypoints": [
+			"src/index.ts",
+			"src/entities/index.ts",
+			"src/server/index.ts",
+			"src/bff/index.ts"
+		]
 	}
 }

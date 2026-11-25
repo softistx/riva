@@ -9,10 +9,10 @@ hand-written keys.
 
 ```ts
 // Local state: definitions, no value until a client reads them
-import { atom, computed } from "@softistx/riva";
+import { signal, computed } from "@softistx/riva";
 
-export const filter = atom("");
-export const sidebarOpen = atom(true, { persist: false });
+export const filter = signal("");
+export const sidebarOpen = signal(true, { persist: false });
 export const hasFilter = computed((get) => get(filter).length > 0);
 
 // GraphQL
@@ -26,7 +26,7 @@ export const renamePatient = mutation(RENAME_PATIENT_MUTATION, {
 
 // REST (OpenAPI)
 import { rest } from "@softistx/riva-rest";
-export const invoice = rest.query(api.get("/invoices/{id}"));
+export const invoice = rest.query(api, "get /invoices/{id}");
 
 // React Router loader
 export async function loader({ context, params }: Route.LoaderArgs) {
@@ -36,7 +36,7 @@ export async function loader({ context, params }: Route.LoaderArgs) {
 
 // Component: same definition, typed vars and data
 function PatientList() {
-  const [q, setQ] = useAtom(filter);
+  const [q, setQ] = useSignal(filter);
   const { data, status, refetch } = useQuery(patients, { school, q });
   const rename = useMutation(renamePatient); // optimistic + rollback
   const feed = useInfiniteQuery(patientsFeed, { school });
@@ -55,7 +55,7 @@ renamePatient.run(client, { id, name });
 | `@softistx/riva-react` | `RivaProvider`, hooks, Suspense support |
 | `@softistx/riva-graphql` | GraphQL transport over `@softistx/graphql-client`, persisted ids, allowlist codegen |
 | `@softistx/riva-rest` | REST transport over `openapi-httpyz`, plus a free fetcher |
-| `@softistx/riva-react-router` | Per-request client, SSR hydration, the `/_data` route, action helper |
+| `@softistx/riva-react-router` | Per-request client, ambient scope, SSR hydration and navigation merge |
 
 ## Status
 

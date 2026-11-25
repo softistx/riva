@@ -1,11 +1,14 @@
 {
 	"name": "@softistx/riva-react-router",
 	"version": "0.0.0",
-	"description": "React Router host for riva: per-request client, dehydrate and hydrate, the /_data resource route, action-result helper and revalidation bridge.",
+	"description": "React Router host for riva: one RivaClient per request with an ambient scope, SSR dehydrate and hydrate through loader data, and a merge on each navigation.",
 	"license": "MIT",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
+	"sideEffects": [
+		"./dist/server/index.js"
+	],
 	"files": [
 		"dist",
 		"docs",
@@ -18,6 +21,11 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/index.js",
 			"default": "./dist/index.js"
+		},
+		"./server": {
+			"types": "./dist/server/index.d.ts",
+			"import": "./dist/server/index.js",
+			"default": "./dist/server/index.js"
 		},
 		"./package.json": "./package.json"
 	},
@@ -44,7 +52,19 @@
 		"typecheck": "bun check"
 	},
 	"devDependencies": {
-		"@types/bun": "^1.4.5"
+		"@graphql-typed-document-node/core": "^3.2.0",
+		"@happy-dom/global-registrator": "^20.0.0",
+		"@softistx/riva": "workspace:*",
+		"@softistx/riva-graphql": "workspace:*",
+		"@softistx/riva-react": "workspace:*",
+		"@softistx/riva-rest": "workspace:*",
+		"@types/bun": "^1.4.5",
+		"@types/react": "^19.0.0",
+		"@types/react-dom": "^19.0.0",
+		"graphql": "^17.0.0",
+		"react": "^19.0.0",
+		"react-dom": "^19.0.0",
+		"react-router": "^8.5.0"
 	},
 	"peerDependencies": {
 		"@softistx/riva": "^0.0.0",
@@ -57,5 +77,11 @@
 		"@softistx/alxia-react-router": {
 			"optional": true
 		}
+	},
+	"nxgt": {
+		"entrypoints": [
+			"src/index.ts",
+			"src/server/index.ts"
+		]
 	}
 }

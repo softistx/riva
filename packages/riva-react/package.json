@@ -1,11 +1,12 @@
 {
 	"name": "@softistx/riva-react",
 	"version": "0.0.0",
-	"description": "React adapter for riva: RivaProvider, hooks and Suspense support.",
+	"description": "React adapter for riva: RivaProvider, hooks, Suspense and SSR support.",
 	"license": "MIT",
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
+	"sideEffects": false,
 	"files": [
 		"dist",
 		"docs",
@@ -18,6 +19,21 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/index.js",
 			"default": "./dist/index.js"
+		},
+		"./infinite": {
+			"types": "./dist/infinite/index.d.ts",
+			"import": "./dist/infinite/index.js",
+			"default": "./dist/infinite/index.js"
+		},
+		"./entities": {
+			"types": "./dist/entities/index.d.ts",
+			"import": "./dist/entities/index.js",
+			"default": "./dist/entities/index.js"
+		},
+		"./store": {
+			"types": "./dist/store/index.d.ts",
+			"import": "./dist/store/index.js",
+			"default": "./dist/store/index.js"
 		},
 		"./package.json": "./package.json"
 	},
@@ -44,10 +60,24 @@
 		"typecheck": "bun check"
 	},
 	"devDependencies": {
-		"@types/bun": "^1.4.5"
+		"@happy-dom/global-registrator": "^20.0.0",
+		"@softistx/riva": "workspace:*",
+		"@types/bun": "^1.4.5",
+		"@types/react": "^19.0.0",
+		"@types/react-dom": "^19.0.0",
+		"react": "^19.0.0",
+		"react-dom": "^19.0.0"
 	},
 	"peerDependencies": {
 		"react": "^19.0.0",
 		"@softistx/riva": "^0.0.0"
+	},
+	"nxgt": {
+		"entrypoints": [
+			"src/index.ts",
+			"src/infinite/index.ts",
+			"src/entities/index.ts",
+			"src/store/index.ts"
+		]
 	}
 }

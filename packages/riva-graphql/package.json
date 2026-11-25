@@ -6,6 +6,7 @@
 	"type": "module",
 	"main": "./dist/index.js",
 	"types": "./dist/index.d.ts",
+	"sideEffects": false,
 	"files": [
 		"dist",
 		"docs",
@@ -18,6 +19,31 @@
 			"types": "./dist/index.d.ts",
 			"import": "./dist/index.js",
 			"default": "./dist/index.js"
+		},
+		"./infinite": {
+			"types": "./dist/infinite/index.d.ts",
+			"import": "./dist/infinite/index.js",
+			"default": "./dist/infinite/index.js"
+		},
+		"./cache": {
+			"types": "./dist/cache/index.d.ts",
+			"import": "./dist/cache/index.js",
+			"default": "./dist/cache/index.js"
+		},
+		"./codegen": {
+			"types": "./dist/codegen/index.d.ts",
+			"import": "./dist/codegen/index.js",
+			"default": "./dist/codegen/index.js"
+		},
+		"./server": {
+			"types": "./dist/server/index.d.ts",
+			"import": "./dist/server/index.js",
+			"default": "./dist/server/index.js"
+		},
+		"./bff": {
+			"types": "./dist/bff/index.d.ts",
+			"import": "./dist/bff/index.js",
+			"default": "./dist/bff/index.js"
 		},
 		"./package.json": "./package.json"
 	},
@@ -44,10 +70,36 @@
 		"typecheck": "bun check"
 	},
 	"devDependencies": {
-		"@types/bun": "^1.4.5"
+		"@graphql-codegen/cli": "^8.0.0",
+		"@graphql-codegen/client-preset": "^7.0.0",
+		"@graphql-typed-document-node/core": "^3.2.0",
+		"@softistx/graphql-client": "^0.9.0",
+		"@softistx/riva": "workspace:*",
+		"@types/bun": "^1.4.5",
+		"graphql": "^17.0.0"
 	},
 	"peerDependencies": {
 		"@softistx/riva": "^0.0.0",
-		"@softistx/graphql-client": "^0.9.0"
+		"@softistx/graphql-client": "^0.9.0",
+		"@graphql-typed-document-node/core": "^3.2.0",
+		"graphql": "^16.11.0 || ^17.0.0"
+	},
+	"peerDependenciesMeta": {
+		"@graphql-typed-document-node/core": {
+			"optional": true
+		},
+		"graphql": {
+			"optional": true
+		}
+	},
+	"nxgt": {
+		"entrypoints": [
+			"src/index.ts",
+			"src/infinite/index.ts",
+			"src/cache/index.ts",
+			"src/codegen/index.ts",
+			"src/server/index.ts",
+			"src/bff/index.ts"
+		]
 	}
 }

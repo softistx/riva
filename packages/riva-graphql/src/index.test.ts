@@ -1,6 +1,32 @@
 import { expect, test } from 'bun:test';
-import { VERSION } from './index';
+import * as api from './index';
 
-test('exposes its version', () => {
-	expect(VERSION).toBe('0.0.0');
+test('the main entry exports the transport and the definitions, nothing from the subpaths', () => {
+	expect(Object.keys(api).sort()).toEqual([
+		'graphqlClientTransport',
+		'mutation',
+		'operationOf',
+		'provideGraphQL',
+		'query',
+		'toRivaError',
+	]);
+});
+
+test('the runtime entries never import graphql, the codegen or the graphql-client at runtime (the codegen may; the server allowlist may import graphql only)', async () => {
+	const files = [...new Bun.Glob('**/*.ts').scanSync('src')].filter(
+		(f) => !f.endsWith('.test.ts') && !f.startsWith('codegen/'),
+	);
+	expect(files.length).toBeGreaterThan(5);
+	for (const f of files) {
+		const code = await Bun.file(`src/${f}`).text();
+		const imports = [
+			...code.matchAll(/^import (?!type )[^;]*from '([^']+)'/gm),
+		];
+		for (const [, from] of imports)
+			expect(from).not.toMatch(
+				f.startsWith('server/')
+					? /^(@graphql-codegen|@softistx\/graphql-client)/
+					: /^(graphql|@graphql-codegen|@softistx\/graphql-client)/,
+			);
+	}
 });

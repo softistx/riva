@@ -1,0 +1,210 @@
+# Troubleshooting
+
+Each entry is headed by the message you will see.
+
+## `No GraphQL transport on this RivaClient: call provideGraphQL(client, graphqlClientTransport(gqlClient)) when you create it.`
+
+Code: `RIVA_SCOPE` (`RivaScopeError`).
+
+**When:** a query, mutation or infinite list ran on a `RivaClient` that was never given a transport.
+
+**Why:** definitions are stateless and the transport lives on the client, so two server requests never share one.
+
+**Fix:** provide it where the client is created, per request on the server.
+
+```ts
+import { createGraphQLClient } from '@softistx/graphql-client';
+import { createRivaClient } from '@softistx/riva';
+import { graphqlClientTransport, provideGraphQL } from '@softistx/riva-graphql';
+
+const client = createRivaClient();
+provideGraphQL(client, graphqlClientTransport(createGraphQLClient({ url: 'https://api.example.com/graphql' })));
+```
+
+## `riva-graphql: the operation has no name; name it (query Patients { ... }) so it has an id.`
+
+Code: `RIVA_DEFINITION` (`RivaError`), thrown when the definition is created.
+
+**Why:** the definition's id, its cache keys and the allowlist's ids come from the operation name (or its persisted id), so an anonymous operation has none.
+
+**Fix:** name the operation: `query Patients { ... }`, not `{ ... }`.
+
+## `riva-graphql: the document holds N operations; define one operation per document.`
+
+**Why:** one definition is one operation. Fragments may share the document; a second operation may not.
+
+**Fix:** split the document, one constant per operation (`PATIENTS_QUERY`, `PATIENT_QUERY`).
+
+## `riva-graphql: the document holds no operation (a fragment alone cannot be queried).`
+
+**Fix:** pass the query or mutation document, not the fragment's.
+
+## `riva-graphql: X is a mutation; use mutation() to define it, not query().`
+
+**Fix:** use the helper that matches the document: `query()` and `infinite()` for queries, `mutation()` for mutations. Subscriptions are not supported yet (`riva-graphql: X is a subscription; …`).
+
+## `riva-graphql: expected a TypedDocumentNode (set documentMode: "documentNode" in the client preset), got something else.`
+
+**When:** the document is a string or a `TypedDocumentString`.
+
+**Why:** a definition reads the operation's name and kind from the parsed document, without importing `graphql` at runtime.
+
+**Fix:** generate documents as `TypedDocumentNode` (the client preset's default `documentMode`).
+
+```ts
+// codegen.ts
+generates: { 'app/generated/': { preset: 'client', presetConfig: { persistedDocuments: true } } }
+```
+
+## `@softistx/riva-graphql/codegen: the operation "X" is defined twice (sha256:a… and sha256:b…); operation names must be unique.`
+
+**Why:** operation names are the ids of `ids: 'name'` (and the runtime's, without persisted ids), so they are unique.
+
+**Fix:** rename one of them.
+
+Related: `the persisted document <hash> must hold exactly one operation.` and `… must be a named query or mutation.` come from a text with no operation, several, an anonymous one or a subscription. Fix the document that produced it.
+
+## A query is refused by the BFF with an unknown id
+
+**When:** the `/_data` route does not know the id a definition sends.
+
+**Why:** the runtime id is the document's `__meta__.hash` (the client preset's `persistedDocuments`), else its operation name. The manifest keeps the keys of the preset's `persisted-documents.json` as they are, so they match, unless the manifest is stale (codegen ran without the `afterAllFileWrite` step), or documents carry no hash while the manifest is keyed by hash.
+
+**Fix:** run `writeAllowlist` from `hooks.afterAllFileWrite` (see "Allowlist codegen" in the [README](../README.md#allowlist-codegen)) so it follows each codegen run. With no `persistedDocuments`, use `ids: 'name'`.
+
+## `RIVA_DATA_*` refusals from the `/_data` route
+
+Raised by `dataRoute` (`@softistx/riva-react-router/server`) and rethrown by `bffTransport` as a `RivaRequestError` with that `code` and `status`. The checks run in this order:
+
+| Code | Status | When | Fix |
+|---|---|---|---|
+| `RIVA_DATA_METHOD` | 405 | A GET, or any method but POST | Call it through `bffTransport`; never link to it. |
+| `RIVA_DATA_CROSS_SITE` | 403 | `Origin` is not the route's origin, or `Sec-Fetch-Site` is cross-site | Call from the same origin; behind a proxy set `origin` on `dataRoute`. |
+| `RIVA_DATA_MEDIA_TYPE` | 415 | `content-type` is not `application/json` | Do not override the header in `bffTransport`'s `headers`. |
+| `RIVA_DATA_TOO_LARGE` | 413 | The body is over `maxBytes` (262144) | Send less, or raise `maxBytes`. |
+| `RIVA_DATA_BAD_REQUEST` | 400 | The body is not `{ "id": string, "variables"?: object }` | Use `bffTransport`. |
+| `RIVA_DATA_UNKNOWN` | 404 | No source knows the id | See below. |
+| `RIVA_DATA_INTERNAL` | 500 | An operation threw something that is not a `RivaRequestError` | The browser sees only this generic answer; read the cause through `dataRoute`'s `onError`, which also receives the API's network and HTTP failures (sent to the browser with their own code and the message "The API is unavailable."). |
+
+## `The data route answered <status> with a body that is not JSON.`
+
+Code: `RIVA_INVALID_RESPONSE` (`RivaRequestError`), or `RivaHttpError` (`HTTP_<status>`) when the body is JSON without the route's `{ error }` shape.
+
+**When:** `bffTransport` got a reply `dataRoute` did not write: a proxy's 502 or 504 HTML page, a login redirect, a CDN error, or a `/_data` URL that no route serves.
+
+**Why:** the transport reads `{ data }` or `{ error: { code, message, status } }`; anything else is not the route's answer, so it keeps the HTTP status and nothing of the body.
+
+**Fix:** check that `url` is the route's path and that the proxy forwards POSTs to it untouched. 5xx, 408 and 429 are marked retryable, so the query retries on its own.
+
+## 404 on an operation that exists
+
+**When:** `RIVA_DATA_UNKNOWN` for a query or mutation the app defines.
+
+**Why:** the id the browser sends (the document's `__meta__.hash`, else its operation name) is not a key of the manifest. Either the manifest is stale, or it was built with the other `ids` mode (`'persisted'` keys by hash, `'name'` by operation name).
+
+**Fix:** rebuild the manifest from codegen's `afterAllFileWrite` hook with the `ids` mode that matches the documents (see "Allowlist codegen" in the [README](../README.md#allowlist-codegen)).
+
+## `ENOENT` or a `SyntaxError` from `writeAllowlist` reading `persisted-documents.json`
+
+**When:** `writeAllowlist` (or the `afterAllFileWrite` hook running it) fails with a missing file, or invalid JSON.
+
+**Why:** the client preset writes `persisted-documents.json` only with `persistedDocuments: true`, and `writeAllowlist` reads it. The hook runs after all files are written, so a failed or partial codegen run, a wrong path or a preset without the option leaves nothing valid to read.
+
+**Fix:** set `presetConfig: { persistedDocuments: true }` on the preset, check that the path passed to `writeAllowlist` is the preset's output folder plus `persisted-documents.json`, and fix the codegen error that came first.
+
+## Two definitions share the id "<id>": define each query once (a module-level const) and import it, or pass a distinct id.
+
+Code: `RIVA_KEY` (`RivaError`).
+
+**Why:** a definition's `id` is the document's persisted id, else its operation name. Two definitions with the same `id` read on one client on the server throw `RIVA_KEY`; in a browser a hot reload takes over instead.
+
+**Fix:** define each query once, as a module-level const, and import it. Pass a distinct `id` when you define one document twice with different options. See the [core entry](../../riva/docs/troubleshooting.md).
+
+## An error has the API's code but `error.fields` is undefined
+
+**Why:** `RivaRequestError` carries `code`, `status` and `retryable`; the refused fields, params and every GraphQL error stay on its `cause`, the `ApiError` of `@softistx/graphql-client`.
+
+**Fix:** read `error.cause` (see "Errors" in the [README](../README.md#errors)).
+
+## A query is retried although the API refused it
+
+**Why:** a refusal carries `extensions.http.status` below 500, or none (read as 400): it is never retried. A 5xx, 408 or 429 is, like any other transport failure.
+
+**Fix:** have the API send a 4xx `extensions.http.status` for a refusal, or decide yourself: `retry: (failures, error) => …`.
+
+## `The GraphQL cache holds JSON: field X holds Y.`
+
+Code: `RIVA_CACHE` (`RivaError`).
+
+**Why:** `normalized()` stores plain JSON; a `Date`, a class instance, a function or a non-finite number in a result (a custom scalar parsed by the client) cannot be stored.
+
+**Fix:** keep the scalar serialized in the result, or parse it at the point of use.
+
+## `The GraphQL cache stores an operation's data: an object.`
+
+Code: `RIVA_CACHE` (`RivaError`).
+
+**Why:** the transport returned something other than an object for the operation's data.
+
+**Fix:** check the transport; a GraphQL result's `data` is an object.
+
+## `riva-graphql: the document uses the fragment X but does not define it` and `riva-graphql: the document holds no operation`
+
+Code: `RIVA_DEFINITION` (`RivaError`), thrown when `query()` or `mutation()` is called.
+
+**Why:** the document given to `query()` or `mutation()` with a `normalized()` cache spreads a fragment it does not define, or defines no operation.
+
+**Fix:** pass the preset's document, which carries the fragments it uses.
+
+## `riva-graphql: the field "X" selects no __typename, which the cache needs to identify objects: …`
+
+Code: `RIVA_DEFINITION` (`RivaError`), thrown when `query()` or `mutation()` is called with a `normalized()` cache.
+
+**Why:** an object with no `__typename` has no identity, so it could not be stored as an entity. The cache refuses the document rather than rewrite it: a persisted id is the hash of the document's text.
+
+**Fix:** add the client preset's `addTypenameSelectionDocumentTransform` to its `documentTransforms` (or select `__typename` yourself in every selection set below the root).
+
+```ts
+// codegen.ts
+import { addTypenameSelectionDocumentTransform } from '@graphql-codegen/client-preset';
+
+generates: {
+	'app/generated/': {
+		preset: 'client',
+		presetConfig: { persistedDocuments: true },
+		documentTransforms: [addTypenameSelectionDocumentTransform], // beside `preset`, not inside presetConfig
+	},
+},
+```
+
+## `The cache cannot read the query's data after a fetch.`
+
+Code: `RIVA_CACHE` (`RivaError`), shown as the query's error status; `ensure` rejects with it.
+
+**When:** a query with a `normalized()` cache fetched, and the result still reads as a miss.
+
+**Why:** the server's answer lacks a selected field (or an object the selection needs), so the whole result reads `undefined`: the cache never serves half a result. A second fetch would give the same answer, so it stops instead of looping. A query already showing data whose entity is later evicted is refetched on its own.
+
+**Fix:** have the API return every selected field (`null` for an empty one), or remove it from the selection. The generic explanation is on the [core page](../../riva/docs/troubleshooting.md).
+
+## `This client already uses other entity identity rules…`
+
+Code: `RIVA_CACHE` (`RivaError`).
+
+**Why:** two `normalized()` (or `entities()`) policies with different `keys` or `identify` were used on one client.
+
+**Fix:** create one `normalized(options)` and pass it to every definition. The core explains it in [its troubleshooting page](../../riva/docs/troubleshooting.md#this-client-already-uses-other-entity-identity-rules).
+
+## A query fetches although another query showed the same entity
+
+**Why:** each query entry has its own root: which fields it selected and with which arguments. A query's first fetch is unconditional, and it reads from the store afterwards. Later, a field or entity its selection needs that no write has stored (an argument set not yet fetched: `friends({"first":2})` is not `friends({"first":1})`) makes its data `undefined`, and an observed query refetches once.
+
+**Fix:** expected: the query fetches, then reads from the store.
+
+## `riva-graphql: X is a subscription; subscriptions are not supported yet.`
+
+Code: `RIVA_DEFINITION` (`RivaError`), thrown when the definition is created (`X` is the operation's name).
+
+**Why:** a definition runs one request and one reply; a subscription is a stream.
+
+**Fix:** use a query or a mutation. Poll with `refetchEvery` where a stream would have refreshed the data.
