@@ -33,7 +33,7 @@ export interface Entry {
 	key: string;
 	def: AnyQuery;
 	/** The definition a hot reload replaced: seen again, the id is shared. */
-	was?: AnyQuery;
+	was?: AnyQuery['options'];
 	vars: unknown;
 	/** The graph signal holding the state: the one notification mechanism. */
 	signal: Signal<State>;
@@ -180,10 +180,11 @@ export function entryOf(c: Ctx, def: AnyQuery, vars: unknown): Entry {
 	const { client } = c;
 	const key = stableKey(def.id, vars);
 	let e = c.entries.get(key);
-	if (e && e.def !== def) {
-		// Another definition under this id: refused on the server, taken over by
+	if (e && e.def.options !== def.options) {
+		// Another definition under this id (a wrapper such as infinite() shares
+		// its query's options, so it is the same definition): refused on the server, taken over by
 		// the newest in a browser (a hot-reloaded module).
-		if (!isBrowser() || e.was === def)
+		if (!isBrowser() || e.was === def.options)
 			throw new RivaError(
 				'RIVA_KEY',
 				`Two definitions share the id "${def.id}": define each query once (a module-level const) and import it, or pass a distinct id.`,
@@ -191,7 +192,7 @@ export function entryOf(c: Ctx, def: AnyQuery, vars: unknown): Entry {
 		// Drop what the old policy stored: the new one reads only its own data.
 		const d = peek(c, e).data;
 		if (d !== undefined) e.def.options.cache?.release(client, d);
-		e.was = e.def;
+		e.was = e.def.options;
 		e.def = def;
 		put(c, e, IDLE);
 	}
