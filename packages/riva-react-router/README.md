@@ -111,21 +111,61 @@ The ambient scope (`mySignal.get()` resolving to the request's client, also afte
 ```ts
 // app/routes/_data.ts
 import { dataRoute } from '@softistx/riva-react-router/server';
+import type { AllowlistManifest } from '@softistx/riva-graphql/codegen';
 import { allowlist } from '@softistx/riva-graphql/server';
 import manifest from '../generated/allowlist.json';
 
-const route = dataRoute({ sources: [allowlist(manifest)] });
+// A JSON import widens `kind` to string: assert the manifest's type.
+const route = dataRoute({
+	sources: [allowlist(manifest as AllowlistManifest)],
+});
 export const action = route.action;
 export const loader = route.loader; // 405
 ```
 
-Options: `sources` (asked in order, the first that knows the id runs it), `origin` (the one allowed origin, default the request's own; set it behind a proxy), `maxBytes` (default 262144), `onError(error, request)` (what a non-`RivaRequestError` threw; the browser only sees a 500). Refusals are `{ error: { code, message, status } }` with `RIVA_DATA_*` codes, see the graphql troubleshooting.
+Options: `sources` (asked in order, the first that knows the id runs it), `origin` (the one allowed origin, default the request's own; set it behind a proxy), `maxBytes` (default 262144), `onError(error, request)` (what a non-`RivaRequestError` threw; the browser only sees a 500). Refusals are `{ error: { code, message, status } }` with `RIVA_DATA_*` codes (the `DataRouteCode` type), listed in the [`riva-graphql` troubleshooting](https://github.com/softistx/riva/blob/develop/packages/riva-graphql/docs/troubleshooting.md#riva_data_-refusals-from-the-_data-route).
 
 ## After a write
 
 - `useActionResult(result, { into, vars, select? })` writes an action's result (`useActionData()`, or a fetcher's `data`) into a query's entry, once per result. `select` picks the data out of the result (required when the types differ); returning `undefined` (a validation error) writes nothing.
 - `revalidate` is a query: invalidating it re-runs the route loaders through the router's `revalidate()`. Put it in a mutation's `invalidates`, or call `revalidate.invalidate(client)`; invalidations of one tick make one run. It needs `RivaRouterProvider` above the caller, else it fails with `RIVA_SCOPE`: `revalidate is observed by RivaRouterProvider: render it above the component that invalidates it.`
 - `<RivaRouterProvider invalidateOnAction={[patients, revalidate]}>` invalidates that list each time a non-GET navigation or fetcher settles, so a plain `<Form>` keeps the data fresh with no hand-written glue.
+
+```tsx
+// app/patients.tsx
+import { mutation } from '@softistx/riva-graphql';
+import { useQuery } from '@softistx/riva-react';
+import { revalidate, useActionResult } from '@softistx/riva-react-router';
+import { useActionData } from 'react-router';
+import type { Route } from './+types/patients';
+import { patients } from './patients.queries'; // the query of "The loader pattern"
+import { RENAME_PATIENT_MUTATION } from './graphql'; // schematic: your document
+
+// A mutation run in the browser re-runs the route loaders too.
+export const renamePatient = mutation(RENAME_PATIENT_MUTATION, {
+	invalidates: [revalidate],
+});
+
+// app/root.tsx: a plain <Form> post settles, then these are invalidated.
+// <RivaRouterProvider invalidateOnAction={[patients, revalidate]}>
+
+export async function action({ request, context }: Route.ActionArgs) {
+	// ...run the write on the server, then answer with the new row
+	return { list: { patients: [{ id: '1', name: 'Ada' }] } };
+}
+
+export default function Patients({ params }: Route.ComponentProps) {
+	const data = useActionData<typeof action>();
+	// The action's answer fills the entry at once, no refetch needed.
+	useActionResult(data, {
+		into: patients,
+		vars: { school: params.school },
+		select: (r) => r.list, // the query's data, out of the answer
+	});
+	const { data: list } = useQuery(patients, { school: params.school });
+	return <ul>{list?.patients.map((p) => <li key={p.id}>{p.name}</li>)}</ul>;
+}
+```
 
 ## Exports
 

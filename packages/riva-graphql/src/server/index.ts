@@ -1,23 +1,8 @@
-import type { RivaClient } from '@softistx/riva';
+import type { DataOperation, DataSource } from '@softistx/riva';
 import { type DocumentNode, parse } from 'graphql';
 import type { AllowlistManifest } from '../codegen/index';
 import { type Operation, operationOf } from '../operation';
 import { transportOf } from '../transport';
-
-/** One operation a `/_data` route may run; the shape `dataRoute` (`@softistx/riva-react-router/server`) takes. */
-export interface DataOperation {
-	readonly kind: 'query' | 'mutation';
-	run(
-		client: RivaClient,
-		variables: unknown,
-		signal: AbortSignal,
-	): Promise<unknown>;
-}
-
-/** The operations of a manifest by id; the shape `dataRoute` takes. */
-export interface DataSource {
-	find(id: string): DataOperation | undefined;
-}
 
 /**
  * The server side of `bffTransport`: runs the operations of `buildAllowlist`'s
@@ -53,3 +38,5 @@ export function allowlist(manifest: AllowlistManifest): DataSource {
 		},
 	};
 }
+
+export type { DataOperation, DataSource };

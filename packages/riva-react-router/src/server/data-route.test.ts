@@ -2,6 +2,8 @@ import { expect, test } from 'bun:test';
 import {
 	createRivaClient,
 	type RivaClient,
+	RivaHttpError,
+	RivaNetworkError,
 	RivaRequestError,
 	RivaScopeError,
 } from '@softistx/riva';
@@ -341,4 +343,51 @@ test('a request with no rivaMiddleware is a 500 naming nothing', async () => {
 	});
 	expect(res.status).toBe(500);
 	expect(errors[0]).toBeInstanceOf(RivaScopeError);
+});
+
+test('variables that cannot be decoded are a 400, never a 500', async () => {
+	const { call, calls, errors } = setup();
+	const res = await call({
+		body: '{"id":"Op","variables":{"$t":"O","v":null}}',
+	});
+	expect(res.status).toBe(400);
+	expect((await errorOf(res)).code).toBe('RIVA_DATA_BAD_REQUEST');
+	expect(calls).toEqual([]);
+	expect(errors).toEqual([]);
+});
+
+test('a status outside 400..599 is a 502', async () => {
+	for (const status of [600, 200, 302, 399]) {
+		const { call } = setup(async () => {
+			throw new RivaRequestError('ODD', 'Odd.', { status, retryable: false });
+		});
+		const res = await call();
+		expect(res.status).toBe(502);
+		expect((await errorOf(res)).code).toBe('ODD');
+	}
+	const { call } = setup(async () => {
+		throw new RivaRequestError('EDGE', 'Edge.', {
+			status: 599,
+			retryable: false,
+		});
+	});
+	expect((await call()).status).toBe(599);
+});
+
+test('a network or HTTP failure of the API keeps its code, hides its message and reaches onError', async () => {
+	for (const error of [
+		new RivaNetworkError('connect ECONNREFUSED 10.0.0.7:4000'),
+		new RivaHttpError(503, '<html>proxy page at 10.0.0.7</html>'),
+	]) {
+		const { call, errors } = setup(async () => {
+			throw error;
+		});
+		const res = await call();
+		const text = await res.text();
+		expect(res.status).toBe(error instanceof RivaHttpError ? 503 : 502);
+		expect(text).toContain(error.code);
+		expect(text).toContain('The API is unavailable.');
+		expect(text).not.toContain('10.0.0.7');
+		expect(errors).toEqual([error]);
+	}
 });

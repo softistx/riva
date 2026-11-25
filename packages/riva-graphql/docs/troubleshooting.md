@@ -86,6 +86,16 @@ Raised by `dataRoute` (`@softistx/riva-react-router/server`) and rethrown by `bf
 | `RIVA_DATA_UNKNOWN` | 404 | No source knows the id | See below. |
 | `RIVA_DATA_INTERNAL` | 500 | An operation threw something that is not a `RivaRequestError` | The browser sees only this generic answer; read the cause through `dataRoute`'s `onError`. |
 
+## `The data route answered <status> with a body that is not JSON.`
+
+Code: `RIVA_INVALID_RESPONSE` (`RivaRequestError`), or `RivaHttpError` (`HTTP_<status>`) when the body is JSON without the route's `{ error }` shape.
+
+**When:** `bffTransport` got a reply `dataRoute` did not write: a proxy's 502 or 504 HTML page, a login redirect, a CDN error, or a `/_data` URL that no route serves.
+
+**Why:** the transport reads `{ data }` or `{ error: { code, message, status } }`; anything else is not the route's answer, so it keeps the HTTP status and nothing of the body.
+
+**Fix:** check that `url` is the route's path and that the proxy forwards POSTs to it untouched. 5xx, 408 and 429 are marked retryable, so the query retries on its own.
+
 ## 404 on an operation that exists
 
 **When:** `RIVA_DATA_UNKNOWN` for a query or mutation the app defines.

@@ -14,13 +14,13 @@ import {
 	RouterContextProvider,
 	RouterProvider,
 } from 'react-router';
-import { PATIENTS, sleep } from './app';
 import {
 	RivaRouterProvider,
 	type RivaRouterProviderProps,
 } from '../src/provider';
 import { dataRoute } from '../src/server/data-route';
 import { rivaMiddleware } from '../src/server/index';
+import { PATIENTS, sleep } from './app';
 
 const SCHOOL = { school: 's' };
 

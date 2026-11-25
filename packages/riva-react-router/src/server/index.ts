@@ -50,6 +50,7 @@ export function rivaMiddleware<Result = unknown>(
 export {
 	type DataOperation,
 	type DataRoute,
+	type DataRouteCode,
 	type DataRouteOptions,
 	type DataSource,
 	dataRoute,

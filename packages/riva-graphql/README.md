@@ -8,7 +8,7 @@ Errors and fixes: [docs](./docs/README.md). Work in progress, see the [spec](htt
 bun add @softistx/riva @softistx/riva-graphql @softistx/graphql-client graphql
 ```
 
-Peers: `@softistx/riva` and `@softistx/graphql-client`. `graphql` and `@graphql-typed-document-node/core` are optional: the codegen helper needs the first, and the types of every definition need the second (`@softistx/graphql-client` already brings it). The runtime entries import none of them.
+Peers: `@softistx/riva` and `@softistx/graphql-client`. `graphql` and `@graphql-typed-document-node/core` are optional: `graphql` is needed by `/server` (the allowlist parses the manifest's text) and `/codegen`, and the types of every definition need the second (`@softistx/graphql-client` already brings it). The main, `/infinite`, `/cache` and `/bff` entries import none of them.
 
 ## Documents
 
@@ -255,15 +255,19 @@ provideGraphQL(client, bffTransport({ url: '/_data' }));
 ```ts
 // server: app/routes/_data.ts (a route with an action and a loader)
 import { dataRoute } from '@softistx/riva-react-router/server';
+import type { AllowlistManifest } from '@softistx/riva-graphql/codegen';
 import { allowlist } from '@softistx/riva-graphql/server';
 import manifest from '../generated/allowlist.json';
 
-const route = dataRoute({ sources: [allowlist(manifest)] });
+// A JSON import widens `kind` to string: assert the manifest's type.
+const route = dataRoute({
+	sources: [allowlist(manifest as AllowlistManifest)],
+});
 export const action = route.action;
 export const loader = route.loader;
 ```
 
-- `bffTransport({ url?, fetch?, headers? })`: `url` defaults to `/_data`; `headers` adds per-call headers (a CSRF token, say). The route's refusals and the API's errors come back as `RivaRequestError` with the route's `code` and `status` (retryable for 5xx, 408 and 429); a failed fetch is a `RivaNetworkError`, an abort a `RivaAbortError`.
+- `bffTransport({ url?, fetch?, headers? })`: `url` defaults to `/_data`; `headers` is a function returning `HeadersInit`, called at each request (`headers: () => ({ 'x-csrf': token() })`). The route's refusals and the API's errors come back as `RivaRequestError` with the route's `code` and `status` (retryable for 5xx, 408 and 429); a failed fetch is a `RivaNetworkError`, an abort a `RivaAbortError`.
 - `allowlist(manifest)` is a `DataSource`: it knows only the manifest's ids, parses each document once, and runs it through the transport `provideGraphQL` set on the request client.
 - Keep `/bff` and `/server` out of each other's bundle: `/bff` is for the browser, `/server` imports `graphql`.
 

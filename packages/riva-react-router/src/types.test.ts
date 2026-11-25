@@ -5,19 +5,19 @@ import {
 	query,
 	type RivaClient,
 } from '@softistx/riva';
+import type { hydrate, Snapshot } from '@softistx/riva/ssr';
 import { buildAllowlist } from '@softistx/riva-graphql/codegen';
 import { allowlist } from '@softistx/riva-graphql/server';
-import type { hydrate, Snapshot } from '@softistx/riva/ssr';
 import {
 	type MiddlewareFunction,
 	RouterContextProvider,
 	type useLoaderData,
 } from 'react-router';
 import {
+	revalidate,
 	riva,
 	rivaContext,
 	rivaOf,
-	revalidate,
 	useActionResult,
 } from './index';
 import { type DataSource, dataRoute, rivaMiddleware } from './server/index';
