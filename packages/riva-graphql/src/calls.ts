@@ -46,7 +46,7 @@ const MEMO = {};
 
 interface Memo {
 	queries: Map<object, Query<never, unknown>>;
-	mutations: Map<object, Mutation<never, unknown>>;
+	mutations: Map<object, Mutation<unknown, unknown>>;
 }
 
 /** The query, mutate and mutation calls of one riva, over the definitions it memoises per document. */
@@ -73,7 +73,7 @@ export function callsOf(
 	const mutationOf = (doc: Doc<unknown, never>) => {
 		let def = memo.mutations.get(doc);
 		if (!def) {
-			def = mutation(doc, idOf(doc));
+			def = mutation(doc, idOf(doc)) as Mutation<unknown, unknown>;
 			memo.mutations.set(doc, def);
 		}
 		return def;
@@ -84,7 +84,7 @@ export function callsOf(
 		call?: MutateCall,
 	) =>
 		mutateInvalidating(riva, mutationOf(doc), vars, call, (t) =>
-			'definitions' in t ? (queryOf(t as never) as never) : (t as never),
+			'definitions' in t ? queryOf(t) : t,
 		);
 	return {
 		mutate,
@@ -92,12 +92,7 @@ export function callsOf(
 			const def = queryOf(doc);
 			const { signal, ...options } = call ?? {};
 			return graphqlResource(
-				callResource(
-					riva,
-					def as never,
-					trackedInput(riva, vars as never),
-					options,
-				),
+				callResource(riva, def, trackedInput(riva, vars), options),
 				signal,
 			);
 		},

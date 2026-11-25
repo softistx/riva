@@ -37,6 +37,20 @@ const state = useResource(input.key, (riva) =>
 
 `StableInput.input` is `unknown`, so a hook built on it casts it once, to the variables type (`as { first: number }` above). `useStableInput(id, input, enabled)` returns `{ key, input, enabled }`: the key to give `useResource`, and the input and `enabled` to hand the call. An inline `() => ({ first })` does not change the key at each render, only its result does. A function is evaluated at each render, untracked, to derive the key, so it follows props; the resource itself still tracks the signals the function reads. A signal or computed is keyed by identity, not by value: the resource tracks its value, so a change of it fetches the new key once and never rebuilds the resource (a stream is not reopened). Define a signal or computed once (at module level or in `useMemo`), never inline in render: a new one at each render is a new key, and under suspense a new suspension. Pass the signal itself rather than a function that only reads it; a function reading a signal changes the key at the next render, which can fetch the same key twice. While `enabled` is false the function is never called. Under suspense it is called once per render for the key.
 
+## For adapter authors: useCallResource
+
+`useCallResource(id, input, options, make)` is `useStableInput` and `useResource` together, what `useGraphQL` and `useRest` share. `id` names the operation, `options` are `{ suspense, keepPrevious, staleTime, enabled }`, and `make(riva, input, call)` builds the resource from the stabilised input and the call options (`enabled`, `keepPrevious`, and a `staleTime` raised to at least 1000 ms under Suspense).
+
+```ts
+import { callResource, trackedInput } from '@softistx/riva/resource';
+import { useCallResource } from '@softistx/riva-react/resource';
+
+const useBooks = (vars: unknown, options = {}) =>
+	useCallResource('books', vars, options, (riva, input, call) =>
+		callResource(riva, BOOKS_DEF, trackedInput(riva, input as never), call),
+	);
+```
+
 ## `suspense` and `enabled`
 
 `useResource(..., { suspense: true })` is typed `SuspendedState<D> | IdleState`, since the resource it is given can be disabled. The hooks built on it (`useGraphQL`, `useRest`) refuse `enabled` with `suspense: true` at the type level: a suspending hook has data or throws, it is never `idle`. Use a plain hook, or render the component only once its variables are known.

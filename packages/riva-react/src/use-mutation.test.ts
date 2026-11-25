@@ -106,3 +106,35 @@ test('run and reset keep their identity across renders', async () => {
 	expect(box.m?.reset).toBe(reset);
 	await m.unmount();
 });
+
+test('a changed definition resets the state to idle and drops the run still in flight', async () => {
+	const gate = deferred<string>();
+	const first = mutation<string, string>({
+		id: 'um/first',
+		run: () => gate.promise,
+	});
+	const second = mutation<string, string>({
+		id: 'um/second',
+		run: async () => 'second',
+	});
+	const box: { m?: MutationResult<string, string> } = {};
+	function C({ def }: { def: typeof first }) {
+		box.m = useMutation(def);
+		return h('p', null, `${box.m.status}:${box.m.data ?? '-'}`);
+	}
+	const m = await mount(h(C, { def: first }), newRiva());
+	let pending!: Promise<string>;
+	await act(async () => {
+		pending = box.m?.run('x') as Promise<string>;
+	});
+	expect(m.text()).toBe('loading:-');
+	await m.rerender(h(C, { def: second }));
+	expect(m.text()).toBe('idle:-');
+	gate.resolve('late');
+	expect(await pending).toBe('late'); // the run itself still resolves
+	await act(async () => {});
+	expect(m.text()).toBe('idle:-'); // but no longer reports
+	await act(async () => void box.m?.run('y'));
+	expect(m.text()).toBe('success:second');
+	await m.unmount();
+});

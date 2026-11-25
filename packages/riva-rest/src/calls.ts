@@ -88,13 +88,13 @@ export function callsOf(
 		call?: MutateCall,
 	) =>
 		mutateInvalidating(riva, mutationOf(method, path), input, call, (t) =>
-			typeof t === 'string' ? (queryOf(t) as never) : (t as never),
+			typeof t === 'string' ? queryOf(t) : t,
 		);
 	return {
 		mutate,
 		get(path: string, input?: InputArg<unknown>, call?: GetCall) {
 			const def = queryOf(path);
-			return callResource(riva, def as never, trackedInput(riva, input), call);
+			return callResource(riva, def, trackedInput(riva, input), call);
 		},
 		mutation(method: string, path: string) {
 			mutationOf(method, path); // an unknown route throws now, not at the first save

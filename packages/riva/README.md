@@ -85,9 +85,14 @@ const first = await books; // or a one-shot load that rejects with the error
 
 `resource(riva, source, options)` from `@softistx/riva/resource` builds the same thing over a query definition of your own.
 
-Also `mutationHandle(riva, run)` (a callable with a reactive `state` and `reset`) and `streamResource(riva, source)` (a subscription as a resource). For adapter authors and wrappers: `trackedInput(riva, input)` reads a plain value, a signal or computed, or a tracked function (type `TrackedInput`), `isReactive(x)` tells a signal or computed, `abortable(resource, signal)` makes `await` reject with a `RivaAbortError` on abort, `callResource(riva, def, read, call)` builds the resource of one query call from its `enabled`, `keepPrevious`, `staleTime` and `signal`, and `mutateInvalidating(riva, def, vars, call, target)` runs a mutation, then marks stale what `call.invalidates` names.
+Also `mutationHandle(riva, run)` (a callable with a reactive `state` and `reset`) and `streamResource(riva, source)` (a subscription as a resource). A resource starts at its first reader and stops at the last; the status is `idle | loading | success | error`. [resources](./docs/guide/resources.md).
 
-A resource starts at its first reader and stops at the last; the status is `idle | loading | success | error`. [resources](./docs/guide/resources.md).
+For adapter authors and wrappers, also from `@softistx/riva/resource`:
+
+- `trackedInput(riva, input)`: reads a plain value, a signal or computed, or a tracked function (type `TrackedInput`); `isReactive(x)` tells a signal or computed.
+- `abortable(resource, signal)`: `await` rejects with a `RivaAbortError` on abort.
+- `callResource(riva, def, read, call)`: the resource of one query call, from its `enabled`, `keepPrevious`, `staleTime` (type `CallOptions`) and `signal`.
+- `mutateInvalidating(riva, def, vars, call, target)`: runs a mutation, then marks stale what `call.invalidates` names.
 
 ## Signals
 

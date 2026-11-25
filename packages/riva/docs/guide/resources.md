@@ -66,6 +66,34 @@ save.reset(); // back to idle
 
 Calls may overlap: each resolves with its own result and the state follows the last call. `reset()` also ignores a call still running.
 
+## For adapter authors
+
+The blocks `riva.graphql` and `riva.rest` are made of, exported from `@softistx/riva/resource`:
+
+```ts
+import {
+	abortable,
+	callResource,
+	mutateInvalidating,
+	trackedInput,
+} from '@softistx/riva/resource';
+
+// A query call: variables a plain value, a signal, a computed or a tracked function.
+const read = trackedInput(riva, vars);
+const books = callResource(riva, BOOKS, read, { enabled, keepPrevious, staleTime, signal });
+
+// A mutation call: run, then mark stale what `invalidates` names. `target` turns an entry that
+// is neither a query nor `at(query, vars)` (a document, a path) into the query it stands for.
+await mutateInvalidating(riva, SAVE, vars, { invalidates: ['/books'], signal }, (entry) =>
+	typeof entry === 'string' ? queryOfPath(entry) : entry,
+);
+
+// A resource whose `await` rejects with a RivaAbortError when `signal` aborts.
+const waitable = abortable(books, signal);
+```
+
+`callResource` already applies `signal` through `abortable`; use `abortable` alone to wrap a resource you decorated yourself.
+
 ## `streamResource(riva, source, opts?)`
 
 ```ts
