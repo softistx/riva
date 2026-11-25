@@ -1,6 +1,7 @@
 import type { RivaClient } from '../client';
 import type { Readable } from '../computed';
-import { freeze, inBrowser, type StoreDef } from './def';
+import { isBrowser } from '../scope';
+import { freeze, type StoreDef } from './def';
 import { run } from './run';
 import { refuse, view } from './view';
 
@@ -14,6 +15,8 @@ export type Instance = readonly [
  * read-only view of its state and computeds, and its bound actions. It also
  * claims the store's name on the client: a second store with that name is
  * refused on the server, and takes over in a browser (a hot-reloaded module).
+ * A replaced definition is remembered (`was:<name>`): a component still holding
+ * it resolves to the current instance and does not take the name back.
  */
 export function instance(def: StoreDef, client: RivaClient): Instance {
 	const cached = client.slots.get(def) as Instance | undefined;
@@ -21,12 +24,15 @@ export function instance(def: StoreDef, client: RivaClient): Instance {
 	const { name, sigs, members, actions } = def;
 	const claim = `name:${name}`;
 	const holder = client.slots.get(claim) as StoreDef | undefined;
+	const was = client.slots.get(`was:${name}`) as Set<StoreDef> | undefined;
+	if (holder !== undefined && was?.has(def)) return instance(holder, client);
 	if (holder !== undefined) {
-		if (!inBrowser())
+		if (!isBrowser())
 			refuse(
 				`Store "${name}": two stores are named "${name}" on this client: give each store a unique name.`,
 			);
 		client.slots.delete(holder);
+		client.slots.set(`was:${name}`, (was ?? new Set()).add(holder));
 		for (const sig of Object.values(holder.sigs))
 			if (sig.name) client.graph.named.delete(sig.name);
 	}

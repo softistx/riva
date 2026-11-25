@@ -34,9 +34,6 @@ export const freeze = <T>(v: T): T => {
 	return v;
 };
 
-/** The browser keeps the newest of two stores with one name (hot reload); the server refuses. */
-export const inBrowser = (): boolean => typeof document !== 'undefined';
-
 /**
  * Raised for the length of one synchronous write made through an action's `s`
  * or `reset`: the state signals' `equals` refuses every other write. Safe as

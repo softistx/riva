@@ -1,7 +1,15 @@
 import { expect, test } from 'bun:test';
 import { createRivaClient, RivaError } from '@softistx/riva';
 import { store } from '@softistx/riva/store';
-import { act, memo, useMemo, useState } from 'react';
+import {
+	act,
+	memo,
+	StrictMode,
+	startTransition,
+	Suspense,
+	useMemo,
+	useState,
+} from 'react';
 import { renderToString } from 'react-dom/server';
 import { h, mount, newClient } from '../../test/render';
 import { RivaProvider } from '../context';
@@ -197,5 +205,87 @@ test('a memoised child that reads s keeps being watched, and follows a change', 
 	await act(async () => Books.bind(client)[1].filterBy('q'));
 	expect(m.text()).toBe('q0');
 	expect(childRenders).toBe(2);
+	await m.unmount();
+});
+
+test('a memoised child that alone reads a new key is not watched for it (documented limit); its own useStore is', async () => {
+	const client = newClient();
+	let poke!: () => void;
+	let pokeOwn!: () => void;
+	const Child = memo(function Child({ s }: { s: { filter: string } }) {
+		const [on, setOn] = useState(false);
+		poke = () => setOn(true);
+		return h('i', null, on ? s.filter || '-' : 'off');
+	});
+	const Own = memo(function Own() {
+		const [s] = useStore(Books);
+		const [on, setOn] = useState(false);
+		pokeOwn = () => setOn(true);
+		return h('u', null, on ? s.filter || '-' : 'off');
+	});
+	function Parent() {
+		const [s] = useStore(Books);
+		return h(
+			'div',
+			null,
+			h(Child, { s }),
+			h(Own),
+			h('b', null, String(s.items.length)),
+		);
+	}
+	const m = await mount(h(Parent), client);
+	await act(async () => {
+		poke();
+		pokeOwn();
+	});
+	expect(m.text()).toBe('--0');
+	await act(async () => Books.bind(client)[1].filterBy('q'));
+	// the child with no hook of its own misses the change; the one with a hook follows
+	expect(m.text()).toBe('-q0');
+	await m.unmount();
+});
+
+test('a render that is discarded leaves its keys uncommitted until the next commit', async () => {
+	const client = newClient();
+	let renders = 0;
+	let suspend = false;
+	const never = new Promise<void>(() => {});
+	function Reader() {
+		const [s] = useStore(Books);
+		renders++;
+		s.items;
+		if (suspend) {
+			s.filter;
+			throw never;
+		}
+		return h('p', null, String(s.items.length));
+	}
+	let go!: () => void;
+	function App() {
+		const [n, setN] = useState(0);
+		go = () => startTransition(() => setN(1));
+		return h(
+			Suspense,
+			{ fallback: 'wait' },
+			h('span', null, String(n)),
+			h(Reader),
+		);
+	}
+	const m = await mount(h(StrictMode, null, h(App)), client);
+	expect(m.text()).toBe('00');
+	suspend = true;
+	const before = renders;
+	// the transition renders Reader, which reads `filter` then suspends: discarded
+	await act(async () => go());
+	expect(m.text()).toBe('00');
+	// Reader really rendered (and suspended) in the transition
+	expect(renders).toBeGreaterThan(before);
+	suspend = false;
+	const base = renders;
+	await act(async () => Books.bind(client)[1].filterBy('q'));
+	// `filter` was never committed: the change does not re-render the reader
+	expect(renders).toBe(base);
+	await act(async () => Books.bind(client)[1].add('x'));
+	expect(m.text()).toBe('11');
 	await m.unmount();
 });

@@ -100,3 +100,18 @@ Code: `RIVA_STORE` (`RivaError`).
 const [s, a] = useStore(BookStore);
 a.filterBy('x'); // not s.filter = 'x'
 ```
+
+## A memoised child does not update for a key only it reads
+
+**When:** a `React.memo` child receives `s` as a prop, and the child alone re-renders (its own state) and reads a key the parent has never read. Changing that key does not update the child.
+
+**Why:** `s` tracks the keys a component reads, and commits them in the layout effect of the component that called `useStore`. A child has no hook of its own, so a key only it reads stays uncommitted until the parent next renders. Committing from the child's reads would also commit the keys of a render React discards.
+
+**Fix:** read the key in the component that calls `useStore` (and pass the value down), or call `useStore(def)` in the child.
+
+```tsx
+const Child = memo(function Child() {
+	const [s] = useStore(BookStore); // its own hook, its own keys
+	return <i>{s.filter}</i>;
+});
+```
