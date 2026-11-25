@@ -34,6 +34,11 @@
 			"import": "./dist/ssr/index.js",
 			"default": "./dist/ssr/index.js"
 		},
+		"./store": {
+			"types": "./dist/store/index.d.ts",
+			"import": "./dist/store/index.js",
+			"default": "./dist/store/index.js"
+		},
 		"./data": {
 			"types": "./dist/data/index.d.ts",
 			"import": "./dist/data/index.js",
@@ -72,7 +77,8 @@
 			"src/entities/index.ts",
 			"src/infinite/index.ts",
 			"src/ssr/index.ts",
-			"src/data/index.ts"
+			"src/data/index.ts",
+			"src/store/index.ts"
 		]
 	}
 }

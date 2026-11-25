@@ -13,6 +13,7 @@ export {
 	computed,
 	type Getter,
 	type Readable,
+	type ReadonlySignal,
 } from './computed';
 export type { DataOperation, DataSource } from './data';
 export type { Duration } from './duration';

@@ -37,7 +37,7 @@ export class RivaClient {
 	/** @internal */
 	readonly queries: QueryCache;
 	/** @internal Per-client state of opt-in modules, by their own key. */
-	readonly slots = new Map<object, unknown>();
+	readonly slots = new Map<unknown, unknown>();
 
 	constructor(options: ClientOptions = {}) {
 		this.queries = createQueryCache(

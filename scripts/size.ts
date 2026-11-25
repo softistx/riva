@@ -43,6 +43,11 @@ export const budgets: Budget[] = [
 		limit: 7424,
 	},
 	{
+		name: '@softistx/riva + store',
+		entry: ['packages/riva/dist/index.js', 'packages/riva/dist/store/index.js'],
+		limit: 7424,
+	},
+	{
 		name: '@softistx/riva + all subpaths',
 		entry: [
 			'packages/riva/dist/index.js',
@@ -56,6 +61,16 @@ export const budgets: Budget[] = [
 		name: '@softistx/riva + riva-react',
 		entry: ['packages/riva/dist/index.js', 'packages/riva-react/dist/index.js'],
 		limit: 9216,
+	},
+	{
+		name: '@softistx/riva + riva-react + store',
+		entry: [
+			'packages/riva/dist/index.js',
+			'packages/riva/dist/store/index.js',
+			'packages/riva-react/dist/index.js',
+			'packages/riva-react/dist/store/index.js',
+		],
+		limit: 10240,
 	},
 	{
 		name: '@softistx/riva + riva-react, all subpaths',
