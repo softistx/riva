@@ -2,8 +2,6 @@
 
 ## Now
 
-- **Simple API** — `riva.graphql` and `riva.rest`: one `createRiva({ graphql, rest })`, calls that return the data, hooks per namespace.
-  - Reactive resources: tracked variables, `enabled`, built-in `idle / loading / success / error`.
 - **Deprecate the graphql-client cache and React layer** — consumers of `@softistx/graphql-client` are pointed to riva for caching and React bindings, once riva has its first release.
 - **Pilot in a BFF app** — riva run end to end in a server-rendered app with a backend-for-frontend, to validate the API before wider adoption.
 
@@ -30,8 +28,10 @@ Nothing yet.
 
 ## Shipped
 
-Landed in `develop` and not yet released; they ship in the next release (0.1.0).
+Landed in `develop`; released from 0.1.0 on, the simple API in the next minor release.
 
+- The simple API: one `createRiva({ graphql: graphql(client), rest: rest(api) })`, then `riva.graphql.query / mutation / subscribe` and `riva.rest.get / mutation` with derived keys, per-call options and `invalidates`, and hooks per namespace (`useGraphQL`, `useGraphQLMutation`, `useGraphQLSubscription`, `useRest`, `useRestMutation`).
+- Reactive resources: tracked variables, an `enabled` option, built-in `idle / loading / success / error` states, previous data kept as a placeholder while the key changes, awaitable on the server, and mutation handles with their own state.
 - A monorepo of five packages that build, typecheck and test, with docs.
 - Signals, computeds and effects with automatic dependency tracking, values held per riva, and a clear error when a server read has no riva in scope.
 - Queries that dedupe in-flight requests, go stale, are garbage collected, retry sensibly, refetch on focus, and can be ensured, prefetched, invalidated and cancelled.
