@@ -7,6 +7,8 @@ import type {
 import type { ClientOperations, Invoice } from '../../test/fixtures';
 import type { MutateCall } from '../calls';
 import type { UseRest, UseRestMutation, UseRestOptions } from './types';
+import { useRest } from './use-rest';
+import { useRestMutation } from './use-rest-mutation';
 
 // What an application writes once to type the hooks by its spec.
 declare module './types' {
@@ -40,4 +42,23 @@ test('Register types useRestMutation by the spec', () => {
 			MutateCall
 		>
 	>();
+});
+
+test('types: a wrong path or input is inferred from the arguments and refused', () => {
+	const never = () => {
+		// @ts-expect-error not a path of the spec
+		useRest('get', '/nope');
+		// @ts-expect-error `id` is a string
+		useRest('get', '/invoices/{id}', { param: { id: 1 } });
+		// @ts-expect-error `enabled` is not available with `suspense`
+		useRest('get', '/health', undefined, { suspense: true, enabled: false });
+		// @ts-expect-error not a path of the spec
+		useRestMutation('post', '/nope');
+		const create = useRestMutation('post', '/invoices');
+		// @ts-expect-error `total` is a number
+		create({ json: { number: 'X', total: 'ten' } });
+		// @ts-expect-error `json` is required
+		create({});
+	};
+	expect(typeof never).toBe('function');
 });

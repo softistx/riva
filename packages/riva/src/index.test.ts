@@ -8,9 +8,6 @@ test('the main entry exports the riva, the definitions and the errors', () => {
 		'mutation',
 		'RivaError',
 		'isRetryableStatus',
-		'createRivaClient',
-		'RivaClient',
-		'setDefaultClient',
 	])
 		expect(k in api).toBe(true);
 	expect('VERSION' in api).toBe(false);

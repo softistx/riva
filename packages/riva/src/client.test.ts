@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, expectTypeOf, test } from 'bun:test';
 import { createRiva, Riva, type RivaExtension } from './client';
 import { computed } from './computed';
 import { RivaError } from './errors';
@@ -175,12 +175,6 @@ test('a Riva member name cannot be an extension', () => {
 	}
 });
 
-test('createRivaClient keeps the same signature', async () => {
-	const { createRivaClient } = await import('./deprecated');
-	const riva = createRivaClient({ x: { install: () => 7 } });
-	expect(riva.x).toBe(7);
-});
-
 test('defaults.staleTime applies when the definition sets none', async () => {
 	const sched = clock();
 	const riva = createRiva({
@@ -286,4 +280,16 @@ test('an ensure staleTime overrides the definition and the defaults for that cal
 	expect(() => q.ensure(riva, undefined, { staleTime: 'x' as never })).toThrow(
 		/Invalid duration/,
 	);
+});
+
+test('a misspelt option is a type error, an extension is not', () => {
+	// @ts-expect-error `default` is not an option (`defaults`): it would be an extension
+	createRiva({ default: { staleTime: '30s' } });
+	// @ts-expect-error a plain value under an unknown key is not an extension
+	createRiva({ plain: { a: 1 } });
+	const ext: RivaExtension<number> = { install: () => 1 };
+	expectTypeOf(createRiva({ n: ext }).n).toEqualTypeOf<number>();
+	expectTypeOf(
+		createRiva({ defaults: { staleTime: '30s' } }),
+	).toEqualTypeOf<Riva>();
 });

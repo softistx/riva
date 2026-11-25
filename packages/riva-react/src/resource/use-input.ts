@@ -11,6 +11,18 @@ export interface StableInput {
 	enabled: boolean | (() => boolean);
 }
 
+// A signal or computed is keyed by identity: the resource tracks its value, so
+// a change of the value must not rebuild the resource (that would fetch twice
+// and reopen a stream).
+const ids = new WeakMap<object, number>();
+let seq = 0;
+const idOf = (x: object): number => {
+	const known = ids.get(x);
+	if (known !== undefined) return known;
+	ids.set(x, ++seq);
+	return seq;
+};
+
 const isSignal = (x: unknown): boolean => {
 	const kind = (x as { kind?: unknown } | null)?.kind;
 	return typeof x === 'object' && (kind === 'signal' || kind === 'computed');
@@ -20,9 +32,11 @@ const isSignal = (x: unknown): boolean => {
  * Turns a hook's variables (or input) and `enabled` into what a resource call
  * takes, with a key that changes exactly when the resource has to change. The
  * key is derived at render from the value: a plain value by its stable
- * serialization, a signal or a function by reading it once, untracked (a
- * function that reads props follows them; a disabled hook never calls it).
- * The resource itself still tracks the signals the function reads. What is
+ * serialization, a signal or computed by identity (the resource tracks its
+ * value, so a change of it never rebuilds the resource), a function by reading
+ * it once, untracked (a function that reads props follows them; a disabled
+ * hook never calls it). The resource itself still tracks the signals a
+ * function reads; pass the signal itself to avoid a rebuild when it changes. What is
  * handed to the resource is the value of the render that last changed the key,
  * so nothing is written to a ref during render.
  */
@@ -46,7 +60,7 @@ export function useStableInput(
 						typeof input === 'function'
 							? (input as () => unknown)()
 							: isSignal(input)
-								? riva.get(input as never)
+								? `#${idOf(input as object)}`
 								: input,
 					),
 				)

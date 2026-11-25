@@ -12,23 +12,14 @@ interface ProviderBase {
 	children?: ReactNode;
 }
 
-export type RivaProviderProps = ProviderBase &
-	(
-		| {
-				/** The riva of this tree: one per request on the server, one in the browser. */
-				riva: Riva;
-				client?: undefined;
-		  }
-		| {
-				riva?: undefined;
-				/** @deprecated Use `riva`. Removed in the next minor. */
-				client: Riva;
-		  }
-	);
+export interface RivaProviderProps extends ProviderBase {
+	/** The riva of this tree: one per request on the server, one in the browser. */
+	riva: Riva;
+}
 
 /** Puts a `Riva` in scope for the hooks below it. Hold one provider (and one riva) per server request. */
-export const RivaProvider = ({ riva, client, children }: RivaProviderProps) =>
-	createElement(RivaContext, { value: riva ?? client }, children);
+export const RivaProvider = ({ riva, children }: RivaProviderProps) =>
+	createElement(RivaContext, { value: riva }, children);
 
 /** The riva of the nearest `RivaProvider`; throws a `RivaScopeError` when there is none. */
 export function useRiva(): Riva {
@@ -39,6 +30,3 @@ export function useRiva(): Riva {
 		);
 	return riva;
 }
-
-/** @deprecated Use `useRiva`. Removed in the next minor. */
-export const useClient = useRiva;

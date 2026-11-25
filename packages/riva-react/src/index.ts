@@ -1,7 +1,6 @@
 export {
 	RivaProvider,
 	type RivaProviderProps,
-	useClient,
 	useRiva,
 } from './context';
 export {

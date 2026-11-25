@@ -12,6 +12,7 @@ import { renderToReadableStream } from 'react-dom/server';
 import { deferred, flush, h, mount, newRiva } from '../../test/render';
 import { RivaProvider } from '../context';
 import {
+	type IdleState,
 	type SuspendedState,
 	suspenseStaleTime,
 	type UseResourceOptions,
@@ -134,6 +135,33 @@ test('a key change shows the previous data as a placeholder until the new one la
 	await act(async () => root.unmount());
 });
 
+test("a disabled gap clears the placeholder: a new key never shows the old key's data", async () => {
+	const gates: Record<string, ReturnType<typeof deferred<string>>> = {
+		a: deferred(),
+		b: deferred(),
+	};
+	const def = users(
+		'ur/gap',
+		({ school }) =>
+			(gates[school] as never as { promise: Promise<string> }).promise,
+	);
+	const riva = newRiva();
+	const { createRoot } = await import('react-dom/client');
+	const { act } = await import('react');
+	const container = document.createElement('div');
+	const root = createRoot(container);
+	const ui = (school: string, enabled: boolean) =>
+		h(RivaProvider, { riva }, h(Show, { def, school, enabled }));
+	await act(async () => root.render(ui('a', true)));
+	await flush(() => gates['a']?.resolve('data-a'));
+	expect(container.textContent).toBe('success:data-a:false:false');
+	await act(async () => root.render(ui('a', false)));
+	expect(container.textContent).toBe('idle:-:false:false');
+	await act(async () => root.render(ui('b', true)));
+	expect(container.textContent).toBe('loading:-:true:false');
+	await act(async () => root.unmount());
+});
+
 test('the resource is observed while mounted and released at unmount', async () => {
 	const def = users('ur/unmount', async () => 'x');
 	const log: string[] = [];
@@ -181,7 +209,7 @@ test('suspense waits for the data, then shows it as success', async () => {
 	const def = users('ur/suspense', () => gate.promise);
 	function C() {
 		const s = useResource('k', of(def, 'a'), { suspense: true });
-		expectTypeOf(s.data).toEqualTypeOf<string>();
+		expectTypeOf(s).toEqualTypeOf<SuspendedState<string> | IdleState>();
 		return h('p', null, `${s.status}:${s.data}`);
 	}
 	const m = await mount(

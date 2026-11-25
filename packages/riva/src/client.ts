@@ -43,11 +43,13 @@ export interface RivaExtension<A> {
 }
 
 /** The members `createRiva` adds for its extension options. */
-export type Installed<O> = {
-	readonly [K in keyof O as O[K] extends RivaExtension<unknown>
-		? K
-		: never]: O[K] extends RivaExtension<infer A> ? A : never;
-};
+export type Installed<O> = string extends keyof O
+	? unknown
+	: {
+			readonly [K in keyof O as O[K] extends RivaExtension<unknown>
+				? K
+				: never]: O[K] extends RivaExtension<infer A> ? A : never;
+		};
 
 /** Holds every value. One per request on the server, one in the browser. */
 export class Riva {
@@ -165,8 +167,10 @@ export class Riva {
 export const createRiva: {
 	(options?: RivaOptions): Riva;
 	<
-		O extends RivaOptions &
-			Record<string, unknown> & { [K in keyof Riva]?: never },
+		O extends RivaOptions & {
+			// A key that is not an option must be an extension: a misspelt option is a type error.
+			[K in Exclude<keyof O, keyof RivaOptions>]: RivaExtension<unknown>;
+		} & { [K in keyof Riva]?: never },
 	>(
 		options: O,
 	): Riva & Installed<O>;

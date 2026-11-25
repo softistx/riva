@@ -4,12 +4,15 @@ import { expect, expectTypeOf, test } from 'bun:test';
 import { ApiError } from '@softistx/graphql-client';
 import { createRiva, signal } from '@softistx/riva';
 import type { ResourceState } from '@softistx/riva/resource';
+import { dehydrate, hydrate } from '@softistx/riva/ssr';
 import { RivaProvider } from '@softistx/riva-react';
+import type { SuspendedState } from '@softistx/riva-react/resource';
 import { Component, type ReactNode, Suspense } from 'react';
 import { renderToReadableStream } from 'react-dom/server';
 import {
 	fakeTransport,
 	PATIENTS_QUERY,
+	page,
 	VIEWER_QUERY,
 } from '../../test/fixtures';
 import { deferred, flush, h, mount } from '../../test/render';
@@ -172,7 +175,13 @@ test('new variables refetch and keep the previous data as a placeholder', async 
 			}),
 	);
 	const riva = createRiva({ graphql: graphql(t) });
-	function C({ school, opts }: { school: string; opts?: UseGraphQLOptions }) {
+	function C({
+		school,
+		opts,
+	}: {
+		school: string;
+		opts?: UseGraphQLOptions & { suspense?: false };
+	}) {
 		return h('p', null, show(useGraphQL(PATIENTS_QUERY, { school }, opts)));
 	}
 	const m = await mount(h(C, { school: 'a' }), riva);
@@ -303,7 +312,9 @@ test('SSR: a render shows what the loader fetched and a client mount does not re
 	expect(await new Response(s2).text()).toContain('9');
 	// Mounting on the seeded riva shows the data at once, and only refetches what is stale.
 	const m = await mount(h(C), riva);
+	await flush();
 	expect(m.text()).toStartWith('success');
+	expect(t.calls).toHaveLength(1);
 	await m.unmount();
 	const context = RivaProvider({ riva }).type as unknown as Record<
 		string,
@@ -320,4 +331,58 @@ test('types: data comes from the document', () => {
 	expectTypeOf(s).toEqualTypeOf<ResourceState<{ viewer: { id: string } }>>();
 	if (s.status === 'success')
 		expectTypeOf(s.data.viewer.id).toEqualTypeOf<string>();
+});
+
+test('a signal input that changes fetches the new variables exactly once, without an abort', async () => {
+	const t = fakeTransport(() => ({ patients: page([], null) }));
+	const riva = createRiva({ graphql: graphql(t) });
+	const vars = signal({ school: 'a' });
+	function C() {
+		return h('p', null, show(useGraphQL(PATIENTS_QUERY, vars)));
+	}
+	const m = await mount(h(C), riva);
+	await flush();
+	await flush(() => riva.set(vars, { school: 'b' }));
+	await flush();
+	const b = t.calls.filter(
+		(c) => (c.variables as { school: string }).school === 'b',
+	);
+	expect(b).toHaveLength(1);
+	expect(b[0]?.signal.aborted).toBe(false);
+	await m.unmount();
+});
+
+test('SSR lifecycle: a server fetch, dehydrate and hydrate leave the client mount with no second call', async () => {
+	const server = fakeTransport(() => viewer('7'));
+	const defaults = { staleTime: '1m' } as const;
+	const serverRiva = createRiva({ defaults, graphql: graphql(server) });
+	await serverRiva.graphql.query(VIEWER_QUERY);
+	const snapshot = dehydrate(serverRiva);
+	const client = fakeTransport(() => viewer('8'));
+	const clientRiva = createRiva({ defaults, graphql: graphql(client) });
+	hydrate(clientRiva, snapshot);
+	function C() {
+		return h('p', null, show(useGraphQL(VIEWER_QUERY)));
+	}
+	const m = await mount(h(C), clientRiva);
+	await flush();
+	expect(m.text()).toBe('success:{"viewer":{"id":"7"}}:false');
+	expect(server.calls).toHaveLength(1);
+	expect(client.calls).toHaveLength(0);
+	await m.unmount();
+});
+
+test('types: wrong variables and a wrong `enabled` with suspense are errors', () => {
+	const never = () => {
+		// @ts-expect-error `schol` is not a variable of the document
+		useGraphQL(PATIENTS_QUERY, { schol: 'x' });
+		// @ts-expect-error `school` is a string
+		useGraphQL(PATIENTS_QUERY, { school: 1 });
+		// @ts-expect-error `enabled` is not available with `suspense`
+		useGraphQL(VIEWER_QUERY, undefined, { suspense: true, enabled: false });
+		expectTypeOf(
+			useGraphQL(VIEWER_QUERY, undefined, { suspense: true }),
+		).toEqualTypeOf<SuspendedState<{ viewer: { id: string } }>>();
+	};
+	expect(typeof never).toBe('function');
 });

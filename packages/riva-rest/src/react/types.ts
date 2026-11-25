@@ -31,6 +31,9 @@ export interface UseRestOptions extends Omit<GetCall, 'signal'> {
 	suspense?: boolean;
 }
 
+/** `enabled` is not available with `suspense`: a hook that suspends has data or throws, it is never idle. */
+type Suspending<O> = Omit<O, 'enabled'> & { suspense: true; enabled?: never };
+
 type Route<Ops extends OperationsShape<Ops>, M extends string, P> = Extract<
 	`${M} ${P & string}`,
 	RouteOf<Ops>
@@ -57,13 +60,16 @@ export interface TypedUseRest<
 		path: P,
 		...args: SuspenseArgs<
 			InputOf<Ops, Route<Ops, 'get', P>>,
-			UseRestOptions & { suspense: true }
+			Suspending<UseRestOptions>
 		>
 	): SuspendedState<DataOf<Ops, Route<Ops, 'get', P>, Decoded>>;
 	<P extends PathsOf<Ops, 'get'>>(
 		method: 'get',
 		path: P,
-		...args: Args<InputOf<Ops, Route<Ops, 'get', P>>, UseRestOptions>
+		...args: Args<
+			InputOf<Ops, Route<Ops, 'get', P>>,
+			UseRestOptions & { suspense?: false }
+		>
 	): ResourceState<DataOf<Ops, Route<Ops, 'get', P>, Decoded>>;
 }
 
@@ -86,13 +92,13 @@ export interface UntypedUseRest {
 		method: 'get',
 		path: string,
 		input: unknown,
-		options: UseRestOptions & { suspense: true },
+		options: Suspending<UseRestOptions>,
 	): SuspendedState<Data>;
 	<Data = unknown>(
 		method: 'get',
 		path: string,
 		input?: unknown,
-		options?: UseRestOptions,
+		options?: UseRestOptions & { suspense?: false },
 	): ResourceState<Data>;
 }
 

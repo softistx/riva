@@ -44,7 +44,7 @@ books.state; // { status: 'idle' | 'loading' | 'success' | 'error', data, error,
 
 ## Extensions
 
-`createRiva` takes named extensions beside `scheduler` and `events`: any object with an `install(riva)` method (a `RivaExtension`). Its result is set once on the instance as `riva[name]`, fully typed. An adapter ships one; the core never imports it.
+`createRiva` takes named extensions beside `scheduler` and `events`: any object with an `install(riva)` method (a `RivaExtension`). Its result is set once on the instance as `riva[name]`, fully typed. A key that is neither an option nor an extension is a type error, so a misspelt option (`default` for `defaults`) does not compile. An adapter ships one; the core never imports it.
 
 ```ts
 import { createRiva, type RivaExtension } from '@softistx/riva';

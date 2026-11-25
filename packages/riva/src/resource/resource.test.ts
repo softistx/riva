@@ -142,6 +142,28 @@ describe('state', () => {
 		off();
 	});
 
+	test("keepPrevious never shows another identity's data after a disabled gap", async () => {
+		const { q, calls, riva } = setup();
+		const who = signal<number | null>(1);
+		const r = resource(
+			riva,
+			() => [q, { n: riva.get(who) as number }] as const,
+			{ enabled: () => riva.get(who) !== null },
+		);
+		const off = r.subscribe(() => {});
+		calls[0]?.ok('alice');
+		await tick();
+		riva.set(who, null);
+		expect(r.state.status).toBe('idle');
+		riva.set(who, 2);
+		expect(r.state).toMatchObject({
+			status: 'loading',
+			data: undefined,
+			placeholder: false,
+		});
+		off();
+	});
+
 	test('keepPrevious false goes back to loading on a new key', async () => {
 		const { q, calls, riva } = setup();
 		const n = signal(1);
