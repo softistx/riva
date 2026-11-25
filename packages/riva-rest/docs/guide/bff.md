@@ -6,6 +6,8 @@ Entry points: `@softistx/riva-rest/server` (server) and `@softistx/riva-rest/bff
 
 Run the REST calls on the server and keep the browser away from the API: the browser posts `{ id, variables }` to a `dataRoute` (`@softistx/riva-react-router`'s `/_data`), the server runs the operation through the request riva's transport (with its session and base URL) and sends the data back.
 
+The browser side of a BFF uses [definitions](https://github.com/softistx/riva/blob/develop/packages/riva/docs/guide/shared-definitions.md) with `provideRest(riva, bffTransport())`: `rest()` of the simple API takes an OpenAPI client or a base URL, not a BFF transport, so `riva.rest` calls reach the API directly. Server loaders can use `riva.rest.get`.
+
 ## Server
 
 The middleware gives each request riva its transport, and the `/_data` route serves the spec's operations.

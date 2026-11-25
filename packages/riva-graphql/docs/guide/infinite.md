@@ -1,5 +1,7 @@
 # Infinite lists
 
+> Most call sites use the [simple API](./simple-api.md). This page covers the definition, for settings several call sites share: see [Advanced: shared definitions](https://github.com/softistx/riva/blob/develop/packages/riva/docs/guide/shared-definitions.md).
+
 ## What it is for
 
 `infinite(document, { connection })` builds a paginated list from a Relay-shaped query: pages are fetched on demand and flattened.

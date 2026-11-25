@@ -1,5 +1,7 @@
 # Infinite lists: `@softistx/riva/infinite`
 
+> Most call sites use the simple API (`riva.graphql`, `riva.rest`, the hooks over them). This page covers the definition, for settings several call sites share: see [Advanced: shared definitions](./shared-definitions.md).
+
 A cursor-paginated list is a query whose data is the pages loaded so far. It reads like any query (`riva.get`, `subscribe`, `ensure`, `invalidate`, `setData`, staleness, `gcTime`, `retry`, `cache`) and adds `fetchNext` and `fetchPrevious`. The default page shape is a Relay connection (`edges[].node`, `pageInfo` with `hasNextPage`, `hasPreviousPage`, `startCursor`, `endCursor`).
 
 ```ts

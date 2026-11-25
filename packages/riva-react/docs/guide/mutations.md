@@ -1,5 +1,7 @@
 # Mutations: `useMutation`
 
+> Most call sites read GraphQL or REST with the hooks of the adapters (`useGraphQL`, `useRest`: see the [resource hooks](./resource.md)). This page covers the hook over a definition, for settings several call sites share: see [Advanced: shared definitions](https://github.com/softistx/riva/blob/develop/packages/riva/docs/guide/shared-definitions.md).
+
 `useMutation(def)` holds its status per hook instance. `run` resolves with the server data and rejects with the error (also in `error`); the mutation finishes even if the component unmounts, it only stops reporting. When runs overlap, the latest owns the state.
 
 ```tsx
