@@ -14,7 +14,7 @@
 		"size": "bun run scripts/size.ts",
 		"plugin:index": "bun run scripts/plugin-index.ts",
 		"plugin:check": "bun run scripts/plugin-index.ts --check",
-		"verify": "bun run fix && bun run typecheck && bun run plugin:check && bun run build && bun run test && bun run size",
+		"verify": "bun run fix && bun run build && bun run typecheck && bun run plugin:check && bun run test && bun run size",
 		"format": "biome format",
 		"lint": "biome lint",
 		"changeset": "changeset",
