@@ -12,9 +12,17 @@ import {
 import { useMatches } from 'react-router';
 
 export interface RivaRouterProviderProps {
-	/** The client of this tree. By default one is created per mount. */
+	/**
+	 * The client of this tree. By default one is created per mount. It must stay
+	 * the same object for the lifetime of the mount: the provider reads it once
+	 * and does not follow a new one.
+	 */
 	client?: RivaClient;
-	/** Runs once on the client of this mount, before any loader snapshot is read (e.g. `provideGraphQL`). */
+	/**
+	 * Runs on the client of this mount, before any loader snapshot is read
+	 * (e.g. `provideGraphQL`). It must be idempotent: React StrictMode runs the
+	 * initial state twice in development, so it can be called twice.
+	 */
 	setup?: (client: RivaClient, env: { server: boolean }) => void;
 	children?: ReactNode;
 }
