@@ -264,3 +264,17 @@ Code: `RIVA_DEFINITION` (`RivaError`), the rejection of `await riva.graphql.quer
 **Why:** `enabled` is false, so the resource is `idle` and has no key to load.
 
 **Fix:** await it once `enabled` is true, or leave `enabled` out for a one-shot `await`.
+
+## `riva-graphql/react: the riva in scope has no GraphQL: create it with createRiva({ graphql: graphql(client) }).`
+
+Code: `RIVA_DEFINITION` (`RivaError`).
+
+**When:** `useGraphQL`, `useGraphQLMutation` or `useGraphQLSubscription` ran under a `RivaProvider` whose riva was made without the extension.
+
+**Fix:**
+
+```ts
+const riva = createRiva({ graphql: graphql(client) });
+```
+
+A hook outside any provider throws the riva-react `No Riva in scope` error instead.

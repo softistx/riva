@@ -218,3 +218,17 @@ Code: `RIVA_INVALID_RESPONSE` (`RivaRequestError`, not retryable), from the `res
 Code: `RIVA_VALIDATION` (`RivaRequestError`, not retryable), from the `rest({ baseUrl })` transport before any request: such a value (also as `%2e`) would collapse the path to another URL.
 
 **Fix:** pass a real identifier.
+
+## `riva-rest/react: the riva in scope has no REST: create it with createRiva({ rest: rest(api) }).`
+
+Code: `RIVA_DEFINITION` (`RivaError`).
+
+**When:** `useRest` or `useRestMutation` ran under a `RivaProvider` whose riva was made without the extension.
+
+**Fix:**
+
+```ts
+const riva = createRiva({ rest: rest({ baseUrl: "https://api.example.com" }) });
+```
+
+A hook outside any provider throws the riva-react `No Riva in scope` error instead.

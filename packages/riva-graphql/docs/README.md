@@ -9,6 +9,7 @@ The package's [README](../README.md) is the short path. These pages go deeper.
 | [Documents](./guide/documents.md) | You write the `graphql()` documents a definition is built from, or a document is refused. |
 | [Transport](./guide/transport.md) | You wire a riva to the API, or write a transport of your own. |
 | [Simple API](./guide/simple-api.md) | You call `riva.graphql.query / mutation / subscribe` instead of defining. |
+| [React hooks](../README.md#react-hooks) | You call the simple API from components (`useGraphQL`, `useGraphQLMutation`, `useGraphQLSubscription`). |
 | [Queries](./guide/queries.md) | You define a query and need its options. |
 | [Mutations](./guide/mutations.md) | You define a write, with optimistic updates or invalidation. |
 | [Infinite lists](./guide/infinite.md) | You paginate a Relay connection. |

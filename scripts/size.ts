@@ -96,6 +96,40 @@ export const budgets: Budget[] = [
 		limit: 12800,
 	},
 	{
+		name: '@softistx/riva + riva-react + resource',
+		entry: [
+			'packages/riva/dist/index.js',
+			'packages/riva/dist/resource/index.js',
+			'packages/riva-react/dist/index.js',
+			'packages/riva-react/dist/resource/index.js',
+		],
+		limit: 9216,
+	},
+	{
+		name: '@softistx/riva + riva-graphql/react hooks',
+		entry: [
+			'packages/riva/dist/index.js',
+			'packages/riva/dist/resource/index.js',
+			'packages/riva-graphql/dist/index.js',
+			'packages/riva-graphql/dist/react/index.js',
+			'packages/riva-react/dist/index.js',
+			'packages/riva-react/dist/resource/index.js',
+		],
+		limit: 11776,
+	},
+	{
+		name: '@softistx/riva + riva-rest/react hooks',
+		entry: [
+			'packages/riva/dist/index.js',
+			'packages/riva/dist/resource/index.js',
+			'packages/riva-rest/dist/index.js',
+			'packages/riva-rest/dist/react/index.js',
+			'packages/riva-react/dist/index.js',
+			'packages/riva-react/dist/resource/index.js',
+		],
+		limit: 12288,
+	},
+	{
 		name: '@softistx/riva + riva-graphql',
 		entry: [
 			'packages/riva/dist/index.js',

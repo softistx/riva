@@ -51,6 +51,33 @@ With no spec, `rest({ baseUrl, fetch?, headers? })` gives the untyped calls over
 - `cache` (`RestSimpleOptions`, also read from `rest({ baseUrl, cache })`): how the data of every simple call is stored. Default: as is, a keyed cache (no entities). Pass `restEntities(...)` from `@softistx/riva-rest/entities` to share entities. `staleTime` defaults to the riva's `defaults.staleTime` (0 when unset): data older than it is refetched by the next read; a per-call `staleTime` overrides it.
 - The definitions behind the calls are made once per riva, per method and path, under the id `rest:<method> <path>`: a hand-made `query(api, route)` on the same riva keeps its own entries. [Guide](./docs/guide/simple-api.md).
 
+## React hooks
+
+`@softistx/riva-rest/react` calls `riva.rest` from components (`react` and `@softistx/riva-react` are optional peers). A hook has no riva to infer the operations table from, so declare it once:
+
+```ts
+import type { ClientOperations } from './generated';
+
+declare module '@softistx/riva-rest/react' {
+	interface Register {
+		operations: ClientOperations;
+	}
+}
+```
+
+```tsx
+import { useRest, useRestMutation } from '@softistx/riva-rest/react';
+
+function Book({ id }: { id: string }) {
+	const book = useRest('get', '/books/{id}', { param: { id } }, { suspense: false, keepPrevious: true });
+	const save = useRestMutation('put', '/books/{id}');
+	if (book.status !== 'success') return null;
+	return <button onClick={() => save({ param: { id }, json: { title: 'Dune' } })}>{book.data.title}</button>;
+}
+```
+
+Without `Register` the hooks are untyped (`useRest<T>`). They return the resource state, `suspense: true` types it as success, `enabled` and function inputs work as on `riva.rest`, and a server render seeds and dehydrates with no refetch on hydration.
+
 ## Provide the transport
 
 Definitions are stateless; the transport lives on the `Riva` that runs them. Give each riva one when you create it (on the server, one per request).
@@ -185,6 +212,7 @@ export const createInvoice = mutation(api, 'post /invoices', { cache });
 ## Entry points
 
 - `@softistx/riva-rest`: `query`, `mutation`, `rest` (`{ query, mutation }`), `provideRest`, `httpyzTransport`, `toRivaError`, `operationOf` (reads a route into `{ id, method, path, operationId, hasInput }`) and the types: `RestTransport`, `RestContext`, `Route`, `Operation`, the options (`RestQueryOptions`, `RestMutationOptions`, `FreeQueryOptions`, `FreeMutationOptions`), the routes (`RouteOf`, `QueryRoute`, `MutationRoute`) and `InputOf`, `DataOf`, `SpecOf`, `ClientOf`, `DecodedOf`.
+- `@softistx/riva-rest/react`: `useRest`, `useRestMutation` and the types `Register`, `UseRest`, `UseRestMutation`, `UseRestOptions` (optional peers `react` and `@softistx/riva-react`).
 - `@softistx/riva-rest/entities`: `restEntities` and the types `RestEntity`, `RestEntities`.
 - `@softistx/riva-rest/server`: `operations(api)` (a `DataSource` for `dataRoute`), the constant `PREFIX` (`'rest:'`, the prefix of every id the route serves: `rest:<operationId>`) and the types `DataSource`, `DataOperation`, `OperationsOf`.
 - `@softistx/riva-rest/bff`: `bffTransport(opts)` and the type `BffTransportOptions`.

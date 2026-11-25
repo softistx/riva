@@ -207,6 +207,22 @@ export async function handle(school: string): Promise<Response> {
 
 A hook never starts a fetch during a server render, except through `suspense: true`. To hand the cache to the browser, use `@softistx/riva-react-router` or `dehydrate` and `hydrate`. [Guide](./docs/guide/ssr.md).
 
+## Resource hooks
+
+`@softistx/riva-react/resource` holds the generic blocks the adapters' hooks (`useGraphQL`, `useRest`, ...) are built on; use them to make a hook for your own resource.
+
+```ts
+import { useMutationHandle, useResource, useStableInput } from '@softistx/riva-react/resource';
+
+// useResource(key, make, { suspense?, keepPrevious? }): one resource per riva and key,
+// the state as a discriminated union; suspense: true suspends and types it as success.
+const state = useResource('books', (riva) => riva.graphql.query(BOOKS_QUERY, {}));
+// useMutationHandle(key, make): a callable with the mutation state fields and reset().
+const save = useMutationHandle('add-book', (riva) => riva.graphql.mutation(ADD_BOOK));
+```
+
+`useStableInput` reads a plain value or a function through a stable wrapper: a function re-derives the key only through the signals it reads. [Guide](./docs/guide/resource.md).
+
 ## Entry points
 
 | Import | Adds |
@@ -215,6 +231,7 @@ A hook never starts a fetch during a server render, except through `suspense: tr
 | `@softistx/riva-react/infinite` | `useInfiniteQuery` |
 | `@softistx/riva-react/entities` | `useFragment` |
 | `@softistx/riva-react/store` | `useStore` |
+| `@softistx/riva-react/resource` | `useResource`, `useMutationHandle`, `useStableInput` (the blocks the adapters' hooks are built on) |
 
 Types: `MutationResult` (what `useMutation` returns), `RivaProviderProps`, `SuspendedState` and `UseQueryOptions` (main entry), `InfiniteResult` and `UseInfiniteQueryOptions` (`/infinite`).
 

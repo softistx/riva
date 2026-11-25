@@ -77,6 +77,26 @@ const closeFeed = added.subscribe((state) => console.log(state.status)); // open
 - The definitions behind the calls are made once per riva, per document (never shared between rivas), under the id `graphql:<operation id>`: a hand-made `query(DOC)` on the same riva keeps its own entries (and cache). `invalidates: [DOC]` marks the simple call's entries stale; `invalidates: [handMadeDef]` marks the hand-made definition's only. `invalidates` is an array (no function form), checked before the mutation runs.
 - Definitions (`query()`, `mutation()`, `infinite()`) keep working on the same riva, for shared settings.
 
+## React hooks
+
+`@softistx/riva-graphql/react` calls the simple API from components, on the riva of the nearest `RivaProvider` (`react` and `@softistx/riva-react` are optional peers; the riva needs `createRiva({ graphql })`).
+
+```tsx
+import { useGraphQL, useGraphQLMutation, useGraphQLSubscription } from '@softistx/riva-graphql/react';
+
+function Books({ first }: { first: number }) {
+	const books = useGraphQL(BOOKS_QUERY, { first }, { enabled: true, keepPrevious: true });
+	const add = useGraphQLMutation(ADD_BOOK);
+	if (books.status === 'loading') return <Spinner />;
+	if (books.status === 'error') return <Failure error={books.error} />; // books.data keeps a partial result
+	return <button onClick={() => add({ title: 'Dune' }, { invalidates: [BOOKS_QUERY] })}>{books.data.books.length}</button>;
+}
+// useGraphQL(DOC, vars, { suspense: true }) suspends and returns the success state.
+// useGraphQLSubscription(BOOK_ADDED, {}, { next(added) {} }) is loading, then the last message.
+```
+
+The hooks return the resource state; the mutation hook returns the callable handle with `state` fields and `reset()`. Variables are a plain value or a function; a change re-derives the key and keeps the previous data as `placeholder`. While `enabled` is false the status is `idle`. A server render seeds and dehydrates like `useQuery`, and hydration does not refetch fresh data.
+
 ## Provide the transport
 
 Definitions are stateless; the transport lives on the `Riva` that runs them. Give each riva one, when you create it.
@@ -223,6 +243,7 @@ export const loader = route.loader;
 | `@softistx/riva-graphql/infinite` | `infinite` | Imports `@softistx/riva/infinite`. |
 | `@softistx/riva-graphql/cache` | `normalized` | Imports `@softistx/riva/entities`; no `graphql` value import. |
 | `@softistx/riva-graphql/bff` | `bffTransport` | Browser; imports `@softistx/riva/ssr` only. |
+| `@softistx/riva-graphql/react` | `useGraphQL`, `useGraphQLMutation`, `useGraphQLSubscription` | Optional peers `react` and `@softistx/riva-react`. |
 | `@softistx/riva-graphql/server` | `allowlist` | Server only; needs `graphql`. |
 | `@softistx/riva-graphql/codegen` | `buildAllowlist`, `writeAllowlist` | Node and codegen only; needs `graphql`. |
 

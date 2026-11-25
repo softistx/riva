@@ -35,6 +35,11 @@
 			"import": "./dist/bff/index.js",
 			"default": "./dist/bff/index.js"
 		},
+		"./react": {
+			"types": "./dist/react/index.d.ts",
+			"import": "./dist/react/index.js",
+			"default": "./dist/react/index.js"
+		},
 		"./package.json": "./package.json"
 	},
 	"keywords": [
@@ -56,22 +61,36 @@
 	},
 	"scripts": {
 		"build": "bun run ../../build.ts",
-		"test": "bun test src",
+		"test": "bun test --path-ignore-patterns 'src/react/**' src && bun test src/react",
 		"typecheck": "bun check"
 	},
 	"devDependencies": {
+		"@happy-dom/global-registrator": "^20.0.0",
 		"@softistx/httpyz": "^0.6.1",
 		"@softistx/openapi-httpyz": "^0.4.1",
 		"@softistx/riva": "workspace:*",
-		"@types/bun": "^1.4.5"
+		"@softistx/riva-react": "workspace:*",
+		"@types/bun": "^1.4.5",
+		"@types/react": "^19.3.2",
+		"@types/react-dom": "^19.0.0",
+		"react": "^19.0.0",
+		"react-dom": "^19.0.0"
 	},
 	"peerDependencies": {
 		"@softistx/riva": "^0.3.0",
 		"@softistx/httpyz": "^0.6.1",
-		"@softistx/openapi-httpyz": "^0.4.1"
+		"@softistx/openapi-httpyz": "^0.4.1",
+		"react": "^19.0.0",
+		"@softistx/riva-react": "^0.3.0"
 	},
 	"peerDependenciesMeta": {
 		"@softistx/openapi-httpyz": {
+			"optional": true
+		},
+		"react": {
+			"optional": true
+		},
+		"@softistx/riva-react": {
 			"optional": true
 		}
 	},
@@ -80,7 +99,8 @@
 			"src/index.ts",
 			"src/entities/index.ts",
 			"src/server/index.ts",
-			"src/bff/index.ts"
+			"src/bff/index.ts",
+			"src/react/index.ts"
 		]
 	}
 }
