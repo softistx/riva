@@ -11,6 +11,46 @@ bun add -d @softistx/openapi-codegen typescript
 
 Peers: `@softistx/riva` and `@softistx/httpyz`. `@softistx/openapi-httpyz` is optional: only the OpenAPI mode needs it. `@softistx/openapi-codegen` writes the operations table at build time, and that generated `operations.ts` imports `zod`. The runtime entries import none of them.
 
+## Simple API
+
+Install the extension once, then call REST like a function: no definition, no key, no glue. Calls with the same path and input share one cache entry and one in-flight request; errors are riva's.
+
+```ts
+import { createHttpClient } from '@softistx/httpyz';
+import { createOpenApiClient } from '@softistx/openapi-httpyz';
+import { createRiva, signal } from '@softistx/riva';
+import { rest } from '@softistx/riva-rest';
+import { operations } from './generated/openapi/operations'; // from `nxgt-openapi generate`
+
+const http = createHttpClient({ baseUrl: 'https://api.example.com' });
+const riva = createRiva({ rest: rest(createOpenApiClient(http, operations)) });
+
+const invoice = await riva.rest.get('/invoices/{id}', { param: { id: '1' } }); // one-shot: data or throws
+
+// The same call is a reactive resource: state, subscribe, tracked input.
+const id = signal('1');
+const signedIn = signal(true);
+const live = riva.rest.get('/invoices/{id}', () => ({ param: { id: riva.get(id) } }), {
+	enabled: () => riva.get(signedIn), // false: status 'idle', nothing fetched
+	keepPrevious: true, // a new input: the old data stays, `placeholder: true`
+	staleTime: '30s',
+});
+live.state; // { status: 'idle' | 'loading' | 'success' | 'error', data, error, isFetching, placeholder }
+const off = live.subscribe((state) => console.log(state.status)); // the first reader starts the fetch
+
+const save = riva.rest.mutation('post', '/invoices'); // a handle: state (idle first), reset()
+await save({ json: { number: 'F-1', total: 10 } }, { invalidates: ['/invoices'] });
+await riva.rest.delete('/invoices/{id}', { param: { id: '1' } }); // one-shot, no handle
+```
+
+With no spec, `rest({ baseUrl, fetch?, headers? })` gives the untyped calls over `fetch`: `riva.rest.get<Invoice>('/invoices/42')`.
+
+- The input is httpyz's `{ param, query, json }`, typed by the operations table and optional when the operation takes none. It is a plain value, a riva signal or computed, or a function that reads signals (tracked: when what it reads changes, the key is derived again).
+- `get` returns a `Resource` (`@softistx/riva/resource`): `state`, `subscribe` and awaitable. Options: `staleTime` (this call only), `enabled` (a boolean or tracked function; while false the input function is not called), `keepPrevious` (default true) and `signal` (stops the wait of `await`). It is lazy: it fetches from its first subscriber or observed reader, never on a server, where `await` is the way to load.
+- `mutation(method, path)` makes a new handle at each call (`post`, `put`, `patch`, `delete`); `post / put / patch / delete(path, input, opts)` run once. Both take `invalidates` (paths of a `get`, hand-made definitions or `at(query, vars)`, marked stale once it succeeded) and `signal`; it is an array, checked before the call runs.
+- `cache` (`RestSimpleOptions`, also read from `rest({ baseUrl, cache })`): how the data of every simple call is stored. Default: as is, a keyed cache (no entities). Pass `restEntities(...)` from `@softistx/riva-rest/entities` to share entities. `staleTime` defaults to the riva's `defaults.staleTime` (0 when unset): data older than it is refetched by the next read; a per-call `staleTime` overrides it.
+- The definitions behind the calls are made once per riva, per method and path, under the id `rest:<method> <path>`: a hand-made `query(api, route)` on the same riva keeps its own entries. [Guide](./docs/guide/simple-api.md).
+
 ## Provide the transport
 
 Definitions are stateless; the transport lives on the `Riva` that runs them. Give each riva one when you create it (on the server, one per request).

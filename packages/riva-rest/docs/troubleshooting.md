@@ -182,3 +182,39 @@ export const cache = restEntities({ Invoice: { is: (o) => 'number' in o, key: (o
 Code: `RIVA_DEFINITION` (`RivaError`), thrown when the definition is created, for a `PUT`, `PATCH` or `DELETE` route given to `query()`.
 
 **Fix:** use `mutation(api, 'delete /x')`. Only `GET`, `HEAD`, `OPTIONS` and a `POST` that only reads (a search) are queries.
+
+## `riva-rest: POST /x is not a mutation; riva.rest.mutation takes post, put, patch or delete.`
+
+Code: `RIVA_DEFINITION` (`RivaError`), thrown by `riva.rest.mutation(method, path)` on an untyped `rest({ baseUrl })` riva given `'get'`, `'head'` or `'options'` (the method in the message is the one you passed).
+
+**Fix:** read with `riva.rest.get(path)`; keep `mutation` for `post`, `put`, `patch` and `delete`. With a spec, the same mistake is a compile error and, at runtime, `riva-rest: GET /x only reads; define it with query(), not mutation().`
+
+## `riva-rest: /things/{id} needs param.id.`
+
+Code: `RIVA_VALIDATION` (`RivaRequestError`, not retryable), thrown by the `rest({ baseUrl })` transport before any request: the path has a `{id}` placeholder and the input has no `param.id`.
+
+**Fix:** give it, `riva.rest.get('/things/{id}', { param: { id: '42' } })`, or write the value in the path (`'/things/42'`). With a spec, the compiler asks for `param` and httpyz validates it.
+
+## A `riva.rest.get(...)` never fetches
+
+**Why:** it returns a lazy resource: nothing is requested until a reader subscribes (`resource.subscribe(listener)`, or a computed or effect that reads `resource.state` and is observed) or you `await` it, and never on a server, where `await` is the way to load.
+
+**Fix:** `await riva.rest.get(...)` for a one-shot load, or keep the unsubscribe `subscribe` returns for a live one.
+
+## An `invalidates` path refetches nothing
+
+**Why:** a string in `invalidates` is the path of a `riva.rest.get`, as the spec writes it (`'/invoices/{id}'`, with the placeholder, for every input of it); with `rest({ baseUrl })` it is the URL path you passed to `get` (`'/invoices/42'`). A query made with `query(api, route)` has its own entries and is not reached by a string.
+
+**Fix:** pass the same path as the `get`, or the definition (`invalidates: [invoicesQuery]`) or `at(invoicesQuery, vars)` for a hand-made one. A path the spec has no `get` for throws `riva-rest: the OpenAPI client has no operation at GET /x; …` before the mutation runs.
+
+## `GET /x: the reply is not JSON.`
+
+Code: `RIVA_INVALID_RESPONSE` (`RivaRequestError`, not retryable), from the `rest({ baseUrl })` transport on a 2xx reply whose body is not JSON (an HTML login page, a proxy error). An empty body is `undefined`, not an error.
+
+**Fix:** check the URL and the `accept` header (`application/json` is sent unless your `headers` set another), or use a spec client, which decodes by content type.
+
+## `riva-rest: param.id of /things/{id} must not be empty, "." or "..".`
+
+Code: `RIVA_VALIDATION` (`RivaRequestError`, not retryable), from the `rest({ baseUrl })` transport before any request: such a value (also as `%2e`) would collapse the path to another URL.
+
+**Fix:** pass a real identifier.
