@@ -18,6 +18,21 @@ riva.get(count);
 riva.run(() => count.get());
 ```
 
+## "<name>" is reserved.
+
+Code: `RIVA_DEFINITION` (`RivaError`).
+
+**When:** `createRiva({ <name>: extension })` was given an extension under the name of a `Riva` member (`get`, `set`, `subscribe`, `run`, `queries`, …).
+
+**Why:** an extension is installed as `riva[name]`; that name is already taken, and overwriting it would break the riva.
+
+**Fix:** rename the key.
+
+```ts
+createRiva({ get: graphql(gql) }); // throws: "get" is reserved.
+createRiva({ graphql: graphql(gql) }); // riva.graphql
+```
+
 ## setDefaultRiva is browser-only
 
 Code: `RIVA_SCOPE` (`RivaScopeError`).

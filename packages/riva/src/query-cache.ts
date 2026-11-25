@@ -42,7 +42,6 @@ export function createQueryCache(
 		events,
 		entries: new Map(),
 		observed: 0,
-		detach: undefined,
 	};
 	return {
 		sched,

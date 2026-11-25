@@ -24,7 +24,7 @@ if (state.error instanceof RivaHttpError && state.error.status === 404) {
 | `RivaNetworkError` | `RIVA_NETWORK` | Retryable. |
 | `RivaAbortError` | `RIVA_ABORT` | Never retried. |
 
-Other codes thrown as `RivaError`: `RIVA_CYCLE`, `RIVA_LOOP`, `RIVA_DURATION`, `RIVA_KEY`, `RIVA_CACHE`, `RIVA_STORE`, `RIVA_SSR`. `RIVA_INVALID_RESPONSE` and `RIVA_UNKNOWN` are carried by `RivaRequestError` (a transport answer that is not valid) and by an SSR snapshot (an error that was not a `RivaError`). The adapters add `RIVA_DEFINITION` (a misused definition), `RIVA_VALIDATION`, `RIVA_REST_UNWIRED` and `RIVA_DATA_*`. Each has an entry by its message in [troubleshooting](../troubleshooting.md).
+Other codes thrown as `RivaError`: `RIVA_CYCLE`, `RIVA_LOOP`, `RIVA_DURATION`, `RIVA_KEY`, `RIVA_CACHE`, `RIVA_STORE`, `RIVA_SSR`, and `RIVA_DEFINITION` for an extension named like a `Riva` member. `RIVA_INVALID_RESPONSE` and `RIVA_UNKNOWN` are carried by `RivaRequestError` (a transport answer that is not valid) and by an SSR snapshot (an error that was not a `RivaError`). The adapters add `RIVA_DEFINITION` (a misused definition), `RIVA_VALIDATION`, `RIVA_REST_UNWIRED` and `RIVA_DATA_*`. Each has an entry by its message in [troubleshooting](../troubleshooting.md).
 
 Listeners and effects that throw never stop the others: every notification runs, then the single error is rethrown as is, and several become an `AggregateError`.
 

@@ -19,6 +19,25 @@ Zero runtime dependencies. Definitions are stateless; values live in a `Riva`: o
 | `@softistx/riva/ssr` | dehydrate, hydrate, scope resolver | [ssr](./docs/guide/ssr.md) |
 | `@softistx/riva/data` | the browser's `/_data` riva | [data](./docs/guide/data.md) |
 
+## Extensions
+
+`createRiva` takes named extensions beside `scheduler` and `events`: any object with an `install(riva)` method (a `RivaExtension`). Its result is set once on the instance as `riva[name]`, fully typed. An adapter ships one; the core never imports it.
+
+```ts
+import { createRiva, type RivaExtension } from '@softistx/riva';
+
+const clock: RivaExtension<{ now(): number }> = {
+	install: () => ({ now: () => Date.now() }),
+};
+
+const riva = createRiva({ clock, defaults: { staleTime: '30s' } });
+riva.clock.now(); // typed
+```
+
+`defaults.staleTime` applies to every query that sets no `staleTime` of its own.
+
+Extensions install once, in key order, so an install sees the extensions before it but not those after. A Riva member name (`get`, `set`, `run`, …) is a type error and throws `RIVA_DEFINITION`; option names (`defaults`, `scheduler`, `events`) are refused by the types. Pass the options inline, or keep the inferred type of a pre-built object: options annotated as `RivaOptions` lose the extension types and give a plain `Riva`.
+
 ## Signals
 
 ```ts
