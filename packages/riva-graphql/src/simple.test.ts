@@ -254,6 +254,175 @@ describe('riva.graphql.subscribe', () => {
 	});
 });
 
+describe('hardening', () => {
+	test('a hand-made query(DOC) and riva.graphql.query(DOC) coexist on one riva', async () => {
+		const t = fakeTransport(() => ({ viewer: { id: '1' } }));
+		const riva = createRiva({ graphql: graphql(t) });
+		const own = query(VIEWER_QUERY, { staleTime: '1h' });
+		await own.ensure(riva);
+		await riva.graphql.query(VIEWER_QUERY, undefined, { staleTime: '1h' });
+		expect(t.calls).toHaveLength(2);
+		expect(own.id).toBe('Viewer');
+	});
+
+	test('invalidates: a hand-made definition and a document are separate targets', async () => {
+		const t = fakeTransport((c) =>
+			c.kind === 'mutation'
+				? { renamePatient: { id: '1', name: 'A' } }
+				: { viewer: { id: '1' } },
+		);
+		const riva = createRiva({ graphql: graphql(t) });
+		const own = query(VIEWER_QUERY, { staleTime: '1h' });
+		await own.ensure(riva);
+		await riva.graphql.query(VIEWER_QUERY, undefined, { staleTime: '1h' });
+		await riva.graphql.mutate(
+			RENAME_PATIENT_MUTATION,
+			{ id: '1', name: 'A' },
+			{ invalidates: [own] },
+		);
+		await own.ensure(riva);
+		await riva.graphql.query(VIEWER_QUERY, undefined, { staleTime: '1h' });
+		expect(t.calls.filter((c) => c.kind === 'query')).toHaveLength(3);
+	});
+
+	test('a bad invalidates entry throws before the mutation runs', async () => {
+		const t = fakeTransport();
+		const riva = createRiva({ graphql: graphql(t) });
+		await expect(
+			riva.graphql.mutate(
+				RENAME_PATIENT_MUTATION,
+				{ id: '1', name: 'A' },
+				{ invalidates: [parse('{ a }') as never] },
+			),
+		).rejects.toThrow();
+		expect(t.calls).toHaveLength(0);
+	});
+
+	test('stop calls return() even when the transport ignores the signal', async () => {
+		let returned = 0;
+		const source: GraphQLTransport = {
+			execute: fakeTransport().execute,
+			subscribe: () => ({
+				[Symbol.asyncIterator]: () => ({
+					next: () => new Promise<never>(() => {}),
+					return: async () => {
+						returned++;
+						return { done: true, value: undefined };
+					},
+				}),
+			}),
+		};
+		const riva = createRiva({ graphql: graphql(source) });
+		const stop = riva.graphql.subscribe(SUB, { school: 's' }, { next() {} });
+		stop();
+		expect(returned).toBe(1);
+	});
+
+	test('complete runs when the stream ends on its own', async () => {
+		const source: GraphQLTransport = {
+			execute: fakeTransport().execute,
+			subscribe: () =>
+				(async function* () {
+					yield { n: 1 } as never;
+				})(),
+		};
+		const riva = createRiva({ graphql: graphql(source) });
+		const log: string[] = [];
+		riva.graphql.subscribe(
+			SUB,
+			{ school: 's' },
+			{ next: () => log.push('next'), complete: () => log.push('complete') },
+		);
+		await tick();
+		expect(log).toEqual(['next', 'complete']);
+	});
+
+	test('an error thrown by next is rethrown outside, not sent to error', async () => {
+		const s = streaming();
+		const riva = createRiva({ graphql: graphql(s.source) });
+		const errors: unknown[] = [];
+		const raised: unknown[] = [];
+		const on = (e: unknown) => raised.push(e);
+		const real = globalThis.queueMicrotask;
+		globalThis.queueMicrotask = (f) => {
+			try {
+				f();
+			} catch (e) {
+				on(e);
+			}
+		};
+		const boom = new Error('app bug');
+		riva.graphql.subscribe(
+			SUB,
+			{ school: 's' },
+			{
+				next() {
+					throw boom;
+				},
+				error: (e) => errors.push(e),
+			},
+		);
+		s.feed({ n: 1 });
+		await tick();
+		globalThis.queueMicrotask = real;
+		expect(raised).toEqual([boom]);
+		expect(errors).toEqual([]);
+	});
+
+	test('an error thrown by error is raised outside, not unhandled', async () => {
+		const s = streaming();
+		const riva = createRiva({ graphql: graphql(s.source) });
+		const raised: unknown[] = [];
+		const on = (e: unknown) => raised.push(e);
+		const real = globalThis.queueMicrotask;
+		globalThis.queueMicrotask = (f) => {
+			try {
+				f();
+			} catch (e) {
+				on(e);
+			}
+		};
+		const boom = new Error('in error');
+		riva.graphql.subscribe(
+			SUB,
+			{ school: 's' },
+			{
+				next() {},
+				error() {
+					throw boom;
+				},
+			},
+		);
+		s.fail(new Error('down'));
+		await tick();
+		globalThis.queueMicrotask = real;
+		expect(raised).toEqual([boom]);
+	});
+
+	test('graphql() takes a client, told apart by its mutate method', async () => {
+		const calls: string[] = [];
+		const client = {
+			query: async () => {
+				calls.push('query');
+				return { viewer: { id: '1' } };
+			},
+			mutate: async () => {
+				calls.push('mutate');
+				return {};
+			},
+			subscribe: () => {
+				calls.push('subscribe');
+				return (async function* () {})();
+			},
+		};
+		const riva = createRiva({ graphql: graphql(client as never) });
+		await riva.graphql.query(VIEWER_QUERY);
+		await riva.graphql.mutate(RENAME_PATIENT_MUTATION, { id: '1', name: 'A' });
+		riva.graphql.subscribe(SUB, { school: 's' }, { next() {} })();
+		expect(calls).toEqual(['query', 'mutate', 'subscribe']);
+	});
+});
+
 test('install gives the riva its transport and a typed namespace', () => {
 	const riva = createRiva({ graphql: graphql(fakeTransport()) });
 	expectTypeOf(riva.graphql.query).toBeFunction();
@@ -269,6 +438,7 @@ const types = async () => {
 	const viewer = await riva.graphql.query(VIEWER_QUERY);
 	expectTypeOf(viewer.viewer.id).toBeString();
 	await riva.graphql.query(VIEWER_QUERY, undefined, { staleTime: '30s' });
+	await riva.graphql.query(VIEWER_QUERY);
 	// @ts-expect-error the variables are required and typed
 	await riva.graphql.query(PATIENTS_QUERY);
 	// @ts-expect-error wrong variables

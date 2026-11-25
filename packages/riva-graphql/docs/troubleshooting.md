@@ -41,7 +41,7 @@ Code: `RIVA_DEFINITION` (`RivaError`), thrown when the definition is created.
 
 ## `riva-graphql: X is a mutation; use mutation() to define it, not query().`
 
-**Fix:** use the helper that matches the document: `query()` and `infinite()` for queries, `mutation()` for mutations. Subscriptions are not supported yet (`riva-graphql: X is a subscription; …`).
+**Fix:** use the helper that matches the document: `query()` and `infinite()` for queries, `mutation()` for mutations.
 
 ## `riva-graphql: expected a TypedDocumentNode (set documentMode: "documentNode" in the client preset), got something else.`
 
@@ -217,6 +217,8 @@ Code: `RIVA_DEFINITION` (`RivaError`), thrown by `riva.graphql.subscribe`.
 
 **Fix:** pass the `@softistx/graphql-client` client (or `graphqlClientTransport(client)`), or add `subscribe` returning an `AsyncIterable` of results that ends when the signal aborts.
 
-## `riva-graphql: X is a query; ...` from `riva.graphql.subscribe`
+## `riva-graphql: X is a query; use query() to define it, not subscription().`
 
-**Why:** the document is not a subscription. **Fix:** use `riva.graphql.query` or `mutate`.
+Code: `RIVA_DEFINITION`, from `riva.graphql.subscribe` given a query or mutation document (`X` is the operation's name; the kind in the message follows the document).
+
+**Fix:** use `riva.graphql.query` or `mutate` for it, or give `subscribe` a subscription document.

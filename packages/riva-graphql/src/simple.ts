@@ -29,17 +29,22 @@ export interface QueryCall {
 
 /** Options of one `riva.graphql.mutate` call. */
 export interface MutateCall {
-	/** Documents (or definitions, or `at(query, vars)`) to mark stale once the mutation succeeded; observed ones refetch. */
+	/**
+	 * An array (no function form) of documents, definitions or `at(query, vars)` to mark stale once the mutation succeeded; observed ones refetch.
+	 * A document targets the query `riva.graphql.query` made of it; a hand-made definition targets its own entries only.
+	 */
 	invalidates?: readonly (Doc<unknown, never> | Invalidation)[];
 	signal?: AbortSignal;
 }
 
-/** The callbacks of `riva.graphql.subscribe`. */
+/** The callbacks of `riva.graphql.subscribe`. An error thrown by `next`, `error` or `complete` is raised outside the stream (never reported to `error`), and a throwing `next` ends the subscription. */
 export interface SubscribeCall<Data> {
 	/** Each result, after it was merged into the cache when the cache can hold it. */
 	next(data: Data): void;
 	/** A failure ends the subscription; a `RivaError` when the transport's error is known. */
 	error?(error: unknown): void;
+	/** The stream ended on its own (not after `stop()` nor a failure). */
+	complete?(): void;
 }
 
 /** What `createRiva({ graphql: graphql(client) })` puts on `riva.graphql`. */
@@ -54,7 +59,7 @@ export interface GraphQLApi {
 		document: Doc<Data, Vars>,
 		...args: VarsArgs<VarsOf<Vars>, [options?: MutateCall]>
 	): Promise<Data>;
-	/** Opens a subscription; the returned function stops it. Throws when the transport cannot subscribe. */
+	/** Opens a subscription; the returned function stops it. A subscription is not tied to the riva's lifetime: stop it yourself (on unmount, at the end of a request). Throws when the transport cannot subscribe. */
 	subscribe<Data, Vars>(
 		document: Doc<Data, Vars>,
 		...args: [...VarsArgs<VarsOf<Vars>>, callbacks: SubscribeCall<Data>]
@@ -78,7 +83,8 @@ interface Memo {
  * The GraphQL extension of `createRiva`: `createRiva({ graphql: graphql(client) })`
  * gives `riva.graphql.query / mutate / subscribe`, which take a typed document
  * and its variables and return the data. The first argument is a
- * `@softistx/graphql-client` client or any `GraphQLTransport`. Definitions made
+ * `@softistx/graphql-client` client or any `GraphQLTransport` (told apart by
+ * the client's `mutate` method: a transport must not define one). Definitions made
  * with `query()` and `mutation()` keep working on the same riva.
  */
 export function graphql(
@@ -93,32 +99,49 @@ export function graphql(
 			const defaults = options.cache ? { cache: options.cache } : {};
 			const memo: Memo = { queries: new Map(), mutations: new Map() };
 			riva.slots.set(MEMO, memo);
+			// Distinct ids: a hand-made query(DOC) on the same riva keeps its own cache entries.
+			const idOf = (doc: Doc<unknown, never>) => ({
+				...defaults,
+				id: `graphql:${operationOf(doc).id}`,
+			});
 			const queryOf = (doc: Doc<unknown, never>) => {
 				let def = memo.queries.get(doc);
 				if (!def) {
-					def = query(doc, defaults) as never;
+					def = query(doc, idOf(doc)) as never;
 					memo.queries.set(doc, def as never);
 				}
 				return def as Query<unknown, unknown>;
+			};
+			const mutationOf = (doc: Doc<unknown, never>) => {
+				let def = memo.mutations.get(doc);
+				if (!def) {
+					def = mutation(doc, idOf(doc));
+					memo.mutations.set(doc, def);
+				}
+				return def;
 			};
 			return {
 				query: (doc, vars?, call?) =>
 					queryOf(doc as never).ensure(riva, vars, call as never) as never,
 				async mutate(doc, vars?, call?: MutateCall) {
-					let def = memo.mutations.get(doc);
-					if (!def) {
-						def = mutation(doc as Doc<unknown, never>, defaults);
-						memo.mutations.set(doc, def);
-					}
+					const def = mutationOf(doc as never);
+					// Resolved first: a bad entry throws before anything was written.
+					const stale = (call?.invalidates ?? []).map((t) =>
+						'definitions' in t
+							? (
+									(d) => () =>
+										d.invalidate(riva)
+								)(queryOf(t as never))
+							: 'query' in t
+								? () => t.query.invalidate(riva, t.vars)
+								: () => (t as Query<unknown, unknown>).invalidate(riva),
+					);
 					const data = await (def.run as (...a: unknown[]) => Promise<never>)(
 						riva,
 						vars,
 						{ signal: call?.signal },
 					);
-					for (const t of call?.invalidates ?? [])
-						if ('definitions' in t) queryOf(t as never).invalidate(riva);
-						else if ('query' in t) t.query.invalidate(riva, t.vars);
-						else (t as Query<unknown, unknown>).invalidate(riva);
+					for (const f of stale) f();
 					return data;
 				},
 				subscribe(doc, ...args) {
@@ -135,20 +158,39 @@ export function graphql(
 						cache && 'forOperation' in cache ? cache.forOperation(op) : cache;
 					const ctl = new AbortController();
 					const { signal } = ctl;
+					const it = transport
+						.subscribe(op, vars, { signal })
+						[Symbol.asyncIterator]();
+					const end = () => {
+						ctl.abort();
+						void Promise.resolve(it.return?.()).catch(() => {});
+					};
+					// What a callback throws is the app's: raised outside the stream.
+					const rethrow = (e: unknown) =>
+						queueMicrotask(() => {
+							throw e;
+						});
 					void (async () => {
-						try {
-							for await (const data of transport.subscribe?.(op, vars, {
-								signal,
-							}) ?? []) {
-								if (signal.aborted) return;
-								policy?.commit?.(riva, data, vars);
-								on.next(data as never);
+						for (;;) {
+							let r: IteratorResult<unknown>;
+							try {
+								r = await it.next();
+							} catch (e) {
+								if (!signal.aborted) on.error?.(toRivaError(e, signal));
+								return;
 							}
-						} catch (e) {
-							if (!signal.aborted) on.error?.(toRivaError(e, signal));
+							if (signal.aborted) return;
+							if (r.done) return on.complete?.();
+							try {
+								policy?.commit?.(riva, r.value, vars);
+								on.next(r.value as never);
+							} catch (e) {
+								end();
+								return rethrow(e);
+							}
 						}
-					})();
-					return () => ctl.abort();
+					})().catch(rethrow);
+					return end;
 				},
 			};
 		},

@@ -48,15 +48,16 @@ const data = await riva.graphql.query(BOOKS_QUERY, { first: 10 }, { staleTime: '
 const book = await riva.graphql.mutate(ADD_BOOK, { title: 'Dune' }, { invalidates: [BOOKS_QUERY] });
 const stop = riva.graphql.subscribe(BOOK_ADDED, {}, {
 	next(added) {}, // after the result was merged into the entity cache
-	error(e) {}, // a failure ends the subscription
+	error(e) {}, // a stream failure ends the subscription
+	complete() {}, // the stream ended on its own
 });
 stop();
 ```
 
 - Data and variables are typed from the document; the variables are optional when it has none.
 - `query` options: `staleTime` (this call only, over the definition's and the riva's `defaults`) and `signal`. `mutate` options: `invalidates` (documents, definitions or `at(query, vars)`, marked stale once it succeeded) and `signal`.
-- The definitions behind the calls are made once per riva, per document (never shared between rivas), so `riva.graphql.query(DOC)` and `query(DOC)` defined by hand share an id: use one of them per document on a riva (a second raises `Two definitions share the id`), or pass `id` to the hand-made one.
-- `subscribe` needs a transport that can: the `@softistx/graphql-client` one does (server-sent events, never reconnected). With `normalized()` each result is merged into the entity cache; with another cache, or none, it only goes to `next`.
+- The definitions behind the calls are made once per riva, per document (never shared between rivas), under the id `graphql:<operation id>`: a hand-made `query(DOC)` on the same riva keeps its own entries (and cache). `invalidates: [DOC]` marks the simple call's entries stale; `invalidates: [handMadeDef]` marks the hand-made definition's only. `invalidates` is an array (no function form), checked before the mutation runs.
+- `subscribe` needs a transport that can (a transport must not define `mutate`, which is how `graphql()` tells a client from a transport): the `@softistx/graphql-client` one does (server-sent events, never reconnected). A subscription is not tied to the riva's lifetime: call `stop()` yourself (on unmount, at the end of a request). An error thrown by `next` (or by the cache merge) is raised outside the stream and ends it, never sent to `error`. With `normalized()` each result is merged into the entity cache; with another cache, or none, it only goes to `next`.
 - Definitions (`query()`, `mutation()`, `infinite()`) keep working on the same riva, for shared settings.
 
 ## Provide the transport
@@ -201,13 +202,13 @@ export const loader = route.loader;
 
 | Import | Holds | Notes |
 |---|---|---|
-| `@softistx/riva-graphql` | `query`, `mutation`, `provideGraphQL`, `graphqlClientTransport`, `toRivaError`, `operationOf` | Imports `@softistx/riva` only; no optional peer. |
+| `@softistx/riva-graphql` | `graphql`, `query`, `mutation`, `provideGraphQL`, `graphqlClientTransport`, `toRivaError`, `operationOf` | Imports `@softistx/riva` only; no optional peer. |
 | `@softistx/riva-graphql/infinite` | `infinite` | Imports `@softistx/riva/infinite`. |
 | `@softistx/riva-graphql/cache` | `normalized` | Imports `@softistx/riva/entities`; no `graphql` value import. |
 | `@softistx/riva-graphql/bff` | `bffTransport` | Browser; imports `@softistx/riva/ssr` only. |
 | `@softistx/riva-graphql/server` | `allowlist` | Server only; needs `graphql`. |
 | `@softistx/riva-graphql/codegen` | `buildAllowlist`, `writeAllowlist` | Node and codegen only; needs `graphql`. |
 
-Exported types: `GraphQLTransport`, `Operation`, `OperationKind`, `VarsOf` and `GraphQLQueryOptions`, `GraphQLMutationOptions`, `OperationCache` (main entry); `NormalizedOptions`, `PossibleTypes` (`/cache`); `GraphQLInfiniteOptions` (`/infinite`); `AllowlistConfig`, `AllowlistEntry`, `AllowlistManifest` (`/codegen`); `BffTransportOptions` (`/bff`); `AllowlistInput`, `DataOperation`, `DataSource` (`/server`).
+Exported types: `GraphQLApi`, `QueryCall`, `MutateCall`, `SubscribeCall`, `GraphQLSimpleOptions`, `GraphQLTransport`, `Operation`, `OperationKind`, `VarsOf` and `GraphQLQueryOptions`, `GraphQLMutationOptions`, `OperationCache` (main entry); `NormalizedOptions`, `PossibleTypes` (`/cache`); `GraphQLInfiniteOptions` (`/infinite`); `AllowlistConfig`, `AllowlistEntry`, `AllowlistManifest` (`/codegen`); `BffTransportOptions` (`/bff`); `AllowlistInput`, `DataOperation`, `DataSource` (`/server`).
 
-riva + riva-graphql stays under 8 kB gzipped, and with the entities and the cache under 11 kB (checked by the repo's size budget), `@softistx/graphql-client` and `graphql` not counted.
+riva + riva-graphql stays under 8 kB gzipped, and with the entities and the cache under 12 kB (12288 B; `/bff` 9728 B) (checked by the repo's size budget), `@softistx/graphql-client` and `graphql` not counted.
