@@ -25,7 +25,7 @@ export class EntityStore {
 	/** The same for direct reads of entities a cut shaped. */
 	readonly directLocal = new Map<string, unknown>();
 	/** The optimistic layers of mutations: field patches by entity, oldest first. */
-	readonly ov = atom<Map<string, Stored>[]>([], { ssr: false });
+	readonly ov = atom<Map<string, Stored>[]>([]);
 	/** Set while a committed read runs: the layers are skipped. */
 	skip = false;
 	identify: Identify = makeIdentify();
@@ -38,7 +38,7 @@ export class EntityStore {
 	atomOf(ref: string): Atom<Stored | undefined> {
 		let a = this.atoms.get(ref);
 		if (!a) {
-			a = atom<Stored | undefined>(undefined, { name: ref, ssr: false });
+			a = atom<Stored | undefined>(undefined, { name: ref });
 			this.atoms.set(ref, a);
 		}
 		return a;

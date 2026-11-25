@@ -17,7 +17,7 @@ export const NONE: Flags = [false, false];
  * atom holding only the entries fetching now, so nothing outlives a fetch.
  */
 export function createSlots() {
-	const flags: Atom<Readonly<Record<string, Flags>>> = atom({}, { ssr: false });
+	const flags: Atom<Readonly<Record<string, Flags>>> = atom({});
 	const slots = new WeakMap<RivaClient, Slot>();
 	return {
 		flags,

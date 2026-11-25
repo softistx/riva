@@ -171,6 +171,8 @@ Code: `RIVA_SSR` (`RivaError`).
 **Fix:** pass what `dehydrate` returned, unchanged, and keep both sides on one version of `@softistx/riva`.
 
 ```ts
+import type { Snapshot } from '@softistx/riva/ssr';
+
 hydrate(client, JSON.parse(payload) as Snapshot);
 ```
 

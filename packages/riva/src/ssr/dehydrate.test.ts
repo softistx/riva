@@ -34,7 +34,7 @@ describe('entries', () => {
 		expect(JSON.parse(JSON.stringify(snap))).toEqual(snap);
 	});
 
-	test('an error carries its code, status and message, never a stack or a cause', async () => {
+	test('an error carries its code, status and retryability, never a message, a stack or a cause', async () => {
 		const client = fakeEnv().client();
 		const failing = query<void, string>({
 			id: 'failing',
@@ -49,16 +49,16 @@ describe('entries', () => {
 			s: 'error',
 			e: {
 				code: 'HTTP_503',
-				message: 'Unavailable',
 				status: 503,
 				retryable: true,
 			},
 		});
+		expect(json).not.toContain('Unavailable');
 		expect(json).not.toContain('stack');
 		expect(json).not.toContain('cause');
 	});
 
-	test('a RivaError without status carries no status, anything else is RIVA_UNKNOWN with no message', async () => {
+	test('a RivaError without status carries no status, a message never travels, anything else is RIVA_UNKNOWN', async () => {
 		const client = fakeEnv().client();
 		const a = query<void, string>({
 			id: 'a',
@@ -79,12 +79,12 @@ describe('entries', () => {
 		const q = dehydrate(client).q;
 		expect(q.find((e) => e.k.startsWith('a:'))?.e).toEqual({
 			code: 'MY_CODE',
-			message: 'mine',
 		});
 		expect(q.find((e) => e.k.startsWith('b:'))?.e).toEqual({
 			code: 'RIVA_UNKNOWN',
 		});
 		expect(JSON.stringify(q)).not.toContain('secret detail');
+		expect(JSON.stringify(q)).not.toContain('mine');
 	});
 
 	test('idle and in-flight entries without data are skipped', async () => {
@@ -126,19 +126,19 @@ describe('entries', () => {
 		});
 		await bad.ensure(client);
 		expect(() => dehydrate(client)).toThrow(
-			'Cannot dehydrate a Map instance at bad:.data',
+			'Cannot dehydrate an instance of Map at bad:.data',
 		);
 	});
 });
 
 describe('atoms', () => {
-	test('only changed, named, ssr atoms travel', () => {
+	test('only changed, named atoms that opted in travel', () => {
 		const client = fakeEnv().client();
-		const changed = atom(1, { name: 'changed' });
-		const same = atom(1, { name: 'same' });
-		const anonymous = atom(1);
-		const local = atom(1, { name: 'local', ssr: false });
-		const when = atom(new Date(0), { name: 'when' });
+		const changed = atom(1, { name: 'changed', ssr: true });
+		const same = atom(1, { name: 'same', ssr: true });
+		const anonymous = atom(1, { ssr: true });
+		const local = atom(1, { name: 'local' });
+		const when = atom(new Date(0), { name: 'when', ssr: true });
 		for (const a of [changed, same, anonymous, local]) client.get(a);
 		client.get(when);
 		client.set(changed, 2);
@@ -159,8 +159,8 @@ describe('atoms', () => {
 
 	test('two atoms with one name throw', () => {
 		const client = fakeEnv().client();
-		client.get(atom(1, { name: 'twin' }));
-		client.get(atom(2, { name: 'twin' }));
+		client.get(atom(1, { name: 'twin', ssr: true }));
+		client.get(atom(2, { name: 'twin', ssr: true }));
 		expect(() => dehydrate(client)).toThrow(
 			'Cannot dehydrate: two atoms are named "twin". Give each SSR atom a unique name, or set ssr: false.',
 		);

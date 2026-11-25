@@ -52,19 +52,21 @@ export const createGraph = (client: RivaClient): Graph => ({
 	named: new Map(),
 });
 
+/** An atom's first value: what a snapshot seeded for its name, else its initial. */
+function initialOf(g: Graph, def: Atom<unknown>): unknown {
+	const { name } = def;
+	return def.ssr && name !== undefined && g.seeds?.has(name)
+		? g.seeds.get(name)
+		: def.initial;
+}
+
 export function nodeOf(g: Graph, def: Def): Node {
 	let n = g.nodes.get(def);
 	if (!n) {
 		const isAtom = def.kind === 'atom';
-		const seeded = isAtom && def.ssr && def.name && g.seeds?.has(def.name);
-		const value = seeded
-			? g.seeds?.get(def.name as string)
-			: isAtom
-				? def.initial
-				: undefined;
 		n = {
 			def,
-			value,
+			value: isAtom ? initialOf(g, def) : undefined,
 			ver: 0,
 			stamp: -1,
 			refs: 0,
@@ -76,7 +78,7 @@ export function nodeOf(g: Graph, def: Def): Node {
 			init: isAtom,
 		};
 		g.nodes.set(def, n);
-		if (isAtom && def.ssr && def.name)
+		if (isAtom && def.ssr && def.name !== undefined)
 			g.named.set(def.name, g.named.has(def.name) ? null : n);
 	}
 	return n;

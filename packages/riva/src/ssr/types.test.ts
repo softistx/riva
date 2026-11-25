@@ -23,3 +23,12 @@ test('a snapshot is JSON-safe', () => {
 	expectTypeOf<Snapshot['v']>().toEqualTypeOf<1>();
 	expectTypeOf<Snapshot['t']>().toBeNumber();
 });
+
+test('a hand-made literal is not a Snapshot', () => {
+	const never = () => {
+		// @ts-expect-error the brand is missing
+		const s: Snapshot = { v: 1, t: 0, q: [], a: {} };
+		return s;
+	};
+	expectTypeOf(never).toBeFunction();
+});

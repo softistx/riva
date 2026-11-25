@@ -6,6 +6,7 @@ import { nodeOf } from './graph';
 import { stableKey } from './key';
 import type { Query, QueryState } from './query';
 import { isBrowser } from './scope';
+import type { SeedEntry } from './ssr/hydrate';
 
 // biome-ignore lint/suspicious/noExplicitAny: entries of every definition share one map
 export type AnyQuery = Query<any, any>;
@@ -56,7 +57,7 @@ export interface Ctx {
 	/** Called on a new entry: `@softistx/riva/ssr` seeds it from a snapshot. @internal */
 	seed?: (c: Ctx, e: Entry) => void;
 	/** Snapshot entries waiting for their entry, by key. @internal */
-	pending?: Map<string, unknown>;
+	pending?: Map<string, SeedEntry>;
 }
 
 const IDLE: State = Object.freeze({
@@ -177,8 +178,8 @@ export function entryOf(c: Ctx, def: AnyQuery, vars: unknown): Entry {
 	const key = stableKey(def.id, vars);
 	let e = c.entries.get(key);
 	if (!e) {
-		const a = atom<State>(IDLE, { name: key, ssr: false });
-		const lay = atom<Lay[]>([], { name: `${key}#layers`, ssr: false });
+		const a = atom<State>(IDLE, { name: key });
+		const lay = atom<Lay[]>([], { name: `${key}#layers` });
 		const { cache, derive } = def.options;
 		e = {
 			key,

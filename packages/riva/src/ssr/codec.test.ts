@@ -71,9 +71,9 @@ describe('refusals name the value and its path', () => {
 		[{ a: [{ n: 1n }] }, 'a bigint', '$.a[0].n'],
 		[{ f: () => 1 }, 'a function', '$.f'],
 		[{ s: Symbol('x') }, 'a symbol', '$.s'],
-		[{ m: new Map() }, 'a Map instance', '$.m'],
-		[[new Set()], 'a Set instance', '$[0]'],
-		[{ x: new (class Money {})() }, 'a Money instance', '$.x'],
+		[{ m: new Map() }, 'an instance of Map', '$.m'],
+		[[new Set()], 'an instance of Set', '$[0]'],
+		[{ x: new (class Money {})() }, 'an instance of Money', '$.x'],
 	])('%p', (v, what, path) => {
 		const e = refused(v);
 		expect(e).toBeInstanceOf(RivaError);
@@ -81,6 +81,20 @@ describe('refusals name the value and its path', () => {
 		expect(e.message).toBe(
 			`Cannot dehydrate ${what} at ${path}: snapshots hold JSON values and Dates. Convert it in the fetch, or keep it out of the cache.`,
 		);
+	});
+
+	test('an object with a constructor key is plain JSON', () => {
+		expect(encode({ constructor: 'x' })).toEqual({ constructor: 'x' });
+		expect(decode(encode({ constructor: 'x' }))).toEqual({ constructor: 'x' });
+		expect(encode(Object.create(null))).toEqual({});
+	});
+
+	test('an invalid Date round-trips as an invalid Date', () => {
+		const wire = encode({ d: new Date('nope') });
+		expect(wire).toEqual({ d: { $t: 'D', v: 'NaN' } });
+		const back = decode(wire) as { d: Date };
+		expect(back.d).toBeInstanceOf(Date);
+		expect(Number.isNaN(+back.d)).toBe(true);
 	});
 
 	test('a cycle is refused, a shared reference is not', () => {

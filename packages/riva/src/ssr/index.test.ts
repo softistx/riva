@@ -39,3 +39,27 @@ test('a resolver with no client still hits the server guard, and can be removed'
 	ssr.setScopeResolver(undefined);
 	expect(() => n.get()).toThrow(RivaScopeError);
 });
+
+test('the resolver wins over the browser default client', async () => {
+	const { setDefaultClient } = await import('../scope');
+	const g = globalThis as { document?: unknown };
+	g.document = {};
+	try {
+		const fallback = createRivaClient();
+		const fromResolver = createRivaClient();
+		const n = atom(0);
+		setDefaultClient(fallback);
+		n.set(1);
+		expect(fallback.get(n)).toBe(1);
+		ssr.setScopeResolver(() => fromResolver);
+		n.set(2);
+		expect(fromResolver.get(n)).toBe(2);
+		expect(fallback.get(n)).toBe(1);
+		ssr.setScopeResolver(() => undefined);
+		expect(n.get()).toBe(1);
+	} finally {
+		setDefaultClient(undefined);
+		g.document = undefined;
+		delete g.document;
+	}
+});

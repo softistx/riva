@@ -8,8 +8,8 @@ test('is a frozen stateless definition with its initial value', () => {
 	expect(a.kind).toBe('atom');
 	expect(a.initial).toBe(3);
 	expect(a.name).toBe('n');
-	expect(a.ssr).toBe(true);
-	expect(atom(1, { ssr: false }).ssr).toBe(false);
+	expect(a.ssr).toBe(false);
+	expect(atom(1, { ssr: true }).ssr).toBe(true);
 	expect(createRivaClient().get(a)).toBe(3);
 });
 

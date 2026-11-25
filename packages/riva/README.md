@@ -39,7 +39,7 @@ client.effect(() => {
 });
 ```
 
-- `atom(initial, { name?, equals?, ssr? })`, `computed(fn, { name?, equals? })`: stateless definitions. Subscribers fire only when the value changes (`equals`, default `Object.is`), once per change, never on a half-updated graph.
+- `atom(initial, { name?, equals?, ssr? })` (`ssr: true` with a `name` sends the value in an SSR snapshot), `computed(fn, { name?, equals? })`: stateless definitions. Subscribers fire only when the value changes (`equals`, default `Object.is`), once per change, never on a half-updated graph.
 - `client.get / set / subscribe / effect / run / batch`: the whole API outside any ambient scope.
 - `effect(() => …)` (free function) re-runs on the ambient client in a browser and is a no-op on the server; `client.effect` always runs.
 - Exported types: `Atom`, `AtomOptions`, `Computed`, `ComputedOptions`, `Readable`, `Getter`, `Listener`, `Unsubscribe`, `EffectFn`.
@@ -286,7 +286,10 @@ s.hasNext; s.hasPrevious; s.isFetchingNext; s.isFetchingPrevious;
 `@softistx/riva/ssr` moves what a request fetched to the browser, so the first render needs no second fetch. It holds no state of its own: a snapshot is plain JSON.
 
 ```ts
+import { createRivaClient } from '@softistx/riva';
 import { dehydrate, hydrate } from '@softistx/riva/ssr';
+
+const client = createRivaClient();
 
 // On the server, once the request's loaders are done:
 const snapshot = dehydrate(client); // JSON-safe, hand it to the page
@@ -295,12 +298,29 @@ const snapshot = dehydrate(client); // JSON-safe, hand it to the page
 hydrate(client, snapshot);
 ```
 
+The snapshot's fields are an opaque format that may change: never build or edit one, only pass on what `dehydrate` returned.
+
+**Embedding the snapshot safely.** Hand it to the page through the host's loader data (React Router serializes it safely). If you inline it in a `<script>` yourself, escape `<` so a value such as `</script>` cannot close the tag:
+
+```ts
+const json = JSON.stringify(snapshot).replace(/</g, '\\u003c');
+html = `<script id="riva" type="application/json">${json}</script>`;
+```
+
 - `dehydrate(client)` writes the settled query entries (successes and errors; idle and in-flight ones are skipped), read as readers see the committed data, so a normalized or infinite entry travels denormalized and is stored again by its own cache policy on arrival. Optimistic layers never travel. Each entry carries its age, not the server's clock, so a skewed clock cannot make fresh data stale.
-- Atoms travel only when they are named and changed from their initial value. Give an atom a unique `name` to send it; `ssr: false` keeps it local (riva's own atoms are all `ssr: false`).
-- `hydrate(client, snapshot)` seeds entries and atoms the client has not created yet, at the moment their definition is first used, so the hydrating code needs none of the definitions. An entry the client already has is replaced only by a newer snapshot, and never while it is fetching or carries optimistic layers; an existing atom is never overwritten. With `{ deferObserved: true }` the entries something observes are not written: they are returned as a snapshot to apply later, outside a render.
-- A fresh entry is not fetched again: data hydrated with the definition's `staleTime` (the default is 0, see [troubleshooting](./docs/troubleshooting.md)) stays fresh for it. A failed entry comes back as a `RivaError` (a `RivaRequestError` when it had a status), with its code, message, status and `retryable`; anything that was not a `RivaError` travels as `RIVA_UNKNOWN` with no message, and no stack or cause ever travels.
-- Dates survive (`{ $t: 'D' }`), as do `NaN` and the infinities. A bigint, a function, a symbol, a `Map`, a `Set`, a class instance or a cycle is refused with `RIVA_SSR`, naming its path.
-- `setScopeResolver(fn)` lets a host (a request context kept in an `AsyncLocalStorage`, for instance) supply the ambient client: `client.run` still wins, and with no resolver, or a resolver that returns `undefined`, a server read with no client throws as before.
+- Atoms travel only when they opt in with `ssr: true`, have a unique `name` and changed from their initial value (`atom(0, { name: 'cart', ssr: true })`). Every other atom stays local, riva's own included.
+- `hydrate(client, snapshot)` seeds entries and atoms the client has not created yet, at the moment their definition is first used, so the hydrating code needs none of the definitions. An entry the client already has is replaced only by a newer snapshot, and never while it is fetching or carries optimistic layers; an existing atom is never overwritten. With `{ deferObserved: true }` (for a render) nothing that could reach an observed entry is written: the entries something observes, those with a cache policy (they share entities) and those not created yet are returned as a snapshot to apply later, outside the render, with `hydrate(client, deferred)`. Its ages are understated by the delay.
+- A fresh entry is not fetched again: data hydrated with the definition's `staleTime` (the default is 0, see [troubleshooting](./docs/troubleshooting.md)) stays fresh for it. A failed entry comes back as a `RivaError` (a `RivaRequestError` when it had a status), with its code, status and `retryable` and an empty message (`RIVA_NETWORK`, `HTTP_<n>` and `RIVA_ABORT` come back as `RivaNetworkError`, `RivaHttpError` and `RivaAbortError`). A message never travels, so a server detail cannot leak; anything that was not a `RivaError` travels as `RIVA_UNKNOWN`, and no stack or cause ever travels.
+- Dates survive (`{ $t: 'D' }`), as do `NaN` and the infinities. A bigint, a function, a symbol, a `Map`, a `Set`, an instance of a class or a cycle is refused with `RIVA_SSR`, naming its path.
+- `setScopeResolver(fn)` lets a host (a request context kept in an `AsyncLocalStorage`, for instance) supply the ambient client. `fn` is `() => RivaClient | undefined`; `client.run` still wins, then the resolver, then the browser's default client. With no resolver, or one that returns `undefined`, a server read with no client throws as before. There is one resolver per process: a second call replaces the first.
+
+```ts
+import { AsyncLocalStorage } from 'node:async_hooks';
+import { setScopeResolver } from '@softistx/riva/ssr';
+
+const als = new AsyncLocalStorage<RivaClient>();
+setScopeResolver(() => als.getStore());
+```
 
 ### Exported types and helpers
 
@@ -308,4 +328,4 @@ hydrate(client, snapshot);
 
 ## Size budget
 
-The main entry `@softistx/riva` stays within 6144 B gzipped, the main entry with `entities` or with `infinite` within 8192 B each, the main entry with `ssr` within 7168 B, the main entry with every subpath within 11264 B, and core + react within 9216 B. `@softistx/riva-graphql` with the entities and its `/cache` stays within 11264 B (`bun run size` checks every row).
+The main entry `@softistx/riva` stays within 6144 B gzipped, the main entry with `entities` or with `infinite` within 8192 B each, the main entry with `ssr` within 7424 B, the main entry with every subpath within 11264 B, and core + react within 9216 B. `@softistx/riva-graphql` with the entities and its `/cache` stays within 11264 B (`bun run size` checks every row).

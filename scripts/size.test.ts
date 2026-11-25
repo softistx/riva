@@ -30,7 +30,7 @@ test('the core and subpath rows: 6144 B and 8448 B, the second under the 9216 B 
 	expect(row?.limit).toBeLessThanOrEqual(9216);
 });
 
-test('the infinite, ssr and all-subpaths rows: 8192 B, 7168 B and 11264 B', () => {
+test('the infinite, ssr and all-subpaths rows: 8192 B, 7424 B and 11264 B', () => {
 	const inf = budgets.find((b) => b.name === '@softistx/riva + infinite');
 	expect(inf?.limit).toBe(8192);
 	expect(inf?.entry).toEqual([
@@ -41,7 +41,7 @@ test('the infinite, ssr and all-subpaths rows: 8192 B, 7168 B and 11264 B', () =
 	expect(all?.limit).toBe(11264);
 	expect(all?.entry).toHaveLength(4);
 	const ssr = budgets.find((b) => b.name === '@softistx/riva + ssr');
-	expect(ssr?.limit).toBe(7168);
+	expect(ssr?.limit).toBe(7424);
 	expect(ssr?.entry).toEqual([
 		'packages/riva/dist/index.js',
 		'packages/riva/dist/ssr/index.js',

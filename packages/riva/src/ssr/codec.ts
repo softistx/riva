@@ -27,10 +27,13 @@ export function encodeAt(
 	if (type !== 'object' || value === null) return value;
 	const obj = value as object;
 	if (seen.includes(obj)) return refuse('a cycle', path);
-	if (obj instanceof Date) return { $t: 'D', v: obj.toISOString() };
-	const k = obj.constructor as { name: string } | undefined;
+	// An invalid Date has no ISO string: its tag carries 'NaN' and decodes back to it.
+	if (obj instanceof Date)
+		return { $t: 'D', v: Number.isNaN(+obj) ? 'NaN' : obj.toISOString() };
 	const list = Array.isArray(obj);
-	if (!list && k && k !== Object) return refuse(`a ${k.name} instance`, path);
+	const p = Object.getPrototypeOf(obj);
+	if (!list && p !== Object.prototype && p !== null)
+		return refuse(`an instance of ${p?.constructor?.name ?? 'object'}`, path);
 	seen.push(obj);
 	const out = list
 		? obj.map((x, i) => encodeAt(x, `${path}[${i}]`, seen))
@@ -48,9 +51,7 @@ export function decode(value: unknown): unknown {
 	if (Array.isArray(value)) return value.map(decode);
 	// biome-ignore lint/style/useNamingConvention: the tag key of the wire format
 	const { $t: tag, v } = value as { $t?: unknown; v?: unknown };
-	return tag === 'D'
-		? new Date(v as string)
-		: tag === 'N'
-			? Number(v)
-			: mapObject((tag === 'O' ? v : value) as object, decode);
+	if (tag === 'D') return new Date(v === 'NaN' ? Number.NaN : (v as string));
+	if (tag === 'N') return Number(v);
+	return mapObject((tag === 'O' ? v : value) as object, decode);
 }

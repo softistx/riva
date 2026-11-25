@@ -4,7 +4,13 @@ import { atom } from '../atom';
 import { createRivaClient } from '../client';
 import { entities } from '../entities';
 import { readEntity } from '../entities/api';
-import { RivaError, RivaRequestError } from '../errors';
+import {
+	RivaAbortError,
+	RivaError,
+	RivaHttpError,
+	RivaNetworkError,
+	RivaRequestError,
+} from '../errors';
 import { infinite } from '../infinite';
 import { query } from '../query';
 import { dehydrate, hydrate } from './index';
@@ -133,7 +139,7 @@ describe('seeding', () => {
 		expect(a).toBeInstanceOf(RivaRequestError);
 		expect([a.code, a.message, a.status, a.retryable]).toEqual([
 			'HTTP_502',
-			'Bad gateway',
+			'',
 			502,
 			true,
 		]);
@@ -142,6 +148,35 @@ describe('seeding', () => {
 		expect(b).not.toBeInstanceOf(RivaRequestError);
 		expect(b.code).toBe('MY_CODE');
 		expect(browser.get(plain).status).toBe('error');
+	});
+
+	test.each([
+		[
+			'RIVA_NETWORK',
+			() => new RivaNetworkError('connect ECONNREFUSED 10.0.0.5'),
+			RivaNetworkError,
+		],
+		['HTTP_503', () => new RivaHttpError(503, 'Unavailable'), RivaHttpError],
+		['RIVA_ABORT', () => new RivaAbortError(), RivaAbortError],
+	])('%s keeps its class, with no message', async (code, make, Class) => {
+		const env = fakeEnv();
+		const server = env.client();
+		const failing = query<void, string>({
+			id: `class-${code}`,
+			retry: 0,
+			fetch: async () => {
+				throw make();
+			},
+		});
+		await failing.ensure(server).catch(() => {});
+		const wire = roundTrip(dehydrate(server));
+		expect(JSON.stringify(wire)).not.toContain('ECONNREFUSED');
+		const browser = env.client();
+		hydrate(browser, wire);
+		const e = browser.get(failing).error as RivaError;
+		expect(e).toBeInstanceOf(Class);
+		expect(e.code).toBe(code);
+		expect(e.message).toBe('');
 	});
 
 	test('a snapshot that is not one throws', () => {
@@ -240,11 +275,30 @@ describe('merging into existing entries', () => {
 	});
 });
 
+describe('pending entries', () => {
+	test('a newer snapshot entry is kept over an older one', async () => {
+		const env = fakeEnv();
+		const { q } = counted('pend');
+		const older = env.client();
+		q.setData(older, { page: 1 }, { n: 1, at: new Date(0) });
+		env.sched.advance(5_000);
+		const newer = env.client();
+		q.setData(newer, { page: 1 }, { n: 2, at: new Date(0) });
+		const browser = env.client();
+		hydrate(browser, roundTrip(dehydrate(newer)));
+		hydrate(browser, roundTrip(dehydrate(older)));
+		expect(browser.get(q, { page: 1 }).data?.n).toBe(2);
+	});
+});
+
 describe('atoms', () => {
 	test('an atom not created yet is seeded, once', () => {
 		const env = fakeEnv();
 		const server = env.client();
-		const draft = atom({ text: '', at: new Date(0) }, { name: 'draft' });
+		const draft = atom(
+			{ text: '', at: new Date(0) },
+			{ name: 'draft', ssr: true },
+		);
 		server.get(draft);
 		server.set(draft, { text: 'hi', at: new Date(7) });
 		const snap = roundTrip(dehydrate(server));
@@ -259,7 +313,7 @@ describe('atoms', () => {
 	test('an atom that exists is never overwritten', () => {
 		const env = fakeEnv();
 		const server = env.client();
-		const count = atom(0, { name: 'count' });
+		const count = atom(0, { name: 'count', ssr: true });
 		server.set(count, 5);
 		const snap = roundTrip(dehydrate(server));
 		const browser = env.client();
@@ -271,7 +325,7 @@ describe('atoms', () => {
 	test('a seeded atom is dehydrated again and an ssr: false atom is never seeded', () => {
 		const env = fakeEnv();
 		const server = env.client();
-		const kept = atom(0, { name: 'kept' });
+		const kept = atom(0, { name: 'kept', ssr: true });
 		const local = atom(0, { name: 'local', ssr: false });
 		server.set(kept, 3);
 		const snap = { ...dehydrate(server), a: { kept: 3, local: 9 } };
@@ -316,6 +370,45 @@ describe('through the cache policies', () => {
 		expect(data?.patients[0]).toEqual(ada);
 		expect(data?.top).toEqual(ada);
 		expect(readEntity(browser, 'Patient:1')).toMatchObject({ name: 'Ada' });
+	});
+
+	test('with deferObserved nothing observed is written, through shared entities either', async () => {
+		const env = fakeEnv();
+		const make = (id: string) =>
+			query<void, { p: P }>({
+				id,
+				cache: entities(),
+				staleTime: 60_000,
+				fetch: async () => ({ p: ada }),
+			});
+		const one = make('one');
+		const two = make('two');
+		const server = env.client();
+		const renamed = { ...ada, name: 'Grace' };
+		one.setData(server, undefined, { p: renamed });
+		two.setData(server, undefined, { p: renamed });
+		const browser = env.client();
+		one.setData(browser, undefined, { p: ada });
+		const seen: string[] = [];
+		const off = browser.subscribe(one, undefined, (s) =>
+			seen.push(s.data?.p.name ?? ''),
+		);
+		await settle();
+		env.sched.advance(100);
+		seen.length = 0;
+		const deferred = hydrate(browser, roundTrip(dehydrate(server)), {
+			deferObserved: true,
+		});
+		// "Render": the unobserved entry is created, and still nothing is written.
+		expect(browser.get(two).status).toBe('idle');
+		expect(readEntity(browser, 'Patient:1')).toMatchObject({ name: 'Ada' });
+		expect(seen).toEqual([]);
+		expect(deferred?.q.map((e) => e.k).sort()).toEqual(['one:', 'two:']);
+		hydrate(browser, deferred as never);
+		expect(readEntity(browser, 'Patient:1')).toMatchObject({ name: 'Grace' });
+		expect(browser.get(two).data?.p.name).toBe('Grace');
+		expect(seen.at(-1)).toBe('Grace');
+		off();
 	});
 
 	test('infinite pages round trip, and fetchNext continues after hydration', async () => {
@@ -369,11 +462,16 @@ describe('requests stay apart', () => {
 		const { q } = counted('leak');
 		const a = env.client();
 		const b = env.client();
-		const secret = atom('', { name: 'who' });
+		const secret = atom('', { name: 'who', ssr: true });
 		q.setData(a, { page: 1 }, { n: 1, at: new Date(0) });
 		a.set(secret, 'alice');
 		const snapA = roundTrip(dehydrate(a));
-		expect(dehydrate(b)).toEqual({ v: 1, t: env.sched.now(), q: [], a: {} });
+		expect(dehydrate(b)).toEqual({
+			v: 1,
+			t: env.sched.now(),
+			q: [],
+			a: {},
+		} as never);
 		hydrate(b, snapA);
 		b.set(secret, 'bob');
 		expect(a.get(secret)).toBe('alice');
