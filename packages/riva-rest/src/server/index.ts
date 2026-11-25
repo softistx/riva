@@ -1,5 +1,6 @@
 import type { DataOperation, DataSource } from '@softistx/riva';
 import { type Route, transportOf } from '../transport';
+import { PREFIX, SAFE } from '../wire';
 
 /** What `operations` reads of an OpenAPI client: its operation table. */
 export interface OperationsOf {
@@ -13,10 +14,8 @@ interface Entry {
 	body?: unknown;
 }
 
-const READS = new Set(['get', 'head', 'options']);
-
 /** The id the browser names an operation by: `rest:<operationId>`. */
-export const PREFIX = 'rest:';
+export { PREFIX };
 
 /**
  * The server side of `bffTransport`: runs the operations of an OpenAPI client
@@ -47,7 +46,7 @@ export function operations(api: OperationsOf): DataSource {
 						(entry.parameters?.length ?? 0) > 0 || entry.body !== undefined,
 				};
 				op = {
-					kind: READS.has(entry.method) ? 'query' : 'mutation',
+					kind: SAFE.has(entry.method) ? 'query' : 'mutation',
 					run: async (client, variables, signal) =>
 						transportOf(client).call(route, variables, { signal }),
 				};

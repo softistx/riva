@@ -2,6 +2,7 @@ import type { HttpClient } from '@softistx/httpyz';
 import { RivaScopeError } from '@softistx/riva';
 import { type BffTransportOptions, postData } from '@softistx/riva/data';
 import type { RestTransport } from '../transport';
+import { PREFIX } from '../wire';
 
 export type { BffTransportOptions };
 
@@ -23,6 +24,6 @@ export function bffTransport(opts: BffTransportOptions = {}): RestTransport {
 			);
 		},
 		call: (route, input, { signal }) =>
-			postData(opts, `rest:${route.operationId}`, input, signal),
+			postData(opts, `${PREFIX}${route.operationId}`, input, signal),
 	};
 }
