@@ -6,18 +6,17 @@ Await the data in the loader, read it in the component. The loader fetches on th
 
 ## Example
 
-`appRivaOf` is the typed accessor of [setup](./setup.md), so `riva.graphql` and `riva.rest` are typed.
+`rivaOf` is typed by the `Register` of [setup](./setup.md), so `riva.graphql` and `riva.rest` are typed.
 
 ```tsx
 // app/patients.tsx
-import { riva } from '@softistx/riva-react-router';
+import { riva, rivaOf } from '@softistx/riva-react-router';
 import { useGraphQL } from '@softistx/riva-graphql/react';
 import { PATIENTS_QUERY } from './graphql'; // schematic: your document
-import { appRivaOf } from './riva';
 import type { Route } from './+types/patients';
 
 export async function loader({ context, params }: Route.LoaderArgs) {
-	await appRivaOf(context).graphql.query(PATIENTS_QUERY, { school: params.school });
+	await rivaOf(context).graphql.query(PATIENTS_QUERY, { school: params.school });
 	return riva(context);
 }
 
@@ -28,12 +27,12 @@ export default function Patients({ params }: Route.ComponentProps) {
 }
 ```
 
-With REST the loader awaits `appRivaOf(context).rest.get('/patients/{id}', { param: { id: params.id } })` and the component calls `useRest` of `@softistx/riva-rest/react`.
+With REST the loader awaits `rivaOf(context).rest.get('/patients/{id}', { param: { id: params.id } })` and the component calls `useRest` of `@softistx/riva-rest/react`.
 
 Several reads in one loader run together:
 
 ```ts
-const app = appRivaOf(context);
+const app = rivaOf(context);
 await Promise.all([
 	app.graphql.query(PATIENTS_QUERY, { school: params.school }),
 	app.graphql.query(SCHOOL_QUERY, { school: params.school }),

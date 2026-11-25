@@ -73,7 +73,7 @@ The peers each package adds, with their ranges, are in
 4. In a React Router 8 app, add `rivaMiddleware({ create })` on the root
    route and `RivaRouterProvider riva={...}` in the root component; loaders
    `await riva.graphql.query(...)` or `riva.rest.get(...)` and return
-   `riva(context)`. Type the accessor once: `rivaOf(context) as AppRiva`.
+   `riva(context)`. Type `rivaOf` once with `declare module '@softistx/riva-react-router' { interface Register { riva: AppRiva } }`.
 5. Reach for a definition (`docs/guide/shared-definitions.md` of
    `@softistx/riva`) only when a call site needs what the simple API does
    not give: polling, optimistic updates, infinite lists, a shared setting.

@@ -17,7 +17,6 @@ Peers: `@softistx/riva`, `@softistx/riva-react`, `react` ^19 and `react-router` 
 import { createGraphQLClient } from '@softistx/graphql-client';
 import { createRiva } from '@softistx/riva';
 import { graphql } from '@softistx/riva-graphql';
-import { type ContextLike, rivaOf } from '@softistx/riva-react-router';
 
 const API_URL = 'https://api.example.com/graphql'; // schematic: your API
 
@@ -29,8 +28,12 @@ export function createAppRiva(cookie?: string) {
 }
 export type AppRiva = ReturnType<typeof createAppRiva>;
 
-// `rivaOf` returns the base `Riva`; this one carries `riva.graphql` in its type.
-export const appRivaOf = (context: ContextLike) => rivaOf(context) as AppRiva;
+// Register it once: `rivaOf` then carries `riva.graphql` and `riva.rest` in its type.
+declare module '@softistx/riva-react-router' {
+	interface Register {
+		riva: AppRiva;
+	}
+}
 ```
 
 ```ts
@@ -72,14 +75,13 @@ Await the data in the loader, read it with a hook in the component:
 
 ```tsx
 // app/patients.tsx
-import { riva } from '@softistx/riva-react-router';
+import { riva, rivaOf } from '@softistx/riva-react-router';
 import { useGraphQL } from '@softistx/riva-graphql/react';
 import { PATIENTS_QUERY } from './graphql'; // schematic: your document
-import { appRivaOf } from './riva';
 import type { Route } from './+types/patients';
 
 export async function loader({ context, params }: Route.LoaderArgs) {
-	await appRivaOf(context).graphql.query(PATIENTS_QUERY, { school: params.school });
+	await rivaOf(context).graphql.query(PATIENTS_QUERY, { school: params.school });
 	return riva(context);
 }
 
@@ -90,7 +92,7 @@ export default function Patients({ params }: Route.ComponentProps) {
 }
 ```
 
-For REST it is `await appRivaOf(context).rest.get('/patients/{id}', { param: { id: params.id } })` and `useRest` from `@softistx/riva-rest/react`. `rivaOf` and `riva` are for server loaders and actions only; return `riva(context)` from one loader per request. [Guide](./docs/guide/loader.md).
+For REST it is `await rivaOf(context).rest.get('/patients/{id}', { param: { id: params.id } })` and `useRest` from `@softistx/riva-rest/react`. `rivaOf` and `riva` are for server loaders and actions only; return `riva(context)` from one loader per request. [Guide](./docs/guide/loader.md).
 
 ## The `/_data` route
 
@@ -146,7 +148,7 @@ export default function Patients({ params }: { params: { school: string } }) {
 | Export | From | What |
 | --- | --- | --- |
 | `rivaMiddleware(opts?)` | `/server` | Root middleware: creates the riva (`create`), awaits `setup`, sets the context, runs the rest of the request in the ambient scope. |
-| `rivaOf(context)` | `.` | The request's riva; `RivaScopeError` when the middleware did not run. |
+| `rivaOf(context)` | `.` | The request's riva, typed by `Register`; `RivaScopeError` when the middleware did not run. |
 | `riva(context)` | `.` | `{ '~riva': Snapshot }`, to spread into loader data. |
 | `rivaContext` | `.` | The router context key. |
 | `RivaRouterProvider` | `.` | `riva?`, `setup?`, `invalidateOnAction?`, `children`. |
@@ -154,7 +156,7 @@ export default function Patients({ params }: { params: { school: string } }) {
 | `revalidate` | `.` | Query that re-runs the route loaders when invalidated. |
 | `dataRoute(opts)` | `/server` | The `/_data` action and loader. |
 
-Types: `ContextLike` (what `rivaOf` and `riva` accept, a `context.get`), `RivaRouterProviderProps` from `.`; `RivaMiddlewareOptions`, `MiddlewareArgs`, `DataRouteOptions`, `DataRoute`, `DataSource` and `DataOperation` from `/server`.
+Types: `Register` (augment it with `riva: AppRiva` to type `rivaOf`), `RegisteredRiva`, `RivaFrom`, `ContextLike` (what `rivaOf` and `riva` accept, a `context.get`), `RivaRouterProviderProps` from `.`; `RivaMiddlewareOptions`, `MiddlewareArgs`, `DataRouteOptions`, `DataRoute`, `DataSource` and `DataOperation` from `/server`.
 
 ## Notes for hosts
 

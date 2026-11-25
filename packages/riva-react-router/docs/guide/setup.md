@@ -13,7 +13,6 @@ One `Riva` per request on the server, hydrated in the browser. The middleware cr
 import { createGraphQLClient } from '@softistx/graphql-client';
 import { createRiva } from '@softistx/riva';
 import { graphql } from '@softistx/riva-graphql';
-import { type ContextLike, rivaOf } from '@softistx/riva-react-router';
 
 const API_URL = 'https://api.example.com/graphql'; // schematic: your API
 
@@ -25,8 +24,12 @@ export function createAppRiva(cookie?: string) {
 }
 export type AppRiva = ReturnType<typeof createAppRiva>;
 
-// `rivaOf` returns the base `Riva`; this one carries `riva.graphql` in its type.
-export const appRivaOf = (context: ContextLike) => rivaOf(context) as AppRiva;
+// Register it once: `rivaOf` then carries `riva.graphql` and `riva.rest` in its type.
+declare module '@softistx/riva-react-router' {
+	interface Register {
+		riva: AppRiva;
+	}
+}
 ```
 
 ```ts

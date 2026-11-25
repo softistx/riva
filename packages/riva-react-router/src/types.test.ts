@@ -1,5 +1,5 @@
 import { expectTypeOf, test } from 'bun:test';
-import { createRiva, type Query, query, type Riva } from '@softistx/riva';
+import { createRiva, type Query, query } from '@softistx/riva';
 import type { hydrate, Snapshot } from '@softistx/riva/ssr';
 import { buildAllowlist } from '@softistx/riva-graphql/codegen';
 import { allowlist } from '@softistx/riva-graphql/server';
@@ -9,6 +9,7 @@ import {
 	type useLoaderData,
 } from 'react-router';
 import {
+	type RegisteredRiva,
 	revalidate,
 	riva,
 	rivaContext,
@@ -21,7 +22,7 @@ const context = new RouterContextProvider();
 context.set(rivaContext, createRiva());
 
 test('rivaOf returns the request riva', () => {
-	expectTypeOf(rivaOf(context)).toEqualTypeOf<Riva>();
+	expectTypeOf(rivaOf(context)).toEqualTypeOf<RegisteredRiva>();
 });
 
 test('riva() spreads into loader data, keeping the branded snapshot', () => {
