@@ -178,7 +178,8 @@ function Books() {
 ```
 
 - `s` is tracked per key: the component re-renders only when a key it read during its render changes. `s.total` alone does not re-render on a `filter` change.
-- `s` is read-only: a write throws. Write through `a`.
+- `s` is read-only: a write throws a `RivaError` with code `RIVA_STORE` (`Store "books": "filter" is read-only here; write it in an action.`). Write through `a`.
+- `s` is a new object after each change of a key the component read, so `useMemo(…, [s])` and `React.memo` children that take `s` follow it.
 - `useValue(BookStore.total)` still reads a single value.
 - Under `renderToString` the hook reads the provider's client, as `useValue` does.
 

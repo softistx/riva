@@ -65,9 +65,11 @@ client.effect(() => {
 
 ## RIVA_STORE
 
-Code: `RIVA_STORE`. Thrown by `@softistx/riva/store`. The message names the store and the key.
+Code: `RIVA_STORE`. Thrown by `@softistx/riva/store` and `useStore`. Every message starts with `Store "<name>": `, then the key and the refusal.
 
-**`"<key>" is written outside an action`**: a state key was written with `Store.key.set(…)` or `client.set(Store.key, …)`, in a component, a listener or a test. Only an action writes. Write it in an action of the store (`s.key = …`), and call the action.
+### Store "<name>": "<key>" is written outside an action. Write it in an action of the store.
+
+A state key was written with `Store.key.set(…)` or `client.set(Store.key, …)`, in a component, a listener or a test. Only an action writes. Write it in an action of the store (`s.key = …`), and call the action.
 
 ```ts
 const Counter = store({
@@ -78,23 +80,45 @@ const Counter = store({
 Counter.inc(); // not Counter.n.set(1)
 ```
 
-**`"<key>" is written after its action settled`**: an action kept `s` (in a timer or a callback) and wrote after the action's promise settled. Write only while the action runs: `await` what the write depends on, or start another action.
+### Store "<name>": "<key>" is written after its action settled.
 
-**`"<key>" is not a state key`**: `s.total = …` where `total` is a computed, or a key the store does not have. Only state is writable.
+An action kept `s` (in a timer or a callback) and wrote after the action's promise settled. Write only while the action runs: `await` what the write depends on, or start another action.
 
-**`a computed cannot write "<key>"`**: a computed assigned on its `s`. A computed only reads; move the write to an action.
+### Store "<name>": "<key>" is not a state key, so it cannot be written.
 
-**`"<key>" is read-only here`**: a write on the view `useStore` or `Store.bind(client)[0]` returns. Write through the actions.
+`s.total = …` where `total` is a computed, or a key the store does not have. Only state is writable.
 
-**`the key "<key>" is taken`**: a state, computed or action key repeats, or is one of `kind`, `name`, `reset`, `bind`. Rename it.
+### Store "<name>": a computed cannot write "<key>".
 
-**`Two stores are named "<name>"`**: two store definitions with one name were used on one client. Give each a unique `name`. A module that is re-evaluated by hot reload defines a second store with the same name: reload the page when a store module changes.
+A computed assigned on its `s`. A computed only reads; move the write to an action.
 
-**A nested mutation throws a `TypeError` in development**: stored values are deep-frozen outside production, so `s.items.push(b)` or `s.items[0].title = …` throws. Replace the value: `s.items = [...s.items, b]`.
+### Store "<name>": "<key>" is read-only here; write it in an action.
 
-**The context is not where I expect it**: the context goes right after the arguments the caller passes or the function declares, whichever is longer. A default value before it (`(s, page = 1, ctx)`) shortens the function's declared length and moves it. Use an optional argument instead: `(s, page?: number, ctx?: StoreContext)`.
+A write on the view `useStore(Store)` or `Store.bind(client)[0]` returns. Write through the actions (`a.add(…)`), never on `s`.
 
-**Reads after an `await` fail with `RIVA_SCOPE`**: `BookStore.total.get()` inside an async action, after the first `await`, has no ambient client. Read `s.total` instead: `s` stays bound to the action's client.
+### Store "<name>": the key "<key>" is taken (a state, computed or action key, or one of kind, name, reset, bind, then).
+
+A state, computed or action key repeats, or is one of `kind`, `name`, `reset`, `bind`, `then`. Rename it. The reserved keys are also a type error.
+
+### Store "<name>": two stores are named "<name>" on this client: give each store a unique name.
+
+Two store definitions with one name were used on one client, on the server. Give each a unique `name`. In a browser the newer definition takes over instead (a hot-reloaded module), so this error does not happen there.
+
+### A nested mutation throws a `TypeError` in development
+
+Stored values (initial, written or hydrated) are deep-frozen outside production, so `s.items.push(b)` or `s.items[0].title = …` throws. Replace the value: `s.items = [...s.items, b]`.
+
+### The context lands in an optional argument, or `a.inc()` does not type
+
+The context goes right after the arguments the caller passes or the function declares, whichever is longer. A default value before it (`(s, page = 1, ctx)`) shortens the function's declared length and moves it, and an action whose last parameter is optional or defaulted with no context after it receives the context in that parameter. That shape is a type error (`Add "ctx?: StoreContext" as the last parameter…`): declare the context last.
+
+```ts
+inc(s, by?: number, ctx?: StoreContext) { s.n += by ?? 1; }
+```
+
+### Reads after an `await` fail with `RIVA_SCOPE`
+
+`BookStore.total.get()` inside an async action, after the first `await`, has no ambient client. Read `s.total` instead: `s` stays bound to the action's client.
 
 ## Invalid duration
 

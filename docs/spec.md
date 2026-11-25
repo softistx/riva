@@ -117,9 +117,9 @@ Rules of the API:
   `untracked(fn)`. Glitch-free, lazy computeds, synchronous propagation.
 - Values are stored per `RivaClient` (D12). A server-side read with no client in
   scope throws `RivaScopeError` with a message naming the fix.
-- Stores (D16, draft): `store()` is built on signals and computeds. A state key
-  is a signal whose `equals` refuses every write made outside an action or
-  `reset()` with `RIVA_STORE`; hydration seeds values and never writes.
+- Draft, for the owner's review (D16): a store's state keys are signals whose
+  `equals` refuses any write made outside an action or `reset()` with
+  `RIVA_STORE`; hydration seeds values and never writes.
 
 ### 4.2 Query engine
 - Dedupe of identical in-flight requests; `staleTime`, `gcTime`, `retry`
