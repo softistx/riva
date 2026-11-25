@@ -65,7 +65,7 @@ test('state keys are read-only signals, computeds are computeds', () => {
 	expectTypeOf(Books.total).toEqualTypeOf<Computed<number>>();
 	expectTypeOf(Books.name).toEqualTypeOf<'books'>();
 	expectTypeOf(Books.kind).toEqualTypeOf<'store'>();
-	expectTypeOf(Books.items.get()).toEqualTypeOf<Book[]>();
+	expectTypeOf<ReturnType<typeof Books.items.get>>().toEqualTypeOf<Book[]>();
 });
 
 test('a state key is read with client.get and cannot be set', () => {
