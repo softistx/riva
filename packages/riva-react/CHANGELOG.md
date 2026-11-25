@@ -1,5 +1,12 @@
 # @softistx/riva-react
 
+## 0.4.0
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @softistx/riva@0.4.0
+
 ## 0.3.0
 
 ### Minor Changes

@@ -1,5 +1,17 @@
 # @softistx/riva-react-router
 
+## 0.4.0
+
+### Minor Changes
+
+- [#87](https://github.com/softistx/riva/pull/87) [`a1c3691`](https://github.com/softistx/riva/commit/a1c3691e6be18fd6116b2eadcb3fdd00763b59f4) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Type `rivaOf` by your app's riva with a `Register` module augmentation, so `.graphql` and `.rest` need no cast.
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @softistx/riva@0.4.0
+  - @softistx/riva-react@0.4.0
+
 ## 0.3.0
 
 ### Minor Changes
