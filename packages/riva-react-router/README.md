@@ -53,9 +53,25 @@ export default function Root() {
 }
 ```
 
-`/server` imports `node:async_hooks`: keep it out of the browser bundle (React Router drops a route module's `middleware` export from the client build).
+`/server` imports `node:async_hooks`, so it must stay out of the browser bundle. The safe pattern is to build the middleware in a `*.server.ts` module (React Router never bundles it for the browser) and import it from the root:
 
-Only loaders that return `riva(context)` feed the provider, the root's or a child's: it hydrates the `~riva` snapshot of each match, once.
+```ts
+// app/riva.server.ts
+import { rivaMiddleware } from '@softistx/riva-react-router/server';
+
+export const rivaMw = rivaMiddleware({ /* create, setup */ });
+```
+
+```tsx
+// app/root.tsx
+import { rivaMw } from './riva.server';
+
+export const middleware = [rivaMw];
+```
+
+Only loaders that return `riva(context)` feed the provider, the root's or a child's: it hydrates the `~riva` snapshot of each match, once. Every `riva(context)` call dehydrates the whole request client, so return it from one loader per request (usually the root's) and not from every route: the other loaders then only `ensure` their data.
+
+The `client` prop of `RivaRouterProvider` must stay the same object for the lifetime of the mount, and `setup` must be idempotent: React StrictMode runs it twice in development.
 
 ## The loader pattern
 
@@ -86,7 +102,7 @@ export default function Patients({ params }: Route.ComponentProps) {
 
 The provider hydrates each match's `~riva` once. The first render is seeded before its children read, so the server markup and the browser's first render agree and fresh data is not fetched again. On a navigation or revalidation, entries something observes (and entries with a cache policy) are applied in a layout effect, never during a render. Named signals that travel (`ssr: true`) are seeded once; a signal the browser already holds, and every local signal, keeps its value.
 
-Inside a request (loader, action, middleware) the ambient scope works after an `await`: `mySignal.get()` resolves to the request's client.
+The ambient scope (`mySignal.get()` resolving to the request's client, also after an `await`) works only inside the `next` that `rivaMiddleware` runs, that is in loaders, actions and the code they call. Outside it (another middleware that runs before, a module scope), use `rivaOf(context)`.
 
 ## Exports
 
@@ -98,6 +114,8 @@ Inside a request (loader, action, middleware) the ambient scope works after an `
 | `rivaContext` | `.` | The router context key. |
 | `RivaRouterProvider` | `.` | `client?`, `setup?`, `children`. |
 
+Types: `ContextLike` (what `rivaOf` and `riva` accept, a `context.get`), `RivaRouterProviderProps` from `.`; `RivaMiddlewareOptions` and `MiddlewareArgs` from `/server`.
+
 ## Notes for hosts
 
 - The ambient scope is one `AsyncLocalStorage` per process, wired by importing `/server` (`setScopeResolver` is one per process: another resolver replaces it).
@@ -105,4 +123,4 @@ Inside a request (loader, action, middleware) the ambient scope works after an `
 - `Snapshot` keeps its brand through `useLoaderData`, so `data['~riva']` can be handed to `hydrate` by hand.
 - Errors travel as codes: a failed query rehydrates as its class (`instanceof RivaRequestError` holds) with an empty message.
 
-More: [docs](./docs/README.md), [troubleshooting](./docs/troubleshooting.md), [spec](../../docs/spec.md).
+More: [docs](https://github.com/softistx/riva/blob/develop/packages/riva-react-router/docs/README.md), [troubleshooting](https://github.com/softistx/riva/blob/develop/packages/riva-react-router/docs/troubleshooting.md), [spec](https://github.com/softistx/riva/blob/develop/docs/spec.md).
