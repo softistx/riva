@@ -214,14 +214,21 @@ A hook never starts a fetch during a server render, except through `suspense: tr
 ```ts
 import { useMutationHandle, useResource, useStableInput } from '@softistx/riva-react/resource';
 
-// useResource(key, make, { suspense?, keepPrevious? }): one resource per riva and key,
-// the state as a discriminated union; suspense: true suspends and types it as success.
-const state = useResource('books', (riva) => riva.graphql.query(BOOKS_QUERY, {}));
-// useMutationHandle(key, make): a callable with the mutation state fields and reset().
-const save = useMutationHandle('add-book', (riva) => riva.graphql.mutation(ADD_BOOK));
+// BOOKS_QUERY and ADD_BOOK_MUTATION are documents written with graphql(); the names are schematic.
+function Books({ first }: { first: number }) {
+	// useStableInput(id, input, enabled) gives the key and what to hand the call.
+	const input = useStableInput('books', () => ({ first }), undefined);
+	// The key identifies the resource: derive it from everything `make` reads.
+	const state = useResource(input.key, (riva) =>
+		riva.graphql.query(BOOKS_QUERY, input.input as never, { enabled: input.enabled }),
+	);
+	// useMutationHandle(key, make): a callable with the mutation state fields and reset().
+	const save = useMutationHandle('add-book', (riva) => riva.graphql.mutation(ADD_BOOK_MUTATION));
+	return null;
+}
 ```
 
-`useStableInput` reads a plain value or a function through a stable wrapper: a function re-derives the key only through the signals it reads. [Guide](./docs/guide/resource.md).
+`useResource(key, make, { suspense?, keepPrevious? })` makes one resource per riva and key, as a discriminated state; `suspense: true` suspends and types it as success, and `suspenseStaleTime(riva, staleTime?)` is the `staleTime` such a fetch should use (yours or the riva's, at least 1000 ms). `useStableInput` returns `{ key, input, enabled }`; a function input is evaluated at each render (untracked) to derive the key, so it follows props, and the resource still tracks the signals it reads. A disabled hook never calls it. The callable of `useMutationHandle` and its `reset` change identity with the state: call them from handlers, never list them in effect dependencies. [Guide](./docs/guide/resource.md).
 
 ## Entry points
 
@@ -231,8 +238,8 @@ const save = useMutationHandle('add-book', (riva) => riva.graphql.mutation(ADD_B
 | `@softistx/riva-react/infinite` | `useInfiniteQuery` |
 | `@softistx/riva-react/entities` | `useFragment` |
 | `@softistx/riva-react/store` | `useStore` |
-| `@softistx/riva-react/resource` | `useResource`, `useMutationHandle`, `useStableInput` (the blocks the adapters' hooks are built on) |
+| `@softistx/riva-react/resource` | `useResource`, `useMutationHandle`, `useStableInput`, `suspenseStaleTime` (the blocks the adapters' hooks are built on) |
 
-Types: `MutationResult` (what `useMutation` returns), `RivaProviderProps`, `SuspendedState` and `UseQueryOptions` (main entry), `InfiniteResult` and `UseInfiniteQueryOptions` (`/infinite`).
+Types: `MutationResult` (what `useMutation` returns), `RivaProviderProps`, `SuspendedState` and `UseQueryOptions` (main entry), `InfiniteResult` and `UseInfiniteQueryOptions` (`/infinite`), `UseResourceOptions`, `StableInput`, `MutationHook` and `SuspendedState` (`/resource`).
 
 Core plus the main entry stays under 9 kB gzipped; the subpaths cost nothing until imported.

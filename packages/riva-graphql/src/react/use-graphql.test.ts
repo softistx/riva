@@ -116,7 +116,11 @@ test('enabled false is idle, calls neither the variables function nor the transp
 });
 
 test('a tracked enabled function toggles the fetch', async () => {
-	const t = fakeTransport(() => viewer());
+	const gate = deferred<void>();
+	const t = fakeTransport(async () => {
+		await gate.promise;
+		return viewer();
+	});
 	const riva = createRiva({ graphql: graphql(t) });
 	const on = signal(false);
 	function C() {
@@ -131,8 +135,30 @@ test('a tracked enabled function toggles the fetch', async () => {
 	await flush();
 	expect([m.text(), t.calls.length]).toEqual(['idle', 0]);
 	await flush(() => riva.set(on, true));
+	await flush(() => gate.resolve());
 	expect(m.text()).toBe('success');
 	expect(t.calls).toHaveLength(1);
+	await m.unmount();
+});
+
+test('a variables function follows props without suspense', async () => {
+	const t = fakeTransport((c) => ({
+		patients: (c.variables as { school: string }).school,
+	}));
+	const riva = createRiva({ graphql: graphql(t) });
+	function C({ school }: { school: string }) {
+		const s = useGraphQL(PATIENTS_QUERY, () => ({ school }));
+		return h('p', null, show(s));
+	}
+	const m = await mount(h(C, { school: 'a' }), riva);
+	await flush();
+	expect(m.text()).toBe('success:{"patients":"a"}:false');
+	await m.rerender(h(C, { school: 'b' }));
+	await flush();
+	expect(m.text()).toBe('success:{"patients":"b"}:false');
+	expect(
+		t.calls.map((c) => (c.variables as { school: string }).school),
+	).toEqual(['a', 'b']);
 	await m.unmount();
 });
 

@@ -1,12 +1,14 @@
 import type { ResourceState } from '@softistx/riva/resource';
-import { useResource, useStableInput } from '@softistx/riva-react/resource';
+import {
+	suspenseStaleTime,
+	useResource,
+	useStableInput,
+} from '@softistx/riva-react/resource';
 import type { GetCall } from '../calls';
 import { restOf } from './rest-of';
 import type { UseRest, UseRestOptions } from './types';
 
 /** How long (ms) a mount trusts what a Suspense render just fetched. */
-const SUSPENSE_FRESH = 1000;
-
 function useRestImpl(
 	method: 'get',
 	path: string,
@@ -14,16 +16,18 @@ function useRestImpl(
 	options: UseRestOptions = {},
 ): ResourceState<unknown> {
 	const { suspense = false, keepPrevious, staleTime, enabled } = options;
-	const stable = useStableInput(`${method} ${path}`, input, enabled, suspense);
+	const stable = useStableInput(`${method} ${path}`, input, enabled);
 	return useResource(
 		stable.key,
 		(riva) =>
 			restOf(riva).get(path, stable.input, {
 				enabled: stable.enabled,
 				...(keepPrevious === undefined ? {} : { keepPrevious }),
-				...(staleTime === undefined && !suspense
-					? {}
-					: { staleTime: staleTime ?? SUSPENSE_FRESH }),
+				...(suspense
+					? { staleTime: suspenseStaleTime(riva, staleTime) }
+					: staleTime === undefined
+						? {}
+						: { staleTime }),
 			} as GetCall),
 		{ suspense, ...(keepPrevious === undefined ? {} : { keepPrevious }) },
 	) as ResourceState<unknown>;

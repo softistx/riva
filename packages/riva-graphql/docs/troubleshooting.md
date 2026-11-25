@@ -277,4 +277,4 @@ Code: `RIVA_DEFINITION` (`RivaError`).
 const riva = createRiva({ graphql: graphql(client) });
 ```
 
-A hook outside any provider throws the riva-react `No Riva in scope` error instead.
+A hook outside any provider throws the riva-react `No Riva in scope` error instead (see [riva-react's troubleshooting](https://github.com/softistx/riva/blob/develop/packages/riva-react/docs/troubleshooting.md)).

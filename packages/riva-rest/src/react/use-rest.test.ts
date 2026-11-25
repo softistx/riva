@@ -202,6 +202,12 @@ test('SSR: renders what a loader fetched, and fetches during the render with sus
 	expect(seen).toEqual(['GET /invoices/1']);
 	const other = server();
 	expect(await html(other.riva, '2')).toContain('success:2');
+	// Hydrating on the seeded riva shows the data at once and does not refetch it.
+	const m = await mount(h(C, { id: '1' }), riva);
+	expect(m.text()).toBe('success:1:false');
+	await flush();
+	expect(seen).toEqual(['GET /invoices/1']);
+	await m.unmount();
 	const context = RivaProvider({ riva }).type as unknown as Record<
 		string,
 		unknown

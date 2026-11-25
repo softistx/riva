@@ -1,4 +1,4 @@
-import type { Riva } from '@softistx/riva';
+import type { Duration, Riva } from '@softistx/riva';
 import type {
 	Resource,
 	ResourceState,
@@ -20,8 +20,28 @@ export type SuspendedState<D> = Extract<
 	{ status: 'success' }
 >;
 
+/** What a Suspense mount trusts as fresh at least: the data its own render just fetched is not fetched again. */
+const SUSPENSE_FRESH = 1000;
+
+/** The `staleTime` of a suspending fetch: the call's, else the riva's default, but at least 1000 ms. */
+export function suspenseStaleTime(riva: Riva, staleTime?: Duration): number {
+	const own =
+		staleTime === undefined
+			? riva.staleTime
+			: typeof staleTime === 'number'
+				? staleTime
+				: toMs(staleTime);
+	return Math.max(own, SUSPENSE_FRESH);
+}
+
 // Held on the riva's slots: a request's pending loads die with its riva.
 const SLOT = {};
+
+const UNITS = { ms: 1, s: 1000, m: 60_000, h: 3_600_000 } as const;
+const toMs = (d: string): number => {
+	const m = /^(\d+(?:\.\d+)?)(ms|s|m|h)$/.exec(d);
+	return m ? Number(m[1]) * UNITS[m[2] as keyof typeof UNITS] : 0;
+};
 
 /** The one promise React waits on for a key, so every render that suspends gets the same one. */
 function suspendOn(riva: Riva, key: string, res: PromiseLike<unknown>) {

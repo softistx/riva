@@ -2,6 +2,7 @@ import type { VarsArgs } from '@softistx/riva';
 import type { ResourceState } from '@softistx/riva/resource';
 import {
 	type SuspendedState,
+	suspenseStaleTime,
 	useResource,
 	useStableInput,
 } from '@softistx/riva-react/resource';
@@ -12,7 +13,6 @@ import type { VarsOf } from '../types';
 import { graphqlOf } from './graphql-of';
 
 /** How long (ms) a mount trusts what a Suspense render just fetched. */
-const SUSPENSE_FRESH = 1000;
 
 export interface UseGraphQLOptions extends Omit<QueryCall, 'signal'> {
 	/** Suspends until there is data, and throws an error to the nearest error boundary (a response with data and errors included). The state is then `success`. Default false. */
@@ -50,12 +50,7 @@ export function useGraphQL(
 	options: UseGraphQLOptions = {},
 ): ResourceState<unknown> {
 	const { suspense = false, keepPrevious, staleTime, enabled } = options;
-	const input = useStableInput(
-		operationOf(document).id,
-		vars,
-		enabled,
-		suspense,
-	);
+	const input = useStableInput(operationOf(document).id, vars, enabled);
 	return useResource(
 		input.key,
 		(riva) =>
@@ -65,9 +60,11 @@ export function useGraphQL(
 				{
 					enabled: input.enabled,
 					...(keepPrevious === undefined ? {} : { keepPrevious }),
-					...(staleTime === undefined && !suspense
-						? {}
-						: { staleTime: staleTime ?? SUSPENSE_FRESH }),
+					...(suspense
+						? { staleTime: suspenseStaleTime(riva, staleTime) }
+						: staleTime === undefined
+							? {}
+							: { staleTime }),
 				} as QueryCall,
 			) as never,
 		{ suspense, ...(keepPrevious === undefined ? {} : { keepPrevious }) },

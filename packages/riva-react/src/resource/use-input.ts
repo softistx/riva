@@ -1,13 +1,13 @@
 import { type Riva, stableKey } from '@softistx/riva';
-import { useRef } from 'react';
+import { useMemo } from 'react';
 import { useRiva } from '../context';
 
 export interface StableInput {
 	/** Identifies the resource these arguments make: give it to `useResource`. */
 	key: string;
-	/** What to hand the call as variables or input: a plain value, a signal or computed as given, or a stable function over the latest one. */
+	/** What to hand the call as variables or input, as given (a plain value, a signal, a computed or a function). */
 	input: unknown;
-	/** What to hand the call as `enabled`: a boolean, or a stable function over the latest one. */
+	/** What to hand the call as `enabled`, as given (a boolean or a function). */
 	enabled: boolean | (() => boolean);
 }
 
@@ -18,56 +18,43 @@ const isSignal = (x: unknown): boolean => {
 
 /**
  * Turns a hook's variables (or input) and `enabled` into what a resource call
- * takes, with a key that changes exactly when the resource has to change. A
- * plain value is keyed by its stable serialization, so an inline `{ id }`
- * never rebuilds the resource and a different one does. A function or a
- * signal is tracked by the resource itself, so the function is read through a
- * stable wrapper over the latest render's one. With `suspense` the key needs
- * the value: it is read once, untracked, and only while enabled.
+ * takes, with a key that changes exactly when the resource has to change. The
+ * key is derived at render from the value: a plain value by its stable
+ * serialization, a signal or a function by reading it once, untracked (a
+ * function that reads props follows them; a disabled hook never calls it).
+ * The resource itself still tracks the signals the function reads. What is
+ * handed to the resource is the value of the render that last changed the key,
+ * so nothing is written to a ref during render.
  */
 export function useStableInput(
 	id: string,
 	input: unknown,
 	enabled: boolean | (() => boolean) | undefined,
-	suspense: boolean,
 ): StableInput {
 	const riva: Riva = useRiva();
-	const inputRef = useRef(input);
-	inputRef.current = input;
-	const enabledRef = useRef(enabled);
-	enabledRef.current = enabled;
-	const wrapped = useRef({
-		input: () => (inputRef.current as () => unknown)(),
-		enabled: () => (enabledRef.current as () => boolean)(),
-	}).current;
-	const sig = useRef<{ of: unknown; n: number }>({ of: undefined, n: 0 });
-	const dynamic = typeof input === 'function';
-	const signalled = !dynamic && isSignal(input);
-	if (signalled && sig.current.of !== input)
-		sig.current = { of: input, n: sig.current.n + 1 };
-	const live = typeof enabled === 'function';
-	const on = (): boolean =>
-		live ? riva.untracked(enabled as () => boolean) : enabled !== false;
-	let part: string;
-	if (suspense) {
-		part = on()
+	const tracked = typeof enabled === 'function';
+	const on = tracked ? riva.untracked(enabled) : enabled !== false;
+	// A variables function is only called while enabled; a plain value or a
+	// signal can be keyed either way, so a tracked `enabled` flip keeps the
+	// resource (no remount, no second fetch).
+	const keyed = on || typeof input !== 'function';
+	const key = `${
+		keyed
 			? stableKey(
 					id,
 					riva.untracked(() =>
-						dynamic
+						typeof input === 'function'
 							? (input as () => unknown)()
-							: signalled
+							: isSignal(input)
 								? riva.get(input as never)
 								: input,
 					),
 				)
-			: `${id}|off`;
-	} else if (dynamic) part = `${id}|fn`;
-	else if (signalled) part = `${id}|sig${sig.current.n}`;
-	else part = stableKey(id, input);
-	return {
-		key: `${part}|${live ? 'live' : enabled !== false}`,
-		input: dynamic ? wrapped.input : input,
-		enabled: live ? wrapped.enabled : enabled !== false,
-	};
+			: id
+	}|${tracked ? 'fn' : on ? 'on' : 'off'}${keyed ? '' : '|idle'}`;
+	const held = useMemo(
+		() => ({ input, enabled: enabled === undefined ? true : enabled }),
+		[key],
+	);
+	return { key, input: held.input, enabled: held.enabled };
 }

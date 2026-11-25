@@ -1,7 +1,7 @@
 import type { VarsArgs } from '@softistx/riva';
 import type { ResourceState } from '@softistx/riva/resource';
 import { useResource, useStableInput } from '@softistx/riva-react/resource';
-import { useRef } from 'react';
+import { useEffect, useRef } from 'react';
 import type { Doc } from '../calls';
 import { operationOf } from '../operation';
 import type { VarsInput } from '../resources';
@@ -26,7 +26,9 @@ export function useGraphQLSubscription(
 	options: SubscribeCall<unknown> = {},
 ): ResourceState<unknown> {
 	const latest = useRef(options);
-	latest.current = options;
+	useEffect(() => {
+		latest.current = options;
+	});
 	const calls = useRef<SubscribeCall<unknown>>({
 		next: (d) => latest.current.next?.(d),
 		error: (e) => latest.current.error?.(e),
@@ -36,7 +38,6 @@ export function useGraphQLSubscription(
 		operationOf(document, 'subscription').id,
 		vars,
 		options.enabled,
-		false,
 	);
 	return useResource(input.key, (riva) =>
 		graphqlOf(riva).subscribe(document, input.input as never, {

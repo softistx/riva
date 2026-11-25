@@ -6,9 +6,10 @@ Guides and fixes: [docs](./docs/README.md). Work in progress, see the [spec](htt
 
 ```sh
 bun add @softistx/riva @softistx/riva-graphql @softistx/graphql-client @graphql-typed-document-node/core graphql
+bun add react @softistx/riva-react # only for the hooks
 ```
 
-Peers: `@softistx/riva` and `@softistx/graphql-client`. `graphql` and `@graphql-typed-document-node/core` are optional: `graphql` is needed by `/server` (the allowlist parses the manifest's text) and `/codegen`, and the types of every definition need the second (`@softistx/graphql-client` already brings it). The main, `/infinite`, `/cache` and `/bff` entries import none of them.
+Peers: `@softistx/riva` and `@softistx/graphql-client`. `graphql` and `@graphql-typed-document-node/core` are optional: `graphql` is needed by `/server` (the allowlist parses the manifest's text) and `/codegen`, and the types of every definition need the second (`@softistx/graphql-client` already brings it). The main, `/infinite`, `/cache` and `/bff` entries import none of them. `react` and `@softistx/riva-react` are optional too: only `/react` needs them.
 
 ## Documents
 
@@ -84,18 +85,38 @@ const closeFeed = added.subscribe((state) => console.log(state.status)); // open
 ```tsx
 import { useGraphQL, useGraphQLMutation, useGraphQLSubscription } from '@softistx/riva-graphql/react';
 
+// BOOKS_QUERY, ADD_BOOK_MUTATION and BOOK_ADDED_SUBSCRIPTION are documents written with graphql(), as above.
 function Books({ first }: { first: number }) {
-	const books = useGraphQL(BOOKS_QUERY, { first }, { enabled: true, keepPrevious: true });
-	const add = useGraphQLMutation(ADD_BOOK);
+	const books = useGraphQL(BOOKS_QUERY, { first });
+	const add = useGraphQLMutation(ADD_BOOK_MUTATION);
 	if (books.status === 'loading') return <Spinner />;
 	if (books.status === 'error') return <Failure error={books.error} />; // books.data keeps a partial result
 	return <button onClick={() => add({ title: 'Dune' }, { invalidates: [BOOKS_QUERY] })}>{books.data.books.length}</button>;
 }
 // useGraphQL(DOC, vars, { suspense: true }) suspends and returns the success state.
-// useGraphQLSubscription(BOOK_ADDED, {}, { next(added) {} }) is loading, then the last message.
+// useGraphQLSubscription(BOOK_ADDED_SUBSCRIPTION, {}, { next(added) {} }) is loading, then the last message.
 ```
 
-The hooks return the resource state; the mutation hook returns the callable handle with `state` fields and `reset()`. Variables are a plain value or a function; a change re-derives the key and keeps the previous data as `placeholder`. While `enabled` is false the status is `idle`. A server render seeds and dehydrates like `useQuery`, and hydration does not refetch fresh data.
+How the hooks behave:
+
+- They return the resource state (`idle | loading | success | error`). A server render seeds and dehydrates like `useQuery`, and hydration does not refetch fresh data.
+- Variables are a plain value, a riva signal or computed, or a function. A function is evaluated at each render, so it follows props (`() => ({ id: props.id })`) as well as the signals it reads; a change of the result re-derives the key. Equal variables are one key.
+- A new key refetches and keeps the previous data as `placeholder` (`keepPrevious`, default true).
+- While `enabled` is false the status is `idle`, the variables function is not called and nothing is fetched.
+- `suspense: true` suspends until data and types the state as `success`. Any error, a response with partial data and errors included, goes to the nearest error boundary. A disabled hook does not suspend. A subscription cannot suspend.
+- Under `suspense` the fetch uses a `staleTime` of at least 1000 ms (your `staleTime`, else the riva's default, whichever is longer), so the data a Suspense render just fetched is not fetched again at mount.
+
+The mutation hooks return a callable with the state fields and `reset`. The callable (and `reset`) change identity with the state, so call them from handlers and never list them in an effect's dependencies; to react to a result, read `status` and `data`:
+
+```tsx
+const add = useGraphQLMutation(ADD_BOOK_MUTATION);
+// Handler: fine.
+<button onClick={() => add({ title: 'Dune' })}>Add</button>;
+// Effect: depend on the state, not on `add`.
+useEffect(() => {
+	if (add.status === 'success') close();
+}, [add.status]);
+```
 
 ## Provide the transport
 

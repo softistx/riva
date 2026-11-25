@@ -1,5 +1,11 @@
 import { expect, expectTypeOf, spyOn, test } from 'bun:test';
-import { type Query, query, type Riva, RivaScopeError } from '@softistx/riva';
+import {
+	createRiva,
+	type Query,
+	query,
+	type Riva,
+	RivaScopeError,
+} from '@softistx/riva';
 import { type Resource, resource } from '@softistx/riva/resource';
 import { Component, type ReactNode, Suspense } from 'react';
 import { renderToReadableStream } from 'react-dom/server';
@@ -7,6 +13,7 @@ import { deferred, flush, h, mount, newRiva } from '../../test/render';
 import { RivaProvider } from '../context';
 import {
 	type SuspendedState,
+	suspenseStaleTime,
 	type UseResourceOptions,
 	useResource,
 } from './use-resource';
@@ -185,6 +192,46 @@ test('suspense waits for the data, then shows it as success', async () => {
 	await flush(() => gate.resolve('x'));
 	expect(m.text()).toBe('success:x');
 	await m.unmount();
+});
+
+test('suspense over a fetch that settles with undefined renders success, no loop', async () => {
+	let calls = 0;
+	const def = query<{ school: string }, undefined>({
+		id: 'ur/empty',
+		retry: 0,
+		fetch: async () => {
+			calls++;
+			return undefined;
+		},
+	});
+	function C() {
+		const s = useResource(
+			'k',
+			(riva) =>
+				resource(riva, () => [def, { school: 'a' }], {
+					staleTime: suspenseStaleTime(riva),
+				}),
+			{ suspense: true },
+		);
+		return h('p', null, `${s.status}:${String(s.data)}`);
+	}
+	const m = await mount(
+		h(Suspense, { fallback: h('p', null, 'wait') }, h(C)),
+		newRiva(),
+	);
+	await flush();
+	expect(m.text()).toBe('success:undefined');
+	expect(calls).toBe(1);
+	await m.unmount();
+});
+
+test('suspenseStaleTime is the longer of the call or riva default and 1000 ms', () => {
+	const riva = newRiva();
+	expect(suspenseStaleTime(riva)).toBe(1000);
+	expect(suspenseStaleTime(riva, 200)).toBe(1000);
+	expect(suspenseStaleTime(riva, '30s')).toBe(30_000);
+	const slow = createRiva({ defaults: { staleTime: '5m' } });
+	expect(suspenseStaleTime(slow)).toBe(300_000);
 });
 
 test('suspense throws an error to the boundary and skips a disabled resource', async () => {

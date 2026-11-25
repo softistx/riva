@@ -35,6 +35,29 @@ function setup() {
 }
 
 describe('state', () => {
+	test('a fetch that settles with undefined is a success, not a loading that never ends', async () => {
+		const riva = createRiva();
+		let calls = 0;
+		const q = query<{ n: number }, undefined>({
+			id: 'q-empty',
+			retry: 0,
+			fetch: async () => {
+				calls++;
+				return undefined;
+			},
+		});
+		const r = resource(riva, () => [q, { n: 1 }]);
+		const seen: string[] = [];
+		const off = r.subscribe((s) => seen.push(s.status));
+		await tick();
+		await tick();
+		expect(r.state.status).toBe('success');
+		expect(r.state.data).toBeUndefined();
+		expect(r.state.isFetching).toBe(false);
+		expect(calls).toBe(1);
+		off();
+	});
+
 	test('idle while disabled: the source is not called and nothing is fetched', async () => {
 		const { q, calls, riva } = setup();
 		const on = signal(false);
