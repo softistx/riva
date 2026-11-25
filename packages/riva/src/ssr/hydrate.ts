@@ -88,7 +88,11 @@ export function hydrate(
 	client.batch(() => {
 		for (const se of snapshot.q) {
 			// A deferred snapshot is applied later, so its ages are understated by the delay.
-			const p: SeedEntry = { ...se, at: now - se.u, ...(defer && { defer: deferred }) };
+			const p: SeedEntry = {
+				...se,
+				at: now - se.u,
+				...(defer && { defer: deferred }),
+			};
 			const e = c.entries.get(se.k);
 			if (!e) {
 				const old = pending.get(p.k);
