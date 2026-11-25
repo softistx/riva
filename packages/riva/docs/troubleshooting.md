@@ -139,7 +139,7 @@ Code: `RIVA_SSR` (`RivaError`).
 
 **Why:** a snapshot travels as JSON, so it can hold only what JSON holds, plus Dates, `NaN` and the infinities, which riva tags and restores.
 
-**Fix:** return plain data from `fetch` (a string or a number for a bigint, an array for a `Set`), or keep that query or atom out of the snapshot (`ssr: false` on an atom).
+**Fix:** return plain data from `fetch` (a string or a number for a bigint, an array for a `Set`), or keep that query or atom out of the snapshot (leave `ssr: true` off the atom).
 
 ```ts
 fetch: async () => (await res.json()).items.map((i) => ({ ...i, total: Number(i.total) })),
@@ -153,11 +153,14 @@ Code: `RIVA_SSR` (`RivaError`).
 
 **Why:** atoms travel by name, so a snapshot could not tell which one a value belongs to.
 
-**Fix:** rename one, or make the one that must stay local `ssr: false`.
+**Fix:** rename one, or drop `ssr: true` from the one that stays local.
 
 ```ts
-const draft = atom('', { name: 'invoices.draft' });
-const scroll = atom(0, { name: 'scroll', ssr: false });
+const a = atom('', { name: 'draft', ssr: true });
+const b = atom('', { name: 'draft', ssr: true }); // collides with a
+
+// fix: rename b, or drop ssr: true from the one that stays local
+const local = atom('', { name: 'draft' });
 ```
 
 ## `Cannot hydrate: this is not a snapshot dehydrate() made (version <v>).`

@@ -316,6 +316,7 @@ html = `<script id="riva" type="application/json">${json}</script>`;
 
 ```ts
 import { AsyncLocalStorage } from 'node:async_hooks';
+import type { RivaClient } from '@softistx/riva';
 import { setScopeResolver } from '@softistx/riva/ssr';
 
 const als = new AsyncLocalStorage<RivaClient>();
