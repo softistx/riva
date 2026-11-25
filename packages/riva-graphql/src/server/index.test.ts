@@ -1,4 +1,4 @@
-import { expect, test } from 'bun:test';
+import { expect, expectTypeOf, test } from 'bun:test';
 import { createRivaClient, RivaScopeError } from '@softistx/riva';
 import { buildAllowlist } from '../codegen/index';
 import { type GraphQLTransport, provideGraphQL } from '../transport';
@@ -89,4 +89,30 @@ test('a client with no transport throws the scope error of provideGraphQL', asyn
 				?.run(createRivaClient(), {}, new AbortController().signal),
 		),
 	).rejects.toBeInstanceOf(RivaScopeError);
+});
+
+test('refuses a manifest entry of an unknown kind and says to rerun the codegen', () => {
+	const bad = {
+		'sha256:x': {
+			id: 'sha256:x',
+			name: 'X',
+			kind: 'subscription',
+			document: 'x',
+		},
+	};
+	expect(() => allowlist(bad)).toThrow(
+		expect.objectContaining({
+			code: 'RIVA_DEFINITION',
+			message: expect.stringContaining('rerun the codegen'),
+		}),
+	);
+});
+
+test('accepts a JSON-shaped manifest, kind widened to string', () => {
+	expectTypeOf<
+		Record<string, { id: string; name: string; kind: string; document: string }>
+	>().toExtend<Parameters<typeof allowlist>[0]>();
+	expectTypeOf<ReturnType<typeof buildAllowlist>>().toExtend<
+		Parameters<typeof allowlist>[0]
+	>();
 });

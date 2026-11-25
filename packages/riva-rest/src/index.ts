@@ -1,7 +1,5 @@
 import { mutation, query } from './query';
 
-export const VERSION = '0.0.0';
-
 export { toRivaError } from './errors';
 export { httpyzTransport } from './http-transport';
 export { type Operation, operationOf } from './operation';

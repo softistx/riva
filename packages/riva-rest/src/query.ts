@@ -8,6 +8,7 @@ import {
 	type MutationOptions,
 	type Query,
 	type QueryOptions,
+	RivaError,
 } from '@softistx/riva';
 import { toRivaError } from './errors';
 import { operationOf } from './operation';
@@ -82,7 +83,8 @@ const isFree = (a: unknown): a is { id: string } =>
 
 function freeId(opts: { id?: unknown }, name: string): void {
 	if (typeof opts?.id !== 'string' || !opts.id)
-		throw new TypeError(
+		throw new RivaError(
+			'RIVA_DEFINITION',
 			`riva-rest: ${name}() needs an id; a function has no name to derive one from.`,
 		);
 }
@@ -93,7 +95,7 @@ function freeId(opts: { id?: unknown }, name: string): void {
  * - `query(api, 'get /invoices/{id}', opts?)`: from an OpenAPI client
  *   (`createOpenApiClient`); the variables are the operation's input and the
  *   data its 2xx reply, both typed from the spec, and the id is the route.
- *   Throws a `TypeError` for a route the client's spec does not have.
+ *   Throws a `RivaError` (`RIVA_DEFINITION`) for a route the client's spec does not have.
  * - `query({ id, fetch })`: a free fetcher for an API with no schema, typed
  *   by the generics or the fetcher's own types.
  */

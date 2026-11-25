@@ -1,11 +1,10 @@
 import type { RivaClient } from '../client';
-import { computed, type Getter, type Readable } from '../computed';
+import type { Getter } from '../computed';
 import { resolve } from '../scope';
-import { type Signal, signal } from '../signal';
-import { freeze, put, RESERVED, type StoreDef, writable } from './def';
+import type { Signal } from '../signal';
+import { checkKeys, computeds, put, type StoreDef, stateSignals } from './def';
 import { instance } from './instance';
 import type { Action, Reserved, Store, StoreOptions } from './types';
-import { refuse, view } from './view';
 
 /**
  * A domain store: its state, computeds and actions in one definition. Every
@@ -28,46 +27,13 @@ export function store<
 	>;
 	// biome-ignore lint/suspicious/noExplicitAny: any state and computed shape
 	const actions = (options.actions ?? {}) as Record<string, Action<any, any>>;
-	const seen = new Set(RESERVED);
-	for (const k of [
+	checkKeys(name, [
 		...Object.keys(state),
 		...Object.keys(derived),
 		...Object.keys(actions),
-	]) {
-		if (seen.has(k))
-			refuse(
-				`Store "${name}": the key "${k}" is taken (a state, computed or action key, or one of ${RESERVED.join(', ')}).`,
-			);
-		seen.add(k);
-	}
-
-	const sigs: Record<string, Signal<unknown>> = {};
-	for (const k in state)
-		sigs[k] = signal(freeze(state[k]), {
-			name: `${name}.${k}`,
-			ssr,
-			equals: (a, b) =>
-				writable()
-					? Object.is(a, b)
-					: refuse(
-							`Store "${name}": "${k}" is written outside an action. Write it in an action of the store.`,
-						),
-		});
-	const comps: Record<string, Readable<unknown>> = {};
-	for (const k in derived)
-		comps[k] = computed(
-			(get) =>
-				derived[k]?.(
-					view(
-						state,
-						(key) => get(sigs[key] as Signal<unknown>),
-						(key) =>
-							refuse(`Store "${name}": a computed cannot write "${key}".`),
-					),
-					get,
-				),
-			{ name: `${name}.${k}` },
-		);
+	]);
+	const sigs = stateSignals(name, state, ssr);
+	const comps = computeds(name, state, derived, sigs);
 	const members = { ...sigs, ...comps };
 	const data: StoreDef = { name, sigs, members, actions };
 

@@ -1,7 +1,9 @@
 import type { RivaClient } from '../client';
 import type { Readable } from '../computed';
-import type { Signal } from '../signal';
+import { computed, type Getter } from '../computed';
+import { type Signal, signal } from '../signal';
 import type { Action } from './types';
+import { refuse, view } from './view';
 
 /** The data of one store definition, shared by its action runner and its per-client instance. */
 export interface StoreDef {
@@ -59,4 +61,62 @@ export const put = (
 	} finally {
 		writing--;
 	}
+};
+
+/** Refuses a state, computed or action key that is reserved or used twice. */
+export const checkKeys = (name: string, keys: readonly string[]): void => {
+	const seen = new Set(RESERVED);
+	for (const k of keys) {
+		if (seen.has(k))
+			refuse(
+				`Store "${name}": the key "${k}" is taken (a state, computed or action key, or one of ${RESERVED.join(', ')}).`,
+			);
+		seen.add(k);
+	}
+};
+
+/** The state keys' signals, named `<name>.<key>`, guarded against writes outside an action. */
+export const stateSignals = (
+	name: string,
+	state: Record<string, unknown>,
+	ssr: boolean,
+): Record<string, Signal<unknown>> => {
+	const sigs: Record<string, Signal<unknown>> = {};
+	for (const k in state)
+		sigs[k] = signal(freeze(state[k]), {
+			name: `${name}.${k}`,
+			ssr,
+			equals: (a, b) =>
+				writable()
+					? Object.is(a, b)
+					: refuse(
+							`Store "${name}": "${k}" is written outside an action. Write it in an action of the store.`,
+						),
+		});
+	return sigs;
+};
+
+/** The store's computeds, each reading the state through a read-only view. */
+export const computeds = (
+	name: string,
+	state: Record<string, unknown>,
+	derived: Record<string, (s: unknown, get: Getter) => unknown>,
+	sigs: Record<string, Signal<unknown>>,
+): Record<string, Readable<unknown>> => {
+	const comps: Record<string, Readable<unknown>> = {};
+	for (const k in derived)
+		comps[k] = computed(
+			(get) =>
+				derived[k]?.(
+					view(
+						state,
+						(key) => get(sigs[key] as Signal<unknown>),
+						(key) =>
+							refuse(`Store "${name}": a computed cannot write "${key}".`),
+					),
+					get,
+				),
+			{ name: `${name}.${k}` },
+		);
+	return comps;
 };

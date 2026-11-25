@@ -5,6 +5,43 @@ import { freeze, put, type StoreDef } from './def';
 import type { Action, StoreContext } from './types';
 import { refuse, view } from './view';
 
+/** What `run` and the writer of `s` share while an action runs. */
+interface Phase {
+	live: boolean;
+	sync: boolean;
+	held: boolean;
+	failure: { error: unknown } | undefined;
+}
+
+/** The `s` of one run: writes state through the guard, holds the notifications past an `await`. */
+function writer(
+	def: StoreDef,
+	client: RivaClient,
+	st: Phase,
+	release: () => void,
+) {
+	const { name, sigs, members } = def;
+	return view(
+		members,
+		(k) => client.get(members[k] as Readable<unknown>),
+		(k, v) => {
+			if (!st.live)
+				refuse(`Store "${name}": "${k}" is written after its action settled.`);
+			if (!Object.hasOwn(sigs, k))
+				refuse(
+					`Store "${name}": "${k}" is not a state key, so it cannot be written.`,
+				);
+			// Past an `await`, the writes of one segment make one notification.
+			if (!st.sync && !st.held) {
+				st.held = true;
+				client.graph.depth++;
+				queueMicrotask(release);
+			}
+			put(client, sigs[k] as Signal<unknown>, freeze(v));
+		},
+	);
+}
+
 /**
  * Runs one action on a client: `(s, ...args, ctx)` inside the client's scope,
  * one batch, untracked. `s` writes state until the action settles, then is
@@ -19,41 +56,19 @@ export function run(
 	fn: Action<any, any>,
 	args: unknown[],
 ): unknown {
-	const { name, sigs, members } = def;
+	const st: Phase = { live: true, sync: true, held: false, failure: undefined };
 	const g = client.graph;
-	let live = true;
-	let sync = true;
-	let held = false;
-	let failure: { error: unknown } | undefined;
 	const release = () => {
-		if (!held) return;
-		held = false;
+		if (!st.held) return;
+		st.held = false;
 		g.depth--;
 		try {
 			client.batch(() => {});
 		} catch (error) {
-			failure ??= { error };
+			st.failure ??= { error };
 		}
 	};
-	const s = view(
-		members,
-		(k) => client.get(members[k] as Readable<unknown>),
-		(k, v) => {
-			if (!live)
-				refuse(`Store "${name}": "${k}" is written after its action settled.`);
-			if (!Object.hasOwn(sigs, k))
-				refuse(
-					`Store "${name}": "${k}" is not a state key, so it cannot be written.`,
-				);
-			// Past an `await`, the writes of one segment make one notification.
-			if (!sync && !held) {
-				held = true;
-				g.depth++;
-				queueMicrotask(release);
-			}
-			put(client, sigs[k] as Signal<unknown>, freeze(v));
-		},
-	);
+	const s = writer(def, client, st, release);
 	const ctx: StoreContext = {
 		client,
 		fetch: (q, ...a) => (q.ensure as (...x: unknown[]) => never)(client, ...a),
@@ -64,7 +79,7 @@ export function run(
 	given.length = Math.max(args.length, fn.length - 2);
 	const settle = () => {
 		release();
-		live = false;
+		st.live = false;
 	};
 	let result: unknown;
 	try {
@@ -75,7 +90,7 @@ export function run(
 		settle();
 		throw e;
 	} finally {
-		sync = false;
+		st.sync = false;
 	}
 	if (!(result as PromiseLike<unknown> | undefined)?.then) {
 		settle();
@@ -84,7 +99,7 @@ export function run(
 	return (result as Promise<unknown>).then(
 		(v) => {
 			settle();
-			if (failure) throw failure.error;
+			if (st.failure) throw st.failure.error;
 			return v;
 		},
 		(e) => {

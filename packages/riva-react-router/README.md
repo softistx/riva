@@ -97,13 +97,11 @@ export default function Patients({ params }: Route.ComponentProps) {
 ```ts
 // app/routes/_data.ts
 import { dataRoute } from '@softistx/riva-react-router/server';
-import type { AllowlistManifest } from '@softistx/riva-graphql/codegen';
 import { allowlist } from '@softistx/riva-graphql/server';
 import manifest from '../generated/allowlist.json';
 
-// A JSON import widens `kind` to string: assert the manifest's type.
 const route = dataRoute({
-	sources: [allowlist(manifest as AllowlistManifest)],
+	sources: [allowlist(manifest)],
 });
 export const action = route.action;
 export const loader = route.loader; // 405

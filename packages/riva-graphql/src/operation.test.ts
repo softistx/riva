@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
+import { RivaError } from '@softistx/riva';
 import { parse } from 'graphql';
 import {
 	PATIENTS_QUERY,
@@ -56,7 +57,7 @@ test('rejects what is not a document node', () => {
 	expect(() => operationOf('query A { a }' as never)).toThrow(
 		/TypedDocumentNode/,
 	);
-	expect(() => operationOf(undefined as never)).toThrow(TypeError);
+	expect(() => operationOf(undefined as never)).toThrow(RivaError);
 });
 
 test('rejects a document of the other kind, naming the right helper', () => {
@@ -65,5 +66,11 @@ test('rejects a document of the other kind, naming the right helper', () => {
 	);
 	expect(() => operationOf(RENAME_PATIENT_MUTATION, 'query')).toThrow(
 		/use mutation\(\)/,
+	);
+});
+
+test('a misused definition throws a RivaError with the RIVA_DEFINITION code', () => {
+	expect(() => operationOf(undefined as never)).toThrow(
+		expect.objectContaining({ code: 'RIVA_DEFINITION' }),
 	);
 });

@@ -1,4 +1,5 @@
 import {
+	isRetryableStatus,
 	RivaAbortError,
 	RivaHttpError,
 	RivaNetworkError,
@@ -14,9 +15,6 @@ export interface BffTransportOptions {
 	/** Extra headers of each call (e.g. a CSRF token). */
 	headers?: () => HeadersInit;
 }
-
-const retryable = (status: number) =>
-	status >= 500 || status === 408 || status === 429;
 
 const invalid = (message: string, status?: number) =>
 	new RivaRequestError('RIVA_INVALID_RESPONSE', message, {
@@ -80,7 +78,7 @@ export async function postData(
 				typeof failure['message'] === 'string'
 					? failure['message']
 					: `HTTP ${res.status}`,
-				{ status: res.status, retryable: retryable(res.status) },
+				{ status: res.status, retryable: isRetryableStatus(res.status) },
 			);
 		throw new RivaHttpError(res.status);
 	}

@@ -41,5 +41,5 @@ client.get(invoices); // an operation whose input is all optional takes no varia
 
 - **The id is the route**; the cache key is the id plus the stable-serialized input, never hand-written.
 - **The data is typed as the client returns it**: decoded for `decode: true` (the default), as JSON carries it for `decode: false`.
-- **Routes are narrowed by kind**: `query()` takes every route but `put`, `patch` and `delete` (`QueryRoute`); `mutation()` every one but `get`, `head` and `options` (`MutationRoute`). The wrong one is a compile error and a `TypeError` at definition time. A `POST` that only reads (a search) is a query.
+- **Routes are narrowed by kind**: `query()` takes every route but `put`, `patch` and `delete` (`QueryRoute`); `mutation()` every one but `get`, `head` and `options` (`MutationRoute`). The wrong one is a compile error and a `RivaError` (`RIVA_DEFINITION`) at definition time. A `POST` that only reads (a search) is a query.
 - A route the spec lacks, or written wrongly, throws when the definition is created ([troubleshooting](../troubleshooting.md)).

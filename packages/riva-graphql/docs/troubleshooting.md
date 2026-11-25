@@ -23,7 +23,7 @@ provideGraphQL(client, graphqlClientTransport(createGraphQLClient({ url: 'https:
 
 ## `riva-graphql: the operation has no name; name it (query Patients { ... }) so it has an id.`
 
-A `TypeError`, thrown when the definition is created.
+Code: `RIVA_DEFINITION` (`RivaError`), thrown when the definition is created.
 
 **Why:** the definition's id, its cache keys and the allowlist's ids come from the operation name (or its persisted id), so an anonymous operation has none.
 
@@ -112,11 +112,13 @@ Code: `RIVA_INVALID_RESPONSE` (`RivaRequestError`), or `RivaHttpError` (`HTTP_<s
 
 **Fix:** set `presetConfig: { persistedDocuments: true }` on the preset, check that the path passed to `writeAllowlist` is the preset's output folder plus `persisted-documents.json`, and fix the codegen error that came first.
 
-## Two definitions share one cache entry
+## Two definitions share the id "<id>": define each query once (a module-level const) and import it, or pass a distinct id.
 
-**Why:** a definition's `id` is the document's persisted id, else its operation name; two definitions with the same `id` collide.
+Code: `RIVA_KEY` (`RivaError`).
 
-**Fix:** pass a distinct `id` when you define one document twice with different options.
+**Why:** a definition's `id` is the document's persisted id, else its operation name. Two definitions with the same `id` read on one client on the server throw `RIVA_KEY`; in a browser a hot reload takes over instead.
+
+**Fix:** define each query once, as a module-level const, and import it. Pass a distinct `id` when you define one document twice with different options. See the [core entry](../../riva/docs/troubleshooting.md).
 
 ## An error has the API's code but `error.fields` is undefined
 
@@ -146,9 +148,9 @@ Code: `RIVA_CACHE` (`RivaError`).
 
 **Fix:** check the transport; a GraphQL result's `data` is an object.
 
-## `The document has no fragment X` and `The document holds no operation`
+## `riva-graphql: the document uses the fragment X but does not define it` and `riva-graphql: the document holds no operation`
 
-Both are `TypeError`s, thrown when `query()` or `mutation()` is called.
+Code: `RIVA_DEFINITION` (`RivaError`), thrown when `query()` or `mutation()` is called.
 
 **Why:** the document given to `query()` or `mutation()` with a `normalized()` cache spreads a fragment it does not define, or defines no operation.
 
@@ -156,7 +158,7 @@ Both are `TypeError`s, thrown when `query()` or `mutation()` is called.
 
 ## `riva-graphql: the field "X" selects no __typename, which the cache needs to identify objects: …`
 
-A `TypeError`, thrown when `query()` or `mutation()` is called with a `normalized()` cache.
+Code: `RIVA_DEFINITION` (`RivaError`), thrown when `query()` or `mutation()` is called with a `normalized()` cache.
 
 **Why:** an object with no `__typename` has no identity, so it could not be stored as an entity. The cache refuses the document rather than rewrite it: a persisted id is the hash of the document's text.
 
@@ -201,7 +203,7 @@ Code: `RIVA_CACHE` (`RivaError`).
 
 ## `riva-graphql: X is a subscription; subscriptions are not supported yet.`
 
-A `TypeError`, thrown when the definition is created (`X` is the operation's name).
+Code: `RIVA_DEFINITION` (`RivaError`), thrown when the definition is created (`X` is the operation's name).
 
 **Why:** a definition runs one request and one reply; a subscription is a stream.
 

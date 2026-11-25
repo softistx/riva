@@ -1,4 +1,4 @@
-import type { RivaClient } from './client';
+import type { RivaClient } from '../client';
 
 /** One operation a `/_data` route may run for the browser. */
 export interface DataOperation {

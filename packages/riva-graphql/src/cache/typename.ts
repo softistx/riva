@@ -1,3 +1,4 @@
+import { RivaError } from '@softistx/riva';
 import type {
 	DocumentNode,
 	FragmentDefinitionNode,
@@ -8,7 +9,7 @@ const missing = (field: string) =>
 	`riva-graphql: the field "${field}" selects no __typename, which the cache needs to identify objects: add the client preset's addTypenameSelectionDocumentTransform to its documentTransforms.`;
 
 /**
- * Throws a `TypeError` when an object of the document cannot be identified:
+ * Throws a `RivaError` (`RIVA_DEFINITION`) when an object of the document cannot be identified:
  * a selection set below the operation's own that selects no `__typename`,
  * directly or through an inline fragment with no type condition (a type
  * condition or a fragment spread covers one branch only). The document
@@ -34,7 +35,7 @@ export function assertTypename(node: DocumentNode): void {
 		for (const s of set.selections) {
 			if (s.kind === 'Field') {
 				if (s.selectionSet && !has(s.selectionSet))
-					throw new TypeError(missing(s.name.value));
+					throw new RivaError('RIVA_DEFINITION', missing(s.name.value));
 				if (s.selectionSet) check(s.selectionSet, seen);
 			} else if (s.kind === 'InlineFragment') check(s.selectionSet, seen);
 			else {

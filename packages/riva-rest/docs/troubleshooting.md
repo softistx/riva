@@ -53,7 +53,7 @@ provideRest(client, httpyzTransport(http, api)); // the api the definitions take
 
 ## `riva-rest: the OpenAPI client has no operation at GET /nope; check the path as the spec writes it.`
 
-A `TypeError`, thrown when the definition is created.
+Code: `RIVA_DEFINITION` (`RivaError`), thrown when the definition is created.
 
 **Why:** the route is not in the client's operation table. The path is the template as the spec writes it (`/invoices/{id}`, not `/invoices/:id`), and the method is lowercase in the route (`'get /invoices/{id}'`).
 
@@ -61,19 +61,19 @@ A `TypeError`, thrown when the definition is created.
 
 ## `riva-rest: "invoices" is not a route; write it as '<method> <path>' (get /invoices/{id}).`
 
-A `TypeError`, thrown when the definition is created.
+Code: `RIVA_DEFINITION` (`RivaError`), thrown when the definition is created.
 
 **Fix:** write the method and the path, separated by one space, the path starting with `/`.
 
 ## `riva-rest: GET /health only reads; define it with query(), not mutation().`
 
-A `TypeError`, thrown when the definition is created.
+Code: `RIVA_DEFINITION` (`RivaError`), thrown when the definition is created.
 
 **Fix:** a `GET`, `HEAD` or `OPTIONS` operation is a `query()`. The reverse, `riva-rest: DELETE /x changes data; define it with mutation(), not query().`, is the same rule for `PUT`, `PATCH` and `DELETE`. A `POST` that only reads (a search) is a query.
 
 ## `riva-rest: query() needs an id; a function has no name to derive one from.`
 
-A `TypeError` (and `riva-rest: mutation() needs an id; …`), thrown when the definition is created.
+Code: `RIVA_DEFINITION` (`RivaError`) (and `riva-rest: mutation() needs an id; …`), thrown when the definition is created.
 
 **Why:** the cache key is the id plus the variables; an OpenAPI route gives one, a free fetcher does not, and a counter would differ between the server and the browser.
 
@@ -179,6 +179,6 @@ export const cache = restEntities({ Invoice: { is: (o) => 'number' in o, key: (o
 
 ## `riva-rest: DELETE /x changes data; define it with mutation(), not query().`
 
-A `TypeError`, thrown when the definition is created, for a `PUT`, `PATCH` or `DELETE` route given to `query()`.
+Code: `RIVA_DEFINITION` (`RivaError`), thrown when the definition is created, for a `PUT`, `PATCH` or `DELETE` route given to `query()`.
 
 **Fix:** use `mutation(api, 'delete /x')`. Only `GET`, `HEAD`, `OPTIONS` and a `POST` that only reads (a search) are queries.

@@ -1,11 +1,9 @@
 import { expect, test } from 'bun:test';
 import * as barrel from './index';
 
-test('the barrel exports the browser-safe surface and its version', () => {
-	expect(barrel.VERSION).toBe('0.0.0');
+test('the barrel exports the browser-safe surface', () => {
 	expect(Object.keys(barrel).sort()).toEqual([
 		'RivaRouterProvider',
-		'VERSION',
 		'revalidate',
 		'riva',
 		'rivaContext',

@@ -1,4 +1,5 @@
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
+import { RivaError } from '@softistx/riva';
 import type { DocumentNode } from 'graphql';
 
 export type OperationKind = 'query' | 'mutation';
@@ -33,7 +34,8 @@ function read(document: DocumentNode): Operation {
 		? document.definitions
 		: undefined;
 	if (!definitions)
-		throw new TypeError(
+		throw new RivaError(
+			'RIVA_DEFINITION',
 			'riva-graphql: expected a TypedDocumentNode (set documentMode: "documentNode" in the client preset), got something else.',
 		);
 	const operations = definitions.filter(
@@ -41,20 +43,24 @@ function read(document: DocumentNode): Operation {
 	);
 	const [first] = operations;
 	if (!first)
-		throw new TypeError(
+		throw new RivaError(
+			'RIVA_DEFINITION',
 			'riva-graphql: the document holds no operation (a fragment alone cannot be queried).',
 		);
 	if (operations.length > 1)
-		throw new TypeError(
+		throw new RivaError(
+			'RIVA_DEFINITION',
 			`riva-graphql: the document holds ${operations.length} operations; define one operation per document.`,
 		);
 	const name = first.name?.value;
 	if (!name)
-		throw new TypeError(
+		throw new RivaError(
+			'RIVA_DEFINITION',
 			'riva-graphql: the operation has no name; name it (query Patients { ... }) so it has an id.',
 		);
 	if (first.operation === 'subscription')
-		throw new TypeError(
+		throw new RivaError(
+			'RIVA_DEFINITION',
 			`riva-graphql: ${name} is a subscription; subscriptions are not supported yet.`,
 		);
 	const persistedId = hashOf(document);
@@ -68,7 +74,7 @@ function read(document: DocumentNode): Operation {
 }
 
 /**
- * Reads a document once. Throws a `TypeError` when it is not a document node,
+ * Reads a document once. Throws a `RivaError` (`RIVA_DEFINITION`) when it is not a document node,
  * holds no operation, several, an unnamed one or a subscription, or when it
  * is not of the `expected` kind.
  */
@@ -82,7 +88,8 @@ export function operationOf<Data, Vars>(
 		cache.set(document, op);
 	}
 	if (expected && op.kind !== expected)
-		throw new TypeError(
+		throw new RivaError(
+			'RIVA_DEFINITION',
 			`riva-graphql: ${op.name} is a ${op.kind}; use ${op.kind}() to define it, not ${expected}().`,
 		);
 	return op as Operation<Data, Vars>;

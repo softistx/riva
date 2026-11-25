@@ -1,3 +1,4 @@
+import { RivaError } from '@softistx/riva';
 import type {
 	DocumentNode,
 	FieldNode,
@@ -29,7 +30,7 @@ export interface Collected {
 	readonly undecided: SelectionSetNode[];
 }
 
-/** The operation and fragments of a document; throws a `TypeError` when it holds no operation. */
+/** The operation and fragments of a document; throws a `RivaError` (`RIVA_DEFINITION`) when it holds no operation. */
 export function cacheDocumentOf(node: DocumentNode): CacheDocument {
 	let operation: OperationDefinitionNode | undefined;
 	const fragments = new Map<string, FragmentDefinitionNode>();
@@ -38,7 +39,11 @@ export function cacheDocumentOf(node: DocumentNode): CacheDocument {
 		else if (definition.kind === 'FragmentDefinition')
 			fragments.set(definition.name.value, definition);
 	}
-	if (!operation) throw new TypeError('The document holds no operation');
+	if (!operation)
+		throw new RivaError(
+			'RIVA_DEFINITION',
+			'riva-graphql: the document holds no operation; query it with one named operation.',
+		);
 	return { operation, fragments };
 }
 
@@ -115,7 +120,11 @@ function fragmentOf(
 	if (seen.has(name)) return undefined;
 	seen.add(name);
 	const definition = walk.document.fragments.get(name);
-	if (!definition) throw new TypeError(`The document has no fragment ${name}`);
+	if (!definition)
+		throw new RivaError(
+			'RIVA_DEFINITION',
+			`riva-graphql: the document uses the fragment ${name} but does not define it; include its definition in the document.`,
+		);
 	return {
 		condition: definition.typeCondition.name.value,
 		set: definition.selectionSet,

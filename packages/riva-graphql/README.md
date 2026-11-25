@@ -155,13 +155,11 @@ provideGraphQL(client, bffTransport({ url: '/_data' }));
 ```ts
 // server: app/routes/_data.ts (a route with an action and a loader)
 import { dataRoute } from '@softistx/riva-react-router/server';
-import type { AllowlistManifest } from '@softistx/riva-graphql/codegen';
 import { allowlist } from '@softistx/riva-graphql/server';
 import manifest from '../generated/allowlist.json';
 
-// A JSON import widens `kind` to string: assert the manifest's type.
 const route = dataRoute({
-	sources: [allowlist(manifest as AllowlistManifest)],
+	sources: [allowlist(manifest)],
 });
 export const action = route.action;
 export const loader = route.loader;
@@ -173,13 +171,13 @@ export const loader = route.loader;
 
 | Import | Holds | Notes |
 |---|---|---|
-| `@softistx/riva-graphql` | `query`, `mutation`, `provideGraphQL`, `graphqlClientTransport`, `toRivaError`, `operationOf`, `VERSION` | Imports `@softistx/riva` only; no optional peer. |
+| `@softistx/riva-graphql` | `query`, `mutation`, `provideGraphQL`, `graphqlClientTransport`, `toRivaError`, `operationOf` | Imports `@softistx/riva` only; no optional peer. |
 | `@softistx/riva-graphql/infinite` | `infinite` | Imports `@softistx/riva/infinite`. |
 | `@softistx/riva-graphql/cache` | `normalized` | Imports `@softistx/riva/entities`; no `graphql` value import. |
 | `@softistx/riva-graphql/bff` | `bffTransport` | Browser; imports `@softistx/riva/ssr` only. |
 | `@softistx/riva-graphql/server` | `allowlist` | Server only; needs `graphql`. |
 | `@softistx/riva-graphql/codegen` | `buildAllowlist`, `writeAllowlist` | Node and codegen only; needs `graphql`. |
 
-Exported types: `GraphQLTransport`, `Operation`, `OperationKind`, `VarsOf` and `GraphQLQueryOptions`, `GraphQLMutationOptions`, `OperationCache` (main entry); `NormalizedOptions`, `PossibleTypes` (`/cache`); `GraphQLInfiniteOptions` (`/infinite`); `AllowlistConfig`, `AllowlistEntry`, `AllowlistManifest` (`/codegen`); `BffTransportOptions` (`/bff`); `DataOperation`, `DataSource` (`/server`).
+Exported types: `GraphQLTransport`, `Operation`, `OperationKind`, `VarsOf` and `GraphQLQueryOptions`, `GraphQLMutationOptions`, `OperationCache` (main entry); `NormalizedOptions`, `PossibleTypes` (`/cache`); `GraphQLInfiniteOptions` (`/infinite`); `AllowlistConfig`, `AllowlistEntry`, `AllowlistManifest` (`/codegen`); `BffTransportOptions` (`/bff`); `AllowlistInput`, `DataOperation`, `DataSource` (`/server`).
 
 riva + riva-graphql stays under 8 kB gzipped, and with the entities and the cache under 11 kB (checked by the repo's size budget), `@softistx/graphql-client` and `graphql` not counted.
