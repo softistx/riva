@@ -135,6 +135,12 @@ test('two definitions sharing an id are refused on the server', () => {
 	expect(entryOf(c, q, 1).def).toBe(q);
 });
 
+test('a wrapper that spreads a definition (as infinite() does) is the same definition', () => {
+	const { c, q } = setup();
+	const e = entryOf(c, q, 1);
+	expect(entryOf(c, Object.freeze({ ...q }), 1)).toBe(e);
+});
+
 test('in a browser the newest definition takes the entry over', () => {
 	const { c, q } = setup();
 	const other = query<number, string>({ id: 'q', fetch: async () => 'y' });
