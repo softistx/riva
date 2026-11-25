@@ -6,7 +6,7 @@ import {
 } from '@softistx/riva';
 import { setScopeResolver } from '@softistx/riva/ssr';
 import type { MiddlewareFunction, RouterContextProvider } from 'react-router';
-import { clientIn, rivaContext } from '../context';
+import { rivaContext } from '../context';
 
 // The one module-level state of this package, by design: the ambient scope
 // of a server request must follow its async work, and `setScopeResolver` is
@@ -36,7 +36,7 @@ export function rivaMiddleware<Result = unknown>(
 ): MiddlewareFunction<Result> {
 	return async (args, next) => {
 		const { request, context } = args;
-		if (clientIn(context))
+		if (context.get(rivaContext))
 			throw new RivaScopeError(
 				'rivaMiddleware ran twice in one request: declare it once, on the root route.',
 			);

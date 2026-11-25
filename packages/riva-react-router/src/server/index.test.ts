@@ -11,8 +11,8 @@ test('one client per request, none shared between two parallel requests', async 
 		app.serve('/patients'),
 		app.serve('/patients/2'),
 	]);
-	expect(a.client).toBeDefined();
-	expect(b.client).toBeDefined();
+	expect(a.client).not.toBeNull();
+	expect(b.client).not.toBeNull();
 	expect(a.client).not.toBe(b.client);
 	expect(a.html).toContain('Patients:s');
 	expect(b.html).toContain('Patient:2');
