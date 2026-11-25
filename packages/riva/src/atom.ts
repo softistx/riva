@@ -6,7 +6,7 @@ export type Unsubscribe = () => void;
 export interface AtomOptions<T> {
 	name?: string;
 	equals?: (a: T, b: T) => boolean;
-	/** Whether the value travels in the SSR payload. Default true. */
+	/** Whether the value travels in an SSR snapshot (it needs a `name` too). Default false: opt in. */
 	ssr?: boolean;
 }
 
@@ -28,7 +28,7 @@ export function atom<T>(initial: T, opts: AtomOptions<T> = {}): Atom<T> {
 		kind: 'atom',
 		initial,
 		name: opts.name,
-		ssr: opts.ssr ?? true,
+		ssr: opts.ssr ?? false,
 		equals: opts.equals ?? Object.is,
 		get: () => resolve().get(def),
 		set: (value: T | ((prev: T) => T)) => resolve().set(def, value),

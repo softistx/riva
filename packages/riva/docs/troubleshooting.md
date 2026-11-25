@@ -131,6 +131,66 @@ Code: `RIVA_CACHE` (`RivaError`).
 
 **Fix:** have the source return everything the cache reads (a nullable GraphQL field must come back as `null`, not be left out), or stop reading the missing part. See the GraphQL cause in the [riva-graphql page](../../riva-graphql/docs/troubleshooting.md).
 
+## `Cannot dehydrate <what> at <path>: snapshots hold JSON values and Dates. Convert it in the fetch, or keep it out of the cache.`
+
+Code: `RIVA_SSR` (`RivaError`).
+
+**When:** `dehydrate` meets a bigint, a function, a symbol, a `Map`, a `Set`, a class instance (other than `Date`), an invalid `Date` or a circular reference in a query entry's data or a named atom's value. `<path>` names the entry (or the atom) and the field, e.g. `invoices:{"year":2026}.data.items[0].total`.
+
+**Why:** a snapshot travels as JSON, so it can hold only what JSON holds, plus Dates, `NaN` and the infinities, which riva tags and restores.
+
+**Fix:** return plain data from `fetch` (a string or a number for a bigint, an array for a `Set`), or keep that query or atom out of the snapshot (leave `ssr: true` off the atom).
+
+```ts
+fetch: async () => (await res.json()).items.map((i) => ({ ...i, total: Number(i.total) })),
+```
+
+## `Cannot dehydrate: two atoms are named "<name>". Give each SSR atom a unique name, or set ssr: false.`
+
+Code: `RIVA_SSR` (`RivaError`).
+
+**When:** `dehydrate` finds two atoms with the same `name` that the client has used.
+
+**Why:** atoms travel by name, so a snapshot could not tell which one a value belongs to.
+
+**Fix:** rename one, or drop `ssr: true` from the one that stays local.
+
+```ts
+const a = atom('', { name: 'draft', ssr: true });
+const b = atom('', { name: 'draft', ssr: true }); // collides with a
+
+// fix: rename b, or drop ssr: true from the one that stays local
+const local = atom('', { name: 'draft' });
+```
+
+## `Cannot hydrate: this is not a snapshot dehydrate() made (version <v>).`
+
+Code: `RIVA_SSR` (`RivaError`).
+
+**When:** `hydrate` receives something that is not a snapshot of this format: `undefined` (the server sent nothing), an object of another shape, or another version.
+
+**Why:** the snapshot's `v` is 1 and it holds `q` and `a`. A different value usually means the page carried something else, or the server and the browser run different versions of riva.
+
+**Fix:** pass what `dehydrate` returned, unchanged, and keep both sides on one version of `@softistx/riva`.
+
+```ts
+import type { Snapshot } from '@softistx/riva/ssr';
+
+hydrate(client, JSON.parse(payload) as Snapshot);
+```
+
+## Data refetches right after hydration
+
+**When:** the page renders with the server's data, then the same requests go out again as soon as a component subscribes.
+
+**Why:** hydrated entries keep their age. A query's `staleTime` defaults to 0, so data of any age is already stale and a subscription fetches it.
+
+**Fix:** give the query a `staleTime` that covers the render, e.g. `staleTime: '30s'`. Fresh hydrated data is never fetched again.
+
+```ts
+const invoices = query({ id: 'invoices', staleTime: '30s', fetch });
+```
+
 ## The request was aborted
 
 Code: `RIVA_ABORT` (`RivaAbortError`).

@@ -29,6 +29,11 @@
 			"import": "./dist/infinite/index.js",
 			"default": "./dist/infinite/index.js"
 		},
+		"./ssr": {
+			"types": "./dist/ssr/index.d.ts",
+			"import": "./dist/ssr/index.js",
+			"default": "./dist/ssr/index.js"
+		},
 		"./package.json": "./package.json"
 	},
 	"keywords": [
@@ -60,7 +65,8 @@
 		"entrypoints": [
 			"src/index.ts",
 			"src/entities/index.ts",
-			"src/infinite/index.ts"
+			"src/infinite/index.ts",
+			"src/ssr/index.ts"
 		]
 	}
 }

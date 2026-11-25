@@ -6,6 +6,7 @@ import { nodeOf } from './graph';
 import { stableKey } from './key';
 import type { Query, QueryState } from './query';
 import { isBrowser } from './scope';
+import type { SeedEntry } from './ssr/hydrate';
 
 // biome-ignore lint/suspicious/noExplicitAny: entries of every definition share one map
 export type AnyQuery = Query<any, any>;
@@ -53,6 +54,10 @@ export interface Ctx {
 	/** Observers over every entry, to attach the window events once. */
 	observed: number;
 	detach: (() => void) | undefined;
+	/** Called on a new entry: `@softistx/riva/ssr` seeds it from a snapshot. @internal */
+	seed?: (c: Ctx, e: Entry) => void;
+	/** Snapshot entries waiting for their entry, by key. @internal */
+	pending?: Map<string, SeedEntry>;
 }
 
 const IDLE: State = Object.freeze({
@@ -202,6 +207,7 @@ export function entryOf(c: Ctx, def: AnyQuery, vars: unknown): Entry {
 			poll: undefined,
 		};
 		c.entries.set(key, e);
+		c.seed?.(c, e);
 		armGc(c, e);
 	}
 	return e;
