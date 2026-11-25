@@ -163,7 +163,9 @@ export function graphql(
 						[Symbol.asyncIterator]();
 					const end = () => {
 						ctl.abort();
-						void Promise.resolve(it.return?.()).catch(() => {});
+						try {
+							void Promise.resolve(it.return?.()).catch(() => {});
+						} catch {}
 					};
 					// What a callback throws is the app's: raised outside the stream.
 					const rethrow = (e: unknown) =>
