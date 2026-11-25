@@ -32,6 +32,8 @@ export type Lay = (prev: unknown) => unknown;
 export interface Entry {
 	key: string;
 	def: AnyQuery;
+	/** The definition a hot reload replaced: seen again, the id is shared. */
+	was?: AnyQuery;
 	vars: unknown;
 	/** The graph signal holding the state: the one notification mechanism. */
 	signal: Signal<State>;
@@ -181,18 +183,22 @@ export function entryOf(c: Ctx, def: AnyQuery, vars: unknown): Entry {
 	if (e && e.def !== def) {
 		// Another definition under this id: refused on the server, taken over by
 		// the newest in a browser (a hot-reloaded module).
-		if (!isBrowser())
+		if (!isBrowser() || e.was === def)
 			throw new RivaError(
 				'RIVA_KEY',
-				`Two definitions share the id "${def.id}": give each a unique id.`,
+				`Two definitions share the id "${def.id}": define each query once (a module-level const) and import it, or pass a distinct id.`,
 			);
+		// Drop what the old policy stored: the new one reads only its own data.
+		const d = peek(c, e).data;
+		if (d !== undefined) e.def.options.cache?.release(client, d);
+		e.was = e.def;
 		e.def = def;
+		put(c, e, IDLE);
 	}
 	if (!e) {
 		const a = signal<State>(IDLE, { name: key });
 		const lay = signal<Lay[]>([], { name: `${key}#layers` });
-		const { cache, derive } = def.options;
-		e = {
+		const n: Entry = {
 			key,
 			def,
 			vars,
@@ -202,6 +208,7 @@ export function entryOf(c: Ctx, def: AnyQuery, vars: unknown): Entry {
 				(get) => {
 					const s = get(a);
 					const ls = get(lay);
+					const { cache, derive } = n.def.options;
 					if (!cache && !ls.length && !derive) return s;
 					let data =
 						cache && s.data !== undefined ? cache.read(client, s.data) : s.data;
@@ -217,6 +224,7 @@ export function entryOf(c: Ctx, def: AnyQuery, vars: unknown): Entry {
 			gc: undefined,
 			poll: undefined,
 		};
+		e = n;
 		c.entries.set(key, e);
 		c.seed?.(c, e);
 		armGc(c, e);

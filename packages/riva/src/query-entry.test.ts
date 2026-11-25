@@ -1,5 +1,6 @@
 import { expect, test } from 'bun:test';
 import { createRivaClient } from './client';
+import { entities } from './entities/policy';
 import type { Scheduler } from './env';
 import { type CachePolicy, query } from './query';
 import { armGc, type Ctx, entryOf, peek, put, stale } from './query-entry';
@@ -129,7 +130,7 @@ test('two definitions sharing an id are refused on the server', () => {
 	const other = query<number, string>({ id: 'q', fetch: async () => 'y' });
 	entryOf(c, q, 1);
 	expect(() => entryOf(c, other, 1)).toThrow(
-		'Two definitions share the id "q": give each a unique id.',
+		'Two definitions share the id "q": define each query once (a module-level const) and import it, or pass a distinct id.',
 	);
 	expect(entryOf(c, q, 1).def).toBe(q);
 });
@@ -143,6 +144,45 @@ test('in a browser the newest definition takes the entry over', () => {
 	try {
 		expect(entryOf(c, other, 1)).toBe(e);
 		expect(e.def).toBe(other);
+	} finally {
+		delete g.document;
+	}
+});
+
+test('after a takeover, reads follow the new definition derive and cache', async () => {
+	const client = createRivaClient();
+	const a = query<void, { id: string; n: number }>({
+		id: 'hot',
+		fetch: async () => ({ id: '1', n: 1 }),
+	});
+	const b = query<void, { id: string; n: number }>({
+		id: 'hot',
+		cache: entities(),
+		derive: (_c, s) => ({ ...s, tag: 'b' }),
+		fetch: async () => ({ id: '1', n: 2 }),
+	});
+	const g = globalThis as { document?: unknown };
+	g.document = {};
+	try {
+		expect(await a.ensure(client)).toEqual({ id: '1', n: 1 });
+		expect(client.get(a).data).toEqual({ id: '1', n: 1 });
+		expect(client.get(b)).toMatchObject({ tag: 'b' });
+		expect(await b.ensure(client)).toEqual({ id: '1', n: 2 });
+		expect(client.get(b).data).toEqual({ id: '1', n: 2 });
+	} finally {
+		delete g.document;
+	}
+});
+
+test('a replaced definition that comes back is refused', () => {
+	const { c, q } = setup();
+	const b = query<number, string>({ id: 'q', fetch: async () => 'y' });
+	entryOf(c, q, 1);
+	const g = globalThis as { document?: unknown };
+	g.document = {};
+	try {
+		entryOf(c, b, 1);
+		expect(() => entryOf(c, q, 1)).toThrow('share the id');
 	} finally {
 		delete g.document;
 	}
