@@ -78,6 +78,8 @@ import {
 	trackedInput,
 } from '@softistx/riva/resource';
 
+// Schematic: BOOKS, SAVE and queryOfPath stand for the definitions and lookups of your adapter.
+
 // A query call: variables a plain value, a signal, a computed or a tracked function.
 const read = trackedInput(riva, vars);
 const books = callResource(riva, BOOKS, read, { enabled, keepPrevious, staleTime, signal });
@@ -92,7 +94,7 @@ await mutateInvalidating(riva, SAVE, vars, { invalidates: ['/books'], signal }, 
 const waitable = abortable(books, signal);
 ```
 
-`callResource` already applies `signal` through `abortable`; use `abortable` alone to wrap a resource you decorated yourself.
+`CallOptions` is the call's `enabled`, `keepPrevious` and `staleTime`. `callResource` already applies `signal` through `abortable`; use `abortable` alone to wrap a resource you decorated yourself.
 
 ## `streamResource(riva, source, opts?)`
 

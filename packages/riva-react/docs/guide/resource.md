@@ -41,13 +41,17 @@ const state = useResource(input.key, (riva) =>
 
 `useCallResource(id, input, options, make)` is `useStableInput` and `useResource` together, what `useGraphQL` and `useRest` share. `id` names the operation, `options` are `{ suspense, keepPrevious, staleTime, enabled }`, and `make(riva, input, call)` builds the resource from the stabilised input and the call options (`enabled`, `keepPrevious`, and a `staleTime` raised to at least 1000 ms under Suspense).
 
+- `CallResourceOptions`: what an adapter hook takes (`suspense`, `keepPrevious`, `staleTime`, `enabled`).
+- `ResourceCall`: what `make` receives as `call` (`enabled`, and `keepPrevious` and `staleTime` when set).
+
 ```ts
 import { callResource, trackedInput } from '@softistx/riva/resource';
 import { useCallResource } from '@softistx/riva-react/resource';
 
+// Schematic: `BOOKS_DEF` stands for your adapter's memoised `Query<unknown, unknown>`, so `input` (unknown) needs no cast.
 const useBooks = (vars: unknown, options = {}) =>
 	useCallResource('books', vars, options, (riva, input, call) =>
-		callResource(riva, BOOKS_DEF, trackedInput(riva, input as never), call),
+		callResource(riva, BOOKS_DEF, trackedInput(riva, input), call),
 	);
 ```
 
