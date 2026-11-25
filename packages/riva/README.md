@@ -166,4 +166,4 @@ The snapshot is an opaque format: pass on what `dehydrate` returned. A fresh ent
 
 ## Size budget
 
-The main entry stays within 6144 B gzipped, with `entities` or `infinite` within 8192 B each, with `ssr` or `store` within 7424 B each, with `data` within 7168 B, with every subpath within 12288 B, core + react within 9216 B (`bun run size` checks every row).
+The main entry stays within 6144 B gzipped, with `entities` or `infinite` within 8192 B each, with `ssr` or `store` within 7680 B each, with `data` within 7168 B, with every subpath within 12288 B, core + react within 9216 B (`bun run size` checks every row).
