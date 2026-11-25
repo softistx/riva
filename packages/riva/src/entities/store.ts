@@ -1,4 +1,4 @@
-import { type Atom, atom } from '../atom';
+import { type Signal, signal } from '../signal';
 import type { RivaClient } from '../client';
 import { nodeOf } from '../graph';
 import { fieldsOf } from './denormalize';
@@ -13,9 +13,9 @@ export interface Rules {
 	identify: unknown;
 }
 
-/** The entities of one client: one atom per entity, kept alive by roots. */
+/** The entities of one client: one signal per entity, kept alive by roots. */
 export class EntityStore {
-	readonly atoms = new Map<string, Atom<Stored | undefined>>();
+	readonly signals = new Map<string, Signal<Stored | undefined>>();
 	/** The stored data of every live query entry (anything with `refs`). */
 	readonly roots = new Set<{ refs: string[] }>();
 	/** Entities written by hand, kept until evicted. */
@@ -25,7 +25,7 @@ export class EntityStore {
 	/** The same for direct reads of entities a cut shaped. */
 	readonly directLocal = new Map<string, unknown>();
 	/** The optimistic layers of mutations: field patches by entity, oldest first. */
-	readonly ov = atom<Map<string, Stored>[]>([]);
+	readonly ov = signal<Map<string, Stored>[]>([]);
 	/** Set while a committed read runs: the layers are skipped. */
 	skip = false;
 	identify: Identify = makeIdentify();
@@ -34,19 +34,19 @@ export class EntityStore {
 
 	constructor(readonly client: RivaClient) {}
 
-	/** The atom of an entity (created empty when missing, so a tracked read of it is notified). */
-	atomOf(ref: string): Atom<Stored | undefined> {
-		let a = this.atoms.get(ref);
+	/** The signal of an entity (created empty when missing, so a tracked read of it is notified). */
+	signalOf(ref: string): Signal<Stored | undefined> {
+		let a = this.signals.get(ref);
 		if (!a) {
-			a = atom<Stored | undefined>(undefined, { name: ref });
-			this.atoms.set(ref, a);
+			a = signal<Stored | undefined>(undefined, { name: ref });
+			this.signals.set(ref, a);
 		}
 		return a;
 	}
 
 	/** The stored fields, untracked; creates nothing. */
 	peek(ref: string): Stored | undefined {
-		const a = this.atoms.get(ref);
+		const a = this.signals.get(ref);
 		return a && this.client.untracked(() => this.client.get(a));
 	}
 
@@ -57,23 +57,23 @@ export class EntityStore {
 
 	/** Whether any entity holds fields. */
 	get empty(): boolean {
-		for (const ref of this.atoms.keys()) if (this.peek(ref)) return false;
+		for (const ref of this.signals.keys()) if (this.peek(ref)) return false;
 		return true;
 	}
 
-	/** Empties an entity; its atom stays while observed, so readers are notified. */
+	/** Empties an entity; its signal stays while observed, so readers are notified. */
 	clear(ref: string): boolean {
 		const had = this.peek(ref) !== undefined;
 		this.direct.delete(ref);
 		this.directLocal.delete(ref);
-		const a = this.atoms.get(ref);
+		const a = this.signals.get(ref);
 		if (!a) return false;
 		if (had) this.client.set(a, undefined);
-		if (nodeOf(this.client.graph, a).refs === 0) this.atoms.delete(ref);
+		if (nodeOf(this.client.graph, a).refs === 0) this.signals.delete(ref);
 		return had;
 	}
 
-	/** Merges fields into an entity: only a changed field changes the atom. */
+	/** Merges fields into an entity: only a changed field changes the signal. */
 	merge(ref: string, fields: Stored): void {
 		const prev = this.peek(ref);
 		const changed: Stored = {};
@@ -83,7 +83,7 @@ export class EntityStore {
 			changed[k] = fields[k];
 			any = true;
 		}
-		if (any) this.client.set(this.atomOf(ref), { ...prev, ...changed });
+		if (any) this.client.set(this.signalOf(ref), { ...prev, ...changed });
 	}
 
 	/** Removes every entity no live root or pin reaches (cycles included). */
@@ -98,7 +98,7 @@ export class EntityStore {
 			for (const k in fields) todo.push(...refsIn(fields[k]));
 		}
 		this.client.batch(() => {
-			for (const ref of [...this.atoms.keys()])
+			for (const ref of [...this.signals.keys()])
 				if (!live.has(ref)) this.clear(ref);
 		});
 	}

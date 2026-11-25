@@ -5,7 +5,7 @@
 v1, on the integration branch `feat/v1`. What a consumer gets, slice by slice:
 
 1. A monorepo of five packages that build, typecheck and test, with docs.
-2. Atoms, computeds and effects with automatic dependency tracking, values held per client, and a clear error when a server read has no client in scope.
+2. Signals, computeds and effects with automatic dependency tracking, values held per client, and a clear error when a server read has no client in scope.
 3. Queries that dedupe in-flight requests, go stale, are garbage collected, retry sensibly, refetch on focus, and can be ensured, prefetched, invalidated and cancelled.
 4. A normalized cache for GraphQL entities, aware of the selection (aliases, arguments, fragments), and a request-keyed cache for REST, with opt-in REST entities.
 5. Mutations with optimistic updates that roll back on failure.

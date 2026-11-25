@@ -1,15 +1,15 @@
 import { expectTypeOf, test } from 'bun:test';
-import { atom, computed, mutation, query } from '@softistx/riva';
+import { signal, computed, mutation, query } from '@softistx/riva';
 import { infinite } from '@softistx/riva/infinite';
 import { useFragment } from './entities';
-import { useAtom, useMutation, useQuery, useValue } from './index';
+import { useSignal, useMutation, useQuery, useValue } from './index';
 import { useInfiniteQuery } from './infinite';
 
 // Type tests only: nothing here runs (hooks need a render).
 const types = () => {
-	const count = atom(0);
+	const count = signal(0);
 	const double = computed((get) => get(count) * 2);
-	expectTypeOf(useAtom(count)).toEqualTypeOf<
+	expectTypeOf(useSignal(count)).toEqualTypeOf<
 		[value: number, set: (value: number | ((prev: number) => number)) => void]
 	>();
 	expectTypeOf(useValue(double)).toEqualTypeOf<number>();

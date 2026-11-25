@@ -2,7 +2,7 @@ import { isPlain, isRef, share } from './json';
 import type { EntityStore } from './store';
 
 /**
- * Resolves the refs of a stored value through the entity atoms: each atom read
+ * Resolves the refs of a stored value through the entity signals: each signal read
  * is tracked, so the caller (a computed) re-runs when an entity it reached
  * changes. A missing entity is `undefined`; a ref met again inside itself is
  * cut. An entity unchanged since the last read keeps its identity: its last
@@ -25,12 +25,12 @@ interface Ctx {
 
 /** The fields of an entity as a reader sees them: tracked, with the optimistic layers over them. */
 export function fieldsOf(store: EntityStore, ref: string) {
-	const a = store.atoms.get(ref);
-	// A missing entity is only given an atom when the read is tracked.
+	const a = store.signals.get(ref);
+	// A missing entity is only given a signal when the read is tracked.
 	let fields = a
 		? store.client.get(a)
 		: store.client.graph.track
-			? store.client.get(store.atomOf(ref))
+			? store.client.get(store.signalOf(ref))
 			: undefined;
 	for (const layer of store.skip ? [] : store.client.get(store.ov)) {
 		const patch = layer.get(ref);

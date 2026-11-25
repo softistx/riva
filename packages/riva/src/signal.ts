@@ -3,7 +3,7 @@ import { resolve } from './scope';
 export type Listener<T> = (value: T) => void;
 export type Unsubscribe = () => void;
 
-export interface AtomOptions<T> {
+export interface SignalOptions<T> {
 	name?: string;
 	equals?: (a: T, b: T) => boolean;
 	/** Whether the value travels in an SSR snapshot (it needs a `name` too). Default false: opt in. */
@@ -11,8 +11,8 @@ export interface AtomOptions<T> {
 }
 
 /** A stateless definition: it holds no value, a `RivaClient` does. */
-export interface Atom<T> {
-	readonly kind: 'atom';
+export interface Signal<T> {
+	readonly kind: 'signal';
 	readonly initial: T;
 	readonly name: string | undefined;
 	readonly ssr: boolean;
@@ -23,9 +23,9 @@ export interface Atom<T> {
 	subscribe(listener: Listener<T>): Unsubscribe;
 }
 
-export function atom<T>(initial: T, opts: AtomOptions<T> = {}): Atom<T> {
-	const def: Atom<T> = Object.freeze({
-		kind: 'atom',
+export function signal<T>(initial: T, opts: SignalOptions<T> = {}): Signal<T> {
+	const def: Signal<T> = Object.freeze({
+		kind: 'signal',
 		initial,
 		name: opts.name,
 		ssr: opts.ssr ?? false,

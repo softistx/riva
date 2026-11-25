@@ -1,6 +1,6 @@
 # @softistx/riva-react
 
-React bindings for [riva](https://github.com/softistx/riva/blob/develop/packages/riva/README.md): a provider, hooks over atoms, queries, mutations, infinite lists and entities, and Suspense. Typed end to end: variables and data are inferred from the definition, never annotated at the call site.
+React bindings for [riva](https://github.com/softistx/riva/blob/develop/packages/riva/README.md): a provider, hooks over signals, queries, mutations, infinite lists and entities, and Suspense. Typed end to end: variables and data are inferred from the definition, never annotated at the call site.
 
 Errors and fixes: [docs](./docs/README.md). Work in progress, see the [spec](https://github.com/softistx/riva/blob/develop/docs/spec.md).
 
@@ -31,18 +31,18 @@ export const App = () => (
 
 `useClient()` returns the client, to call `def.invalidate(client, vars)` or `def.ensure(client, vars)` from an event handler.
 
-## Atoms and computeds
+## Signals and computeds
 
 ```tsx
-import { atom, computed } from '@softistx/riva';
-import { useAtom, useValue } from '@softistx/riva-react';
+import { signal, computed } from '@softistx/riva';
+import { useSignal, useValue } from '@softistx/riva-react';
 
-const filter = atom('');
+const filter = signal('');
 const hasFilter = computed((get) => get(filter).length > 0);
 
 function Search() {
-	const [q, setQ] = useAtom(filter); // setQ takes a value or an updater
-	const active = useValue(hasFilter); // an atom or a computed
+	const [q, setQ] = useSignal(filter); // setQ takes a value or an updater
+	const active = useValue(hasFilter); // a signal or a computed
 	return <input value={q} data-active={active} onChange={(e) => setQ(e.target.value)} />;
 }
 ```
@@ -199,7 +199,7 @@ export async function handle(school: string): Promise<Response> {
 
 | Import | Adds |
 | --- | --- |
-| `@softistx/riva-react` | `RivaProvider`, `useClient`, `useAtom`, `useValue`, `useQuery`, `useMutation` |
+| `@softistx/riva-react` | `RivaProvider`, `useClient`, `useSignal`, `useValue`, `useQuery`, `useMutation` |
 | `@softistx/riva-react/infinite` | `useInfiniteQuery` |
 | `@softistx/riva-react/entities` | `useFragment` |
 

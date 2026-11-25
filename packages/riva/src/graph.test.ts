@@ -1,12 +1,12 @@
 import { expect, test } from 'bun:test';
-import { atom } from './atom';
+import { signal } from './signal';
 import { createRivaClient } from './client';
 import { computed } from './computed';
 import type { RivaError } from './errors';
 import { nodeOf, read, subscribe, write } from './graph';
 
 test('nodeOf creates one node per definition and client', () => {
-	const a = atom(1);
+	const a = signal(1);
 	const c1 = createRivaClient();
 	const c2 = createRivaClient();
 	expect(nodeOf(c1.graph, a)).toBe(nodeOf(c1.graph, a));
@@ -15,7 +15,7 @@ test('nodeOf creates one node per definition and client', () => {
 });
 
 test('versions bump only on a real change and the epoch on each write', () => {
-	const a = atom(1);
+	const a = signal(1);
 	const { graph: g } = createRivaClient();
 	write(g, a, 1);
 	expect(nodeOf(g, a).ver).toBe(0);
@@ -26,8 +26,8 @@ test('versions bump only on a real change and the epoch on each write', () => {
 });
 
 test('a computed is cached within an epoch and verified by source versions after', () => {
-	const a = atom(1);
-	const other = atom(1);
+	const a = signal(1);
+	const other = signal(1);
 	let calls = 0;
 	const d = computed((get) => {
 		calls++;
@@ -45,7 +45,7 @@ test('a computed is cached within an epoch and verified by source versions after
 });
 
 test('links are ref-counted across listeners and chained computeds', () => {
-	const a = atom(1);
+	const a = signal(1);
 	const b = computed((get) => get(a));
 	const d = computed((get) => get(b));
 	const { graph: g } = createRivaClient();
@@ -62,7 +62,7 @@ test('links are ref-counted across listeners and chained computeds', () => {
 });
 
 test('a cycle throws RIVA_CYCLE and leaves the node usable', () => {
-	const flag = atom(true);
+	const flag = signal(true);
 	const box: { d?: ReturnType<typeof computed<number>> } = {};
 	const d = computed((get): number => (get(flag) ? get(box.d as never) : 1));
 	box.d = d;
@@ -79,7 +79,7 @@ test('a cycle throws RIVA_CYCLE and leaves the node usable', () => {
 });
 
 test('a throwing listener leaves no stuck flush or batch state', () => {
-	const a = atom(0);
+	const a = signal(0);
 	const { graph: g } = createRivaClient();
 	subscribe(g, a, () => {
 		throw new Error('x');
@@ -91,7 +91,7 @@ test('a throwing listener leaves no stuck flush or batch state', () => {
 });
 
 test('batch rethrows the body error after flushing, with a flush error as cause', () => {
-	const a = atom(0);
+	const a = signal(0);
 	const c = createRivaClient();
 	const seen: number[] = [];
 	c.subscribe(a, (v) => seen.push(v));
@@ -122,7 +122,7 @@ test('batch rethrows the body error after flushing, with a flush error as cause'
 });
 
 test('batch keeps a frozen or primitive body error and does not throw from the attach', () => {
-	const a = atom(0);
+	const a = signal(0);
 	const c = createRivaClient();
 	c.subscribe(a, () => {
 		throw new Error('listener');

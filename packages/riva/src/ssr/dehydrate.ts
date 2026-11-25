@@ -46,7 +46,7 @@ const errorOf = (e: unknown): SnapshotError => {
 		: { code: 'RIVA_UNKNOWN' };
 };
 
-/** The settled query entries and the changed named atoms of a client, as a JSON-safe snapshot. */
+/** The settled query entries and the changed named signals of a client, as a JSON-safe snapshot. */
 export function dehydrate(client: RivaClient): Snapshot {
 	const c = client.queries.ctx;
 	const now = c.sched.now();
@@ -69,10 +69,10 @@ export function dehydrate(client: RivaClient): Snapshot {
 	for (const [name, n] of client.graph.named) {
 		if (n === null)
 			throw ssrError(
-				`Cannot dehydrate: two atoms are named "${name}". Give each SSR atom a unique name, or set ssr: false.`,
+				`Cannot dehydrate: two signals are named "${name}". Give each SSR signal a unique name, or set ssr: false.`,
 			);
-		if (n.def.kind === 'atom' && n.value !== n.def.initial)
-			a[name] = encodeAt(n.value, `atom "${name}"`);
+		if (n.def.kind === 'signal' && n.value !== n.def.initial)
+			a[name] = encodeAt(n.value, `signal "${name}"`);
 	}
 	return { v: 1, t: now, q, a } as unknown as Snapshot;
 }

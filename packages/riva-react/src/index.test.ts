@@ -5,10 +5,10 @@ test('the main entry exports the provider and the hooks, nothing from the opt-in
 	expect(Object.keys(api).sort()).toEqual([
 		'RivaProvider',
 		'VERSION',
-		'useAtom',
 		'useClient',
 		'useMutation',
 		'useQuery',
+		'useSignal',
 		'useValue',
 	]);
 });

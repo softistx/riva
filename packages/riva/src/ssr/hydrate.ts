@@ -53,7 +53,7 @@ function seed(c: Ctx, e: Entry): void {
 }
 
 /**
- * Loads a snapshot into a client. Entries and atoms the client does not have
+ * Loads a snapshot into a client. Entries and signals the client does not have
  * yet are seeded the moment their definition is first used; an entry it has
  * is overwritten only by a newer snapshot, and never while it fetches or
  * carries optimistic layers. With `deferObserved` (a render), nothing

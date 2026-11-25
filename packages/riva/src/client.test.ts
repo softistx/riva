@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { atom } from './atom';
+import { signal } from './signal';
 import { createRivaClient, RivaClient } from './client';
 import { computed } from './computed';
 
@@ -8,7 +8,7 @@ test('createRivaClient returns a RivaClient', () => {
 });
 
 test('get, set and subscribe', () => {
-	const a = atom(1);
+	const a = signal(1);
 	const d = computed((get) => get(a) + 1);
 	const c = createRivaClient();
 	const seen: number[] = [];
@@ -22,7 +22,7 @@ test('get, set and subscribe', () => {
 });
 
 test('effect re-runs, cleans up and disposes', () => {
-	const a = atom(0);
+	const a = signal(0);
 	const c = createRivaClient();
 	const log: string[] = [];
 	const stop = c.effect(() => {
@@ -36,8 +36,8 @@ test('effect re-runs, cleans up and disposes', () => {
 });
 
 test('run, batch and untracked', () => {
-	const a = atom(0);
-	const b = atom(0);
+	const a = signal(0);
+	const b = signal(0);
 	const c = createRivaClient();
 	const seen: number[] = [];
 	c.subscribe(a, (v) => seen.push(v));
@@ -65,7 +65,7 @@ test('run, batch and untracked', () => {
 });
 
 test('a throwing listener does not drop the others; the single error is rethrown as is', () => {
-	const a = atom(0);
+	const a = signal(0);
 	const c = createRivaClient();
 	const boom = new Error('boom');
 	const seen: number[] = [];
@@ -73,7 +73,7 @@ test('a throwing listener does not drop the others; the single error is rethrown
 		throw boom;
 	});
 	c.subscribe(a, (v) => seen.push(v));
-	const other = atom(0);
+	const other = signal(0);
 	c.subscribe(other, (v) => seen.push(v + 100));
 	let thrown: unknown;
 	try {
@@ -91,7 +91,7 @@ test('a throwing listener does not drop the others; the single error is rethrown
 });
 
 test('several errors become an AggregateError, and a throwing effect is isolated', () => {
-	const a = atom(0);
+	const a = signal(0);
 	const c = createRivaClient();
 	const seen: number[] = [];
 	c.subscribe(a, () => {
@@ -116,7 +116,7 @@ test('several errors become an AggregateError, and a throwing effect is isolated
 	).toEqual(['one', 'two']);
 	expect(seen).toEqual([1]);
 
-	const b = atom(0);
+	const b = signal(0);
 	const runs: number[] = [];
 	c.effect(() => {
 		if (c.get(b) === 1) throw new Error('fx');

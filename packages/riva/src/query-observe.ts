@@ -1,4 +1,4 @@
-import type { Listener, Unsubscribe } from './atom';
+import type { Listener, Unsubscribe } from './signal';
 import type { RivaError } from './errors';
 import {
 	type AnyQuery,

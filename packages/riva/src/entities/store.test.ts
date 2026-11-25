@@ -33,8 +33,8 @@ describe('EntityStore (ported from graphql-client store.spec, without selections
 		store.merge('Book:1', { title: 'A' });
 		store.merge('Book:2', { title: 'B' });
 		const seen: string[] = [];
-		const one = computed(() => client.get(store.atomOf('Book:1')));
-		const two = computed(() => client.get(store.atomOf('Book:2')));
+		const one = computed(() => client.get(store.signalOf('Book:1')));
+		const two = computed(() => client.get(store.signalOf('Book:2')));
 		client.subscribe(one, () => seen.push('1'));
 		client.subscribe(two, () => seen.push('2'));
 		client.batch(() => {
@@ -64,7 +64,7 @@ describe('EntityStore (ported from graphql-client store.spec, without selections
 		store.sweep();
 		expect(store.peek('Book:1')).toBeUndefined();
 		expect(store.peek('Author:1')).toBeUndefined();
-		expect(store.atoms.size).toBe(0);
+		expect(store.signals.size).toBe(0);
 	});
 
 	test('sweep collects entities that point at each other', () => {
@@ -96,13 +96,13 @@ describe('EntityStore (ported from graphql-client store.spec, without selections
 		expect(store.empty).toBe(false);
 	});
 
-	test('an observed atom stays when its entity is removed', () => {
+	test('an observed signal stays when its entity is removed', () => {
 		const { client, store } = make();
 		store.merge('Book:1', { title: 'A' });
 		const seen: unknown[] = [];
-		client.subscribe(store.atomOf('Book:1'), (v) => seen.push(v));
+		client.subscribe(store.signalOf('Book:1'), (v) => seen.push(v));
 		store.sweep();
 		expect(seen).toEqual([undefined]);
-		expect(store.atoms.has('Book:1')).toBe(true);
+		expect(store.signals.has('Book:1')).toBe(true);
 	});
 });

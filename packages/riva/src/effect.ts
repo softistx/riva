@@ -1,4 +1,4 @@
-import type { Unsubscribe } from './atom';
+import type { Unsubscribe } from './signal';
 import type { EffectFn } from './client';
 import { isBrowser, resolve } from './scope';
 

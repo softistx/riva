@@ -9,10 +9,10 @@ hand-written keys.
 
 ```ts
 // Local state: definitions, no value until a client reads them
-import { atom, computed } from "@softistx/riva";
+import { signal, computed } from "@softistx/riva";
 
-export const filter = atom("");
-export const sidebarOpen = atom(true, { persist: false });
+export const filter = signal("");
+export const sidebarOpen = signal(true, { persist: false });
 export const hasFilter = computed((get) => get(filter).length > 0);
 
 // GraphQL
@@ -36,7 +36,7 @@ export async function loader({ context, params }: Route.LoaderArgs) {
 
 // Component: same definition, typed vars and data
 function PatientList() {
-  const [q, setQ] = useAtom(filter);
+  const [q, setQ] = useSignal(filter);
   const { data, status, refetch } = useQuery(patients, { school, q });
   const rename = useMutation(renamePatient); // optimistic + rollback
   const feed = useInfiniteQuery(patientsFeed, { school });

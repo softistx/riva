@@ -1,20 +1,20 @@
 import { expect, test } from 'bun:test';
-import { atom } from './atom';
+import { signal } from './signal';
 import { createRivaClient } from './client';
 
 test('is a frozen stateless definition with its initial value', () => {
-	const a = atom(3, { name: 'n' });
+	const a = signal(3, { name: 'n' });
 	expect(Object.isFrozen(a)).toBe(true);
-	expect(a.kind).toBe('atom');
+	expect(a.kind).toBe('signal');
 	expect(a.initial).toBe(3);
 	expect(a.name).toBe('n');
 	expect(a.ssr).toBe(false);
-	expect(atom(1, { ssr: true }).ssr).toBe(true);
+	expect(signal(1, { ssr: true }).ssr).toBe(true);
 	expect(createRivaClient().get(a)).toBe(3);
 });
 
 test('set with a value and with an updater', () => {
-	const a = atom(1);
+	const a = signal(1);
 	const c = createRivaClient();
 	c.set(a, 5);
 	expect(c.get(a)).toBe(5);
@@ -23,14 +23,14 @@ test('set with a value and with an updater', () => {
 });
 
 test('equals suppresses notifications', () => {
-	const a = atom({ id: 1 }, { equals: (x, y) => x.id === y.id });
+	const a = signal({ id: 1 }, { equals: (x, y) => x.id === y.id });
 	const c = createRivaClient();
 	const seen: number[] = [];
 	c.subscribe(a, (v) => seen.push(v.id));
 	c.set(a, { id: 1 });
 	c.set(a, { id: 2 });
 	expect(seen).toEqual([2]);
-	const b = atom(1);
+	const b = signal(1);
 	let n = 0;
 	c.subscribe(b, () => n++);
 	c.set(b, 1);
@@ -38,7 +38,7 @@ test('equals suppresses notifications', () => {
 });
 
 test('subscribe notifies synchronously and unsubscribes', () => {
-	const a = atom(0);
+	const a = signal(0);
 	const c = createRivaClient();
 	const seen: number[] = [];
 	const off = c.subscribe(a, (v) => seen.push(v));
@@ -50,7 +50,7 @@ test('subscribe notifies synchronously and unsubscribes', () => {
 });
 
 test('ambient methods go through the client in scope', () => {
-	const a = atom(0);
+	const a = signal(0);
 	const c = createRivaClient();
 	const seen: number[] = [];
 	c.run(() => {
@@ -62,7 +62,7 @@ test('ambient methods go through the client in scope', () => {
 });
 
 test('two clients never share values', () => {
-	const a = atom(0);
+	const a = signal(0);
 	const c1 = createRivaClient();
 	const c2 = createRivaClient();
 	c1.set(a, 10);

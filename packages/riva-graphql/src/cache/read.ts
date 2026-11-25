@@ -16,7 +16,7 @@ type Missing = typeof missing;
 
 /**
  * Denormalizes a query's result by its selection: fragments, aliases,
- * arguments and `@skip`/`@include` applied, each entity read through its atom
+ * arguments and `@skip`/`@include` applied, each entity read through its signal
  * (so the caller's computed is notified). Any field or entity missing makes
  * the whole result `undefined`.
  */

@@ -1,16 +1,16 @@
 import { expect, test } from 'bun:test';
-import { atom, computed } from '@softistx/riva';
+import { signal, computed } from '@softistx/riva';
 import { act } from 'react';
 import { h, mount, newClient } from '../test/render';
-import { useAtom, useValue } from './use-atom';
+import { useSignal, useValue } from './use-signal';
 
-test('useAtom reads, sets with a value and with an updater, and re-renders', async () => {
-	const count = atom(1);
+test('useSignal reads, sets with a value and with an updater, and re-renders', async () => {
+	const count = signal(1);
 	const client = newClient();
-	let set!: ReturnType<typeof useAtom<number>>[1];
+	let set!: ReturnType<typeof useSignal<number>>[1];
 	let renders = 0;
 	function Counter() {
-		const [n, s] = useAtom(count);
+		const [n, s] = useSignal(count);
 		set = s;
 		renders++;
 		return h('p', null, `n=${n}`);
@@ -29,10 +29,10 @@ test('useAtom reads, sets with a value and with an updater, and re-renders', asy
 });
 
 test('the setter keeps its identity', async () => {
-	const a = atom(0);
+	const a = signal(0);
 	const setters: unknown[] = [];
 	function C() {
-		const [, s] = useAtom(a);
+		const [, s] = useSignal(a);
 		setters.push(s);
 		return null;
 	}
@@ -44,7 +44,7 @@ test('the setter keeps its identity', async () => {
 });
 
 test('useValue follows a computed and returns a stable object', async () => {
-	const a = atom(1);
+	const a = signal(1);
 	const boxed = computed((get) => ({ twice: get(a) * 2 }));
 	const client = newClient();
 	const seen: Array<{ twice: number }> = [];
@@ -61,7 +61,7 @@ test('useValue follows a computed and returns a stable object', async () => {
 });
 
 test('two clients keep separate values', async () => {
-	const a = atom(0);
+	const a = signal(0);
 	const c1 = newClient();
 	const c2 = newClient();
 	c1.set(a, 1);

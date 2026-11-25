@@ -1,4 +1,4 @@
-import type { Atom, Listener, Unsubscribe } from './atom';
+import type { Signal, Listener, Unsubscribe } from './signal';
 import { computed, type Readable } from './computed';
 import { type Duration, toMs } from './duration';
 import {
@@ -63,7 +63,7 @@ export class RivaClient {
 			: graph.read(this.graph, def);
 	}
 
-	set<T>(def: Atom<T>, value: NoInfer<T> | ((prev: T) => T)): void {
+	set<T>(def: Signal<T>, value: NoInfer<T> | ((prev: T) => T)): void {
 		graph.write(this.graph, def, value);
 	}
 

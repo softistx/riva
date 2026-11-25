@@ -19,7 +19,7 @@ binding until the owner changes it.
 | D4 | **Both targets**: BFF apps (browser never calls the API) and direct clients (SPA, Shadow-DOM widget, mobile web). Same API in both. |
 | D5 | `@softistx/graphql-client` and `httpyz` become **transports**. graphql-client's `normalizedCache` and `./react` move into riva, then are deprecated in graphql-client. |
 | D6 | Repository `softistx/riva`, library monorepo (`packages/*`, `plugins/riva`). |
-| D7 | **Fine-grained signals**: atoms and computeds with automatic dependency tracking; React binds through `useSyncExternalStore`. |
+| D7 | **Fine-grained signals**: signals and computeds with automatic dependency tracking (owner, 2026-11-24: renamed from atom); React binds through `useSyncExternalStore`. |
 | D8 | **Cache**: normalized for GraphQL by default (`__typename` + `id`, overridable key fields); keyed by request for REST, with entities declarable to normalize REST too. |
 | D9 | **BFF client data path**: one generic resource route (`/_data`) in `riva-react-router` executes, on the server, the persisted operations of a codegen allowlist with the session caller. The browser sends an operation id and variables only. |
 | D10 | **Definitions first**: `query(DOC, opts)` / `mutation(DOC, opts)` are typed objects reused by loaders, hooks, prefetch and invalidation. Keys are derived, never written by hand. |
@@ -47,10 +47,10 @@ the adapters, so `instanceof` holds.
 
 ```ts
 // Local state — definitions, no value until a client reads them
-import { atom, computed } from "@softistx/riva";
+import { signal, computed } from "@softistx/riva";
 
-export const filter = atom("");
-export const sidebarOpen = atom(true, { persist: false });
+export const filter = signal("");
+export const sidebarOpen = signal(true, { persist: false });
 export const hasFilter = computed((get) => get(filter).length > 0);
 
 // GraphQL
@@ -74,7 +74,7 @@ export async function loader({ context, params }: Route.LoaderArgs) {
 
 // Component (client) — same definition, typed vars and data
 function PatientList() {
-  const [q, setQ] = useAtom(filter);
+  const [q, setQ] = useSignal(filter);
   const { data, status, refetch } = useQuery(patients, { school, q });
   const rename = useMutation(renamePatient); // optimistic + rollback
   const feed = useInfiniteQuery(patientsFeed, { school });
@@ -99,7 +99,7 @@ Rules of the API:
 ## 4. Core behaviour
 
 ### 4.1 Signals
-- `atom(initial, opts)`, `computed(fn)`, `effect(fn)` (client-only), `batch(fn)`,
+- `signal(initial, opts)`, `computed(fn)`, `effect(fn)` (client-only), `batch(fn)`,
   `untracked(fn)`. Glitch-free, lazy computeds, synchronous propagation.
 - Values are stored per `RivaClient` (D12). A server-side read with no client in
   scope throws `RivaScopeError` with a message naming the fix.
@@ -132,7 +132,7 @@ Rules of the API:
   merge into the normalized cache, refetch of all loaded pages.
 
 ### 4.6 SSR
-- `dehydrate(client)` → serializable snapshot (cache + atoms marked
+- `dehydrate(client)` → serializable snapshot (cache + signals marked
   `ssr: true`); `hydrate(client, snapshot)` on the browser, before first
   render. Errors are dehydrated as codes, never stack traces.
 - Hydration never refetches data still fresh at hydration time.

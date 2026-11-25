@@ -1,11 +1,11 @@
-import type { Atom, Listener } from './atom';
+import type { Signal, Listener } from './signal';
 import type { RivaClient } from './client';
 import type { Computed, Readable } from './computed';
 import { RivaError } from './errors';
 import { collect, flush } from './flush';
 import { withClient } from './scope';
 
-type Def = Atom<unknown> | Computed<unknown>;
+type Def = Signal<unknown> | Computed<unknown>;
 
 /** The per-client node of a definition: its value and its links. */
 export interface Node {
@@ -35,9 +35,9 @@ export interface Graph {
 	depth: number;
 	flushing: boolean;
 	pending: Set<Node>;
-	/** The atoms that travel in an SSR snapshot, by name; null once a name is taken twice. @internal */
+	/** The signals that travel in an SSR snapshot, by name; null once a name is taken twice. @internal */
 	named: Map<string, Node | null>;
-	/** Values of hydrated atoms not created yet, by name. @internal */
+	/** Values of hydrated signals not created yet, by name. @internal */
 	seeds?: Map<string, unknown>;
 }
 
@@ -52,8 +52,8 @@ export const createGraph = (client: RivaClient): Graph => ({
 	named: new Map(),
 });
 
-/** An atom's first value: what a snapshot seeded for its name, else its initial. */
-function initialOf(g: Graph, def: Atom<unknown>): unknown {
+/** A signal's first value: what a snapshot seeded for its name, else its initial. */
+function initialOf(g: Graph, def: Signal<unknown>): unknown {
 	const { name } = def;
 	return def.ssr && name !== undefined && g.seeds?.has(name)
 		? g.seeds.get(name)
@@ -63,10 +63,10 @@ function initialOf(g: Graph, def: Atom<unknown>): unknown {
 export function nodeOf(g: Graph, def: Def): Node {
 	let n = g.nodes.get(def);
 	if (!n) {
-		const isAtom = def.kind === 'atom';
+		const isSignal = def.kind === 'signal';
 		n = {
 			def,
-			value: isAtom ? initialOf(g, def) : undefined,
+			value: isSignal ? initialOf(g, def) : undefined,
 			ver: 0,
 			stamp: -1,
 			refs: 0,
@@ -75,10 +75,10 @@ export function nodeOf(g: Graph, def: Def): Node {
 			listeners: new Set(),
 			seen: 0,
 			busy: false,
-			init: isAtom,
+			init: isSignal,
 		};
 		g.nodes.set(def, n);
-		if (isAtom && def.ssr && def.name !== undefined)
+		if (isSignal && def.ssr && def.name !== undefined)
 			g.named.set(def.name, g.named.has(def.name) ? null : n);
 	}
 	return n;
@@ -145,7 +145,7 @@ function recompute(g: Graph, n: Node): void {
 
 /** Brings a computed up to date, re-evaluating only when a source changed. */
 export function refresh(g: Graph, n: Node): void {
-	if (n.def.kind === 'atom' || n.stamp === g.epoch) return;
+	if (n.def.kind === 'signal' || n.stamp === g.epoch) return;
 	if (n.busy)
 		throw new RivaError(
 			'RIVA_CYCLE',
@@ -182,7 +182,7 @@ const settle = (g: Graph): void => flush(g, refresh);
 
 export function write<T>(
 	g: Graph,
-	def: Atom<T>,
+	def: Signal<T>,
 	value: T | ((prev: T) => T),
 ): void {
 	const n = nodeOf(g, def as Def);

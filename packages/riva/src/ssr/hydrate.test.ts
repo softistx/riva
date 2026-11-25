@@ -1,6 +1,6 @@
 import { describe, expect, test } from 'bun:test';
 import { fakeEnv, settle } from '../../test/ssr';
-import { atom } from '../atom';
+import { signal } from '../signal';
 import { createRivaClient } from '../client';
 import { entities } from '../entities';
 import { readEntity } from '../entities/api';
@@ -291,11 +291,11 @@ describe('pending entries', () => {
 	});
 });
 
-describe('atoms', () => {
-	test('an atom not created yet is seeded, once', () => {
+describe('signals', () => {
+	test('a signal not created yet is seeded, once', () => {
 		const env = fakeEnv();
 		const server = env.client();
-		const draft = atom(
+		const draft = signal(
 			{ text: '', at: new Date(0) },
 			{ name: 'draft', ssr: true },
 		);
@@ -310,10 +310,10 @@ describe('atoms', () => {
 		expect(browser.get(draft).text).toBe('edited');
 	});
 
-	test('an atom that exists is never overwritten', () => {
+	test('a signal that exists is never overwritten', () => {
 		const env = fakeEnv();
 		const server = env.client();
-		const count = atom(0, { name: 'count', ssr: true });
+		const count = signal(0, { name: 'count', ssr: true });
 		server.set(count, 5);
 		const snap = roundTrip(dehydrate(server));
 		const browser = env.client();
@@ -322,11 +322,11 @@ describe('atoms', () => {
 		expect(browser.get(count)).toBe(1);
 	});
 
-	test('a seeded atom is dehydrated again and an ssr: false atom is never seeded', () => {
+	test('a seeded signal is dehydrated again and an ssr: false signal is never seeded', () => {
 		const env = fakeEnv();
 		const server = env.client();
-		const kept = atom(0, { name: 'kept', ssr: true });
-		const local = atom(0, { name: 'local', ssr: false });
+		const kept = signal(0, { name: 'kept', ssr: true });
+		const local = signal(0, { name: 'local', ssr: false });
 		server.set(kept, 3);
 		const snap = { ...dehydrate(server), a: { kept: 3, local: 9 } };
 		const browser = env.client();
@@ -462,7 +462,7 @@ describe('requests stay apart', () => {
 		const { q } = counted('leak');
 		const a = env.client();
 		const b = env.client();
-		const secret = atom('', { name: 'who', ssr: true });
+		const secret = signal('', { name: 'who', ssr: true });
 		q.setData(a, { page: 1 }, { n: 1, at: new Date(0) });
 		a.set(secret, 'alice');
 		const snapA = roundTrip(dehydrate(a));

@@ -1,4 +1,4 @@
-import { type Atom, atom } from './atom';
+import { type Signal, signal } from './signal';
 import type { RivaClient } from './client';
 import { computed, type Readable } from './computed';
 import type { ClientEvents, Scheduler } from './env';
@@ -32,11 +32,11 @@ export interface Entry {
 	key: string;
 	def: AnyQuery;
 	vars: unknown;
-	/** The graph atom holding the state: the one notification mechanism. */
-	atom: Atom<State>;
-	/** The optimistic layers over the atom's data, oldest first. */
-	lay: Atom<Lay[]>;
-	/** What readers see: the atom's data through the cache policy, under the layers. */
+	/** The graph signal holding the state: the one notification mechanism. */
+	signal: Signal<State>;
+	/** The optimistic layers over the signal's data, oldest first. */
+	lay: Signal<Lay[]>;
+	/** What readers see: the signal's data through the cache policy, under the layers. */
 	out: Readable<State>;
 	observers: number;
 	invalidated: boolean;
@@ -70,7 +70,7 @@ const IDLE: State = Object.freeze({
 
 /** The current state, untracked. */
 export const peek = (c: Ctx, e: Entry): State =>
-	nodeOf(c.client.graph, e.atom).value as State;
+	nodeOf(c.client.graph, e.signal).value as State;
 
 /** The state as readers see it (data read through the cache policy), untracked. */
 export const view = (c: Ctx, e: Entry): State =>
@@ -131,7 +131,7 @@ export function putData(c: Ctx, e: Entry, patch: Partial<State>): unknown {
 
 /** Writes a patch over the current state (one notification). */
 export const put = (c: Ctx, e: Entry, patch: Partial<State>): void =>
-	c.client.set(e.atom, { ...peek(c, e), ...patch });
+	c.client.set(e.signal, { ...peek(c, e), ...patch });
 
 /** Whether the entry must be fetched: not a success, invalidated, or older than `staleTime`. */
 export const stale = (
@@ -152,11 +152,11 @@ export function armGc(c: Ctx, e: Entry): void {
 	if (e.observers || ms === Infinity) return;
 	e.gc = c.sched.setTimeout(() => {
 		e.gc = undefined;
-		// A computed or listener still reading the atom keeps the entry alive.
+		// A computed or listener still reading the signal keeps the entry alive.
 		if (
 			e.observers ||
 			e.run ||
-			nodeOf(c.client.graph, e.atom).refs ||
+			nodeOf(c.client.graph, e.signal).refs ||
 			(nodeOf(c.client.graph, e.lay).value as Lay[]).length
 		)
 			return armGc(c, e);
@@ -178,14 +178,14 @@ export function entryOf(c: Ctx, def: AnyQuery, vars: unknown): Entry {
 	const key = stableKey(def.id, vars);
 	let e = c.entries.get(key);
 	if (!e) {
-		const a = atom<State>(IDLE, { name: key });
-		const lay = atom<Lay[]>([], { name: `${key}#layers` });
+		const a = signal<State>(IDLE, { name: key });
+		const lay = signal<Lay[]>([], { name: `${key}#layers` });
 		const { cache, derive } = def.options;
 		e = {
 			key,
 			def,
 			vars,
-			atom: a,
+			signal: a,
 			lay,
 			out: computed(
 				(get) => {

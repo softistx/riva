@@ -1,5 +1,5 @@
 import { afterEach, expect, test } from 'bun:test';
-import { atom } from '../atom';
+import { signal } from '../signal';
 import { createRivaClient } from '../client';
 import { RivaScopeError } from '../errors';
 import * as ssr from './index';
@@ -19,7 +19,7 @@ test('the subpath exports the snapshot functions and the scope resolver', () => 
 test('a resolver supplies the ambient client, after client.run', () => {
 	const fromResolver = createRivaClient();
 	const inRun = createRivaClient();
-	const n = atom(0);
+	const n = signal(0);
 	expect(() => n.get()).toThrow(RivaScopeError);
 	ssr.setScopeResolver(() => fromResolver);
 	n.set(1);
@@ -30,7 +30,7 @@ test('a resolver supplies the ambient client, after client.run', () => {
 });
 
 test('a resolver with no client still hits the server guard, and can be removed', () => {
-	const n = atom(0);
+	const n = signal(0);
 	ssr.setScopeResolver(() => undefined);
 	expect(() => n.get()).toThrow(RivaScopeError);
 	const c = createRivaClient();
@@ -47,7 +47,7 @@ test('the resolver wins over the browser default client', async () => {
 	try {
 		const fallback = createRivaClient();
 		const fromResolver = createRivaClient();
-		const n = atom(0);
+		const n = signal(0);
 		setDefaultClient(fallback);
 		n.set(1);
 		expect(fallback.get(n)).toBe(1);

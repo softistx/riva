@@ -1,4 +1,4 @@
-import type { Listener } from './atom';
+import type { Listener } from './signal';
 import type { RivaClient } from './client';
 import type { ClientEvents, Scheduler } from './env';
 import { RivaAbortError } from './errors';
