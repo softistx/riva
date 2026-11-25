@@ -148,6 +148,21 @@ Code: `RIVA_KEY` (`RivaError`).
 user.ensure(client, { id: String(id) });
 ```
 
+## Two definitions share the id "<id>": give each a unique id.
+
+Code: `RIVA_KEY` (`RivaError`).
+
+**When:** two `query` definitions with the same `id` read on one client on the server. In a browser the newest definition takes the entry over (a hot-reloaded module) and nothing is thrown.
+
+**Why:** the cache key is the definition id plus the variables, so two definitions with one id would share one entry and the second would silently run the first's `fetch`.
+
+**Fix:** give each definition a unique id.
+
+```ts
+const user = query({ id: 'user', fetch });
+const admin = query({ id: 'admin', fetch }); // not 'user' again
+```
+
 ## `Cannot cache the data: it holds <what>. Use JSON-like values (a Date is allowed).`
 
 Code: `RIVA_CACHE` (`RivaError`).

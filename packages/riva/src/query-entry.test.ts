@@ -123,3 +123,27 @@ test('a cache policy stores, reads (tracked) and releases the entry data', async
 		'release 2',
 	]);
 });
+
+test('two definitions sharing an id are refused on the server', () => {
+	const { c, q } = setup();
+	const other = query<number, string>({ id: 'q', fetch: async () => 'y' });
+	entryOf(c, q, 1);
+	expect(() => entryOf(c, other, 1)).toThrow(
+		'Two definitions share the id "q": give each a unique id.',
+	);
+	expect(entryOf(c, q, 1).def).toBe(q);
+});
+
+test('in a browser the newest definition takes the entry over', () => {
+	const { c, q } = setup();
+	const other = query<number, string>({ id: 'q', fetch: async () => 'y' });
+	const e = entryOf(c, q, 1);
+	const g = globalThis as { document?: unknown };
+	g.document = {};
+	try {
+		expect(entryOf(c, other, 1)).toBe(e);
+		expect(e.def).toBe(other);
+	} finally {
+		delete g.document;
+	}
+});

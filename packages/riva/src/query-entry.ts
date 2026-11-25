@@ -1,6 +1,7 @@
 import type { RivaClient } from './client';
 import { computed, type Readable } from './computed';
 import type { ClientEvents, Scheduler } from './env';
+import { RivaError } from './errors';
 import { nodeOf } from './graph';
 import { stableKey } from './key';
 import type { Query, QueryState } from './query';
@@ -177,6 +178,16 @@ export function entryOf(c: Ctx, def: AnyQuery, vars: unknown): Entry {
 	const { client } = c;
 	const key = stableKey(def.id, vars);
 	let e = c.entries.get(key);
+	if (e && e.def !== def) {
+		// Another definition under this id: refused on the server, taken over by
+		// the newest in a browser (a hot-reloaded module).
+		if (!isBrowser())
+			throw new RivaError(
+				'RIVA_KEY',
+				`Two definitions share the id "${def.id}": give each a unique id.`,
+			);
+		e.def = def;
+	}
 	if (!e) {
 		const a = signal<State>(IDLE, { name: key });
 		const lay = signal<Lay[]>([], { name: `${key}#layers` });
