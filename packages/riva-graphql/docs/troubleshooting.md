@@ -236,6 +236,8 @@ Code: `RIVA_DEFINITION`, from `riva.graphql.subscribe` given a query or mutation
 **Fix:** show the partial data and the problem together, or ignore the error when the partial result is enough:
 
 ```ts
+import { GraphQLError } from '@softistx/riva-graphql';
+
 const s = books.state;
 if (s.status === 'error' && s.error instanceof GraphQLError) {
 	s.data; // what the API resolved
@@ -248,3 +250,17 @@ if (s.status === 'error' && s.error instanceof GraphQLError) {
 **Why:** it should not: variables that derive the same key (deep-equal) keep the stream. If it reconnects, the variables differ in some field (a new `Date`, a fresh id).
 
 **Fix:** derive stable variables, or read only the signals the variables depend on.
+
+## A subscription stays `loading` on a server
+
+**Why:** a stream resource is lazy and browser-only: on a server nothing is observed, so it never opens and its state is `loading`.
+
+**Fix:** subscribe in the browser (an effect or a component), and render the `loading` state on the server.
+
+## `The resource is disabled: await it once `enabled` is true.`
+
+Code: `RIVA_DEFINITION` (`RivaError`), the rejection of `await riva.graphql.query(DOC, vars, { enabled })`.
+
+**Why:** `enabled` is false, so the resource is `idle` and has no key to load.
+
+**Fix:** await it once `enabled` is true, or leave `enabled` out for a one-shot `await`.

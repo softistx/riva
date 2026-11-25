@@ -48,12 +48,13 @@ const data = await riva.graphql.query(BOOKS_QUERY, { first: 10 }, { staleTime: '
 
 // The same call is a reactive resource: state, subscribe, tracked variables.
 const first = signal(10);
+const signedIn = signal(true);
 const books = riva.graphql.query(BOOKS_QUERY, () => ({ first: riva.get(first) }), {
 	enabled: () => riva.get(signedIn), // false: status 'idle', nothing fetched
 	keepPrevious: true, // new variables: the old data stays, `placeholder: true`
 });
 books.state; // { status: 'idle' | 'loading' | 'success' | 'error', data, error, isFetching, placeholder }
-const off = books.subscribe((state) => render(state)); // the first reader starts the fetch
+const off = books.subscribe((state) => console.log(state.status)); // the first reader starts the fetch
 
 const save = riva.graphql.mutation(ADD_BOOK); // a handle: state (idle first), reset()
 const book = await save({ title: 'Dune' }, { invalidates: [BOOKS_QUERY] });
@@ -64,7 +65,7 @@ const added = riva.graphql.subscribe(BOOK_ADDED, {}, {
 	error(e) {}, // a stream failure ends the subscription
 	complete() {}, // the stream ended on its own
 });
-added.subscribe((state) => render(state)); // opens the stream; the last reader closes it
+const closeFeed = added.subscribe((state) => console.log(state.status)); // opens the stream; the last unsubscribe closes it
 ```
 
 - Data and variables are typed from the document; the variables are optional when it has none.

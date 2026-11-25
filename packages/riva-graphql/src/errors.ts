@@ -5,6 +5,9 @@ import {
 	RivaNetworkError,
 	RivaRequestError,
 } from '@softistx/riva';
+import { GraphQLError, type GraphQLErrorEntry } from '@softistx/riva/resource';
+
+export { GraphQLError, type GraphQLErrorEntry };
 
 // The graphql-client errors are read by name, not by `instanceof`, so a second
 // copy of the package (or none imported here) still maps, and this entry
@@ -15,40 +18,6 @@ type Failure = Error & {
 	status?: number;
 	reason?: string;
 };
-
-/** One entry of a response's `errors`. */
-export interface GraphQLErrorEntry {
-	readonly message: string;
-	/** Where in the result the error happened: `['viewer', 'friends', 0, 'name']`. */
-	readonly path?: readonly (string | number)[];
-	/** The API's `extensions.code`. */
-	readonly code?: string;
-}
-
-const describe = (e: GraphQLErrorEntry): string =>
-	e.path?.length ? `${e.message} (at ${e.path.join('.')})` : e.message;
-
-/**
- * The response carried `errors`. `errors` lists them all with their paths,
- * `data` is what the API resolved despite them (a partial result), and `cause`
- * is the client's `ApiError`. A `RivaRequestError`, so `instanceof` and the
- * retry policy hold: the code, status and retryability are the first error's.
- */
-export class GraphQLError extends RivaRequestError {
-	readonly errors: readonly GraphQLErrorEntry[];
-	readonly data: unknown;
-	constructor(
-		code: string,
-		errors: readonly GraphQLErrorEntry[],
-		data: unknown,
-		options: { retryable: boolean; status?: number; cause?: unknown },
-	) {
-		super(code, errors.map(describe).join('; '), options);
-		this.name = 'GraphQLError';
-		this.errors = errors;
-		this.data = data;
-	}
-}
 
 const isNamed = (e: unknown, name: string): e is Failure =>
 	e instanceof Error && e.name === name;

@@ -86,20 +86,24 @@ export function graphqlResource<D>(
 		},
 		subscribe: (l) => inner.subscribe((s) => l(withPartial(s))),
 		// biome-ignore lint/suspicious/noThenProperty: a resource is awaitable on purpose
-		then: (onFulfilled, onRejected) =>
-			(signal
-				? new Promise<D>((resolve, reject) => {
-						if (signal.aborted) return reject(new RivaAbortError());
-						signal.addEventListener(
-							'abort',
-							() => reject(new RivaAbortError()),
-							{
-								once: true,
-							},
-						);
-						inner.then(resolve, reject);
-					})
-				: Promise.resolve(inner)
-			).then(onFulfilled, onRejected),
+		then: (onFulfilled, onRejected) => {
+			if (!signal) return Promise.resolve(inner).then(onFulfilled, onRejected);
+			return new Promise<D>((resolve, reject) => {
+				if (signal.aborted) return reject(new RivaAbortError());
+				const abort = () => reject(new RivaAbortError());
+				signal.addEventListener('abort', abort, { once: true });
+				const done = () => signal.removeEventListener('abort', abort);
+				inner.then(
+					(d) => {
+						done();
+						resolve(d);
+					},
+					(e) => {
+						done();
+						reject(e);
+					},
+				);
+			}).then(onFulfilled, onRejected);
+		},
 	};
 }

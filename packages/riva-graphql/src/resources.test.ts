@@ -82,4 +82,28 @@ describe('graphqlResource', () => {
 		).rejects.toBeInstanceOf(RivaAbortError);
 		expect(await graphqlResource(inner(failed(1)))).toBe(1);
 	});
+
+	test('the abort listener is removed once the wait settles', async () => {
+		const ctl = new AbortController();
+		let added = 0;
+		let removed = 0;
+		const sig = ctl.signal;
+		const add = sig.addEventListener.bind(sig);
+		const rm = sig.removeEventListener.bind(sig);
+		sig.addEventListener = ((...a: Parameters<typeof add>) => {
+			added++;
+			add(...a);
+		}) as never;
+		sig.removeEventListener = ((...a: Parameters<typeof rm>) => {
+			removed++;
+			rm(...a);
+		}) as never;
+		expect(await graphqlResource(inner(failed(1)), sig)).toBe(1);
+		await expect(
+			Promise.resolve(
+				graphqlResource(inner(failed(1), Promise.reject(new Error('x'))), sig),
+			),
+		).rejects.toThrow('x');
+		expect([added, removed]).toEqual([2, 2]);
+	});
 });

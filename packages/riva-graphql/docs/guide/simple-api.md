@@ -2,7 +2,31 @@
 
 ## What it is for
 
-`createRiva({ graphql: graphql(client) })` gives `riva.graphql.query`, `mutation`, `mutate` and `subscribe`: call a typed document, get a reactive resource, a handle or a stream. The resources come from [`@softistx/riva/resource`](../../../riva/docs/guide/resources.md).
+`createRiva({ graphql: graphql(client) })` gives `riva.graphql.query`, `mutation`, `mutate` and `subscribe`: call a typed document, get a reactive resource, a handle or a stream. The resources come from [`@softistx/riva/resource`](https://github.com/softistx/riva/blob/develop/packages/riva/docs/guide/resources.md).
+
+## Setup
+
+The other snippets of this page reuse this one.
+
+```ts
+import { createGraphQLClient } from '@softistx/graphql-client';
+import { createRiva, signal } from '@softistx/riva';
+import { graphql } from '@softistx/riva-graphql';
+import {
+	BOOKS_QUERY,
+	PATIENT_RENAMED,
+	PATIENTS_QUERY,
+	RENAME_PATIENT,
+} from './graphql'; // your typed documents
+
+const riva = createRiva({
+	graphql: graphql(createGraphQLClient({ url: 'https://api.example.com/graphql' })),
+});
+const page = signal(1);
+const school = signal('north');
+const signedIn = signal(true);
+const render = (state: unknown) => console.log(state);
+```
 
 ## Queries
 
@@ -28,9 +52,16 @@ const data = await books; // one-shot: the data, or throws
 Data with errors is `status: 'error'`, `data` kept, `error` a `GraphQLError` with `errors` (message, path, code):
 
 ```ts
+import { GraphQLError } from '@softistx/riva-graphql';
+
 const s = books.state;
-if (s.status === 'error') s.data; // the partial result, or undefined
+if (s.status === 'error' && s.error instanceof GraphQLError) {
+	s.data; // the partial result, or undefined
+	s.error.errors.map((e) => e.path); // where each error happened
+}
 ```
+
+See [Errors](./errors.md).
 
 ## Mutations
 
@@ -54,6 +85,6 @@ const feed = riva.graphql.subscribe(PATIENT_RENAMED, () => ({ school: riva.get(s
 const off = feed.subscribe(render); // opens the stream
 ```
 
-The state is `loading` until the first result, then `success` with the last one. Variables that change restart the stream; deep-equal variables do not reconnect. Each result is merged into the normalized cache when there is one. The last unsubscribe closes the stream.
+The state is `loading` until the first result, then `success` with the last one. Variables that change restart the stream; deep-equal variables do not reconnect. Each result is merged into the normalized cache when there is one. The last unsubscribe closes the stream. On a server a subscription stays `loading`: it is never opened.
 
 Problems: [troubleshooting](../troubleshooting.md).
