@@ -1,5 +1,11 @@
 # @softistx/riva
 
+## 0.1.1
+
+### Patch Changes
+
+- [#51](https://github.com/softistx/riva/pull/51) [`2d37f07`](https://github.com/softistx/riva/commit/2d37f0738e219b1107bec37e4a5a7779034be7a7) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Store follow-ups. A store definition replaced by a hot reload no longer takes its name back when a component still holding it is read again: it resolves to the current instance, with no reset of the state (the server still refuses a duplicate name). The browser test is shared with the query entry (`'document' in globalThis`) and the `happy-dom`/`jsdom` case is documented. The limit of `useStore` for a `memo` child that alone reads a new key is documented, and a spec covers a render React discards leaving its keys uncommitted.
+
 ## 0.1.0
 
 ### Minor Changes

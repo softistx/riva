@@ -1,5 +1,13 @@
 # @softistx/riva-graphql
 
+## 0.1.1
+
+### Patch Changes
+
+- [#53](https://github.com/softistx/riva/pull/53) [`053e72f`](https://github.com/softistx/riva/commit/053e72f4f2dcc06d62f218dc6daf7d55bf60b00f) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Accepts `@softistx/graphql-client` 0.11 as a peer.
+- Updated dependencies [[`2d37f07`](https://github.com/softistx/riva/commit/2d37f0738e219b1107bec37e4a5a7779034be7a7)]:
+  - @softistx/riva@0.1.1
+
 ## 0.1.0
 
 ### Minor Changes
