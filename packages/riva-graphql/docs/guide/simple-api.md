@@ -42,7 +42,7 @@ books.subscribe(render); // starts the fetch
 const data = await books; // one-shot: the data, or throws
 ```
 
-- Variables: a plain value, a riva signal or computed, or a function reading signals (tracked).
+- Variables: a plain value, a riva signal or computed, or a function (evaluated at each render in a hook, so it follows props as well as the signals it reads).
 - `enabled` false: `idle`, the variables function is not called, no fetch. `await` then rejects with a `RIVA_DEFINITION` error.
 - `keepPrevious` (default true): new variables keep the old data with `placeholder: true` until the new data lands.
 - `signal` stops the wait of `await`, not the shared fetch.

@@ -7,9 +7,10 @@ Guides and fixes: [docs](./docs/README.md). Work in progress, see the [spec](htt
 ```sh
 bun add @softistx/riva @softistx/riva-rest @softistx/httpyz @softistx/openapi-httpyz zod
 bun add -d @softistx/openapi-codegen typescript
+bun add react @softistx/riva-react # only for the hooks
 ```
 
-Peers: `@softistx/riva` and `@softistx/httpyz`. `@softistx/openapi-httpyz` is optional: only the OpenAPI mode needs it. `@softistx/openapi-codegen` writes the operations table at build time, and that generated `operations.ts` imports `zod`. The runtime entries import none of them.
+Peers: `@softistx/riva` and `@softistx/httpyz`. `@softistx/openapi-httpyz` is optional: only the OpenAPI mode needs it. `@softistx/openapi-codegen` writes the operations table at build time, and that generated `operations.ts` imports `zod`. `react` and `@softistx/riva-react` are optional too: only `/react` needs them. The runtime entries import none of them.
 
 ## Simple API
 
@@ -50,6 +51,53 @@ With no spec, `rest({ baseUrl, fetch?, headers? })` gives the untyped calls over
 - `mutation(method, path)` makes a new handle at each call (`post`, `put`, `patch`, `delete`); `post / put / patch / delete(path, input, opts)` run once. Both take `invalidates` (paths of a `get`, hand-made definitions or `at(query, vars)`, marked stale once it succeeded) and `signal`; it is an array, checked before the call runs.
 - `cache` (`RestSimpleOptions`, also read from `rest({ baseUrl, cache })`): how the data of every simple call is stored. Default: as is, a keyed cache (no entities). Pass `restEntities(...)` from `@softistx/riva-rest/entities` to share entities. `staleTime` defaults to the riva's `defaults.staleTime` (0 when unset): data older than it is refetched by the next read; a per-call `staleTime` overrides it.
 - The definitions behind the calls are made once per riva, per method and path, under the id `rest:<method> <path>`: a hand-made `query(api, route)` on the same riva keeps its own entries. [Guide](./docs/guide/simple-api.md).
+
+## React hooks
+
+`@softistx/riva-rest/react` calls `riva.rest` from components (`react` and `@softistx/riva-react` are optional peers). A hook has no riva to infer the operations table from, so declare it once:
+
+```ts
+import type { operations } from './generated/openapi/operations';
+
+declare module '@softistx/riva-rest/react' {
+	interface Register {
+		operations: typeof operations;
+		// decoded: false; // only for a client made with `decode: false` (data is then the raw reply)
+	}
+}
+```
+
+```tsx
+import { useRest, useRestMutation } from '@softistx/riva-rest/react';
+
+function Book({ id }: { id: string }) {
+	const book = useRest('get', '/books/{id}', { param: { id } });
+	const save = useRestMutation('put', '/books/{id}');
+	if (book.status !== 'success') return null;
+	return <button onClick={() => save({ param: { id }, json: { title: 'Dune' } })}>{book.data.title}</button>;
+}
+// useRest('get', path, input, { suspense: true }) suspends and returns the success state.
+```
+
+Without `Register` the hooks are untyped (`useRest<T>`). How they behave:
+
+- They return the resource state (`idle | loading | success | error`). A server render seeds and dehydrates, and hydration does not refetch fresh data.
+- The input is a plain value, a riva signal or computed, or a function. A function is evaluated at each render, so it follows props (`() => ({ param: { id: props.id } })`) as well as the signals it reads. Equal inputs are one key.
+- A new key refetches and keeps the previous data as `placeholder` (`keepPrevious`, default true).
+- While `enabled` is false the status is `idle`, the input function is not called and nothing is fetched.
+- `suspense: true` suspends until data, types the state as `success` and sends any error to the nearest error boundary. Its fetch uses a `staleTime` of at least 1000 ms (yours, else the riva's default, whichever is longer).
+
+The mutation hooks return a callable with the state fields and `reset`. The callable (and `reset`) change identity with the state, so call them from handlers and never list them in an effect's dependencies; to react to a result, read `status` and `data`:
+
+```tsx
+const add = useRestMutation('post', '/books');
+// Handler: fine.
+<button onClick={() => add({ json: { title: 'Dune' } })}>Add</button>;
+// Effect: depend on the state, not on `add`.
+useEffect(() => {
+	if (add.status === 'success') close();
+}, [add.status]);
+```
 
 ## Provide the transport
 
@@ -185,6 +233,7 @@ export const createInvoice = mutation(api, 'post /invoices', { cache });
 ## Entry points
 
 - `@softistx/riva-rest`: `query`, `mutation`, `rest` (`{ query, mutation }`), `provideRest`, `httpyzTransport`, `toRivaError`, `operationOf` (reads a route into `{ id, method, path, operationId, hasInput }`) and the types: `RestTransport`, `RestContext`, `Route`, `Operation`, the options (`RestQueryOptions`, `RestMutationOptions`, `FreeQueryOptions`, `FreeMutationOptions`), the routes (`RouteOf`, `QueryRoute`, `MutationRoute`) and `InputOf`, `DataOf`, `SpecOf`, `ClientOf`, `DecodedOf`.
+- `@softistx/riva-rest/react`: `useRest`, `useRestMutation` and the types `Register`, `UseRest`, `UseRestMutation`, `UseRestOptions` (optional peers `react` and `@softistx/riva-react`).
 - `@softistx/riva-rest/entities`: `restEntities` and the types `RestEntity`, `RestEntities`.
 - `@softistx/riva-rest/server`: `operations(api)` (a `DataSource` for `dataRoute`), the constant `PREFIX` (`'rest:'`, the prefix of every id the route serves: `rest:<operationId>`) and the types `DataSource`, `DataOperation`, `OperationsOf`.
 - `@softistx/riva-rest/bff`: `bffTransport(opts)` and the type `BffTransportOptions`.

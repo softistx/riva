@@ -77,17 +77,23 @@ export function resource<Vars, Data>(
 					isFetching,
 					placeholder: false,
 				};
-			if (data !== undefined) {
+			if (s.status === 'success') {
 				last = data;
-				if (s.status === 'success')
-					return {
-						status: 'success',
-						data,
-						error: undefined,
-						isFetching,
-						placeholder: false,
-					};
-			} else if (keepPrevious && last !== undefined)
+				// Stored data the cache cannot read (an evicted entity) is fetched again.
+				if (data === undefined)
+					queueMicrotask(() =>
+						riva.queries.missing(t.def as Query<unknown, unknown>, t.vars),
+					);
+				return {
+					status: 'success',
+					data: data as Data,
+					error: undefined,
+					isFetching,
+					placeholder: false,
+				};
+			}
+			if (data !== undefined) last = data;
+			else if (keepPrevious && last !== undefined)
 				return {
 					status: 'success',
 					data: last as Data,

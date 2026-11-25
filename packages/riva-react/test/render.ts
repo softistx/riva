@@ -11,6 +11,7 @@ export const newRiva = (): Riva => createRiva();
 export interface Mounted {
 	container: HTMLElement;
 	text: () => string;
+	rerender: (ui: ReactElement) => Promise<void>;
 	unmount: () => Promise<void>;
 }
 
@@ -19,12 +20,18 @@ export async function mount(ui: ReactElement, riva?: Riva): Promise<Mounted> {
 	const container = document.createElement('div');
 	document.body.append(container);
 	const root = createRoot(container);
+	const wrap = (el: ReactElement) =>
+		riva ? h(RivaProvider, { riva }, el) : el;
 	await act(async () => {
-		root.render(riva ? h(RivaProvider, { riva }, ui) : ui);
+		root.render(wrap(ui));
 	});
 	return {
 		container,
 		text: () => container.textContent ?? '',
+		rerender: (next) =>
+			act(async () => {
+				root.render(wrap(next));
+			}),
 		unmount: async () => {
 			await act(async () => root.unmount());
 			container.remove();

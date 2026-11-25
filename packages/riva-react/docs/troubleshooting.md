@@ -115,3 +115,15 @@ const Child = memo(function Child() {
 	return <i>{s.filter}</i>;
 });
 ```
+
+## `` useResource: `suspense` needs an awaitable resource, not a stream. ``
+
+**When:** `suspense: true` on a hook whose `make` returned a stream resource (a subscription), which has no `then`.
+
+**Why:** Suspense needs a promise; a stream never settles.
+
+**Fix:** read it without `suspense`.
+
+```ts
+const feed = useGraphQLSubscription(BOOK_ADDED, {}); // no suspense option
+```

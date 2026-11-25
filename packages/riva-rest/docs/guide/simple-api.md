@@ -49,7 +49,7 @@ const data = await invoice; // one-shot: the data, or throws
 ```
 
 - The path is the one the spec writes, checked by the compiler: a path the spec has no `get` for does not compile, and throws `RIVA_DEFINITION` when it reaches runtime.
-- The input is a plain value, a riva signal or computed, or a function reading signals (tracked). It is optional when the operation takes none.
+- The input is a plain value, a riva signal or computed, or a function (evaluated at each render in a hook, so it follows props as well as the signals it reads). It is optional when the operation takes none.
 - `enabled` false: `idle`, the input function is not called, no fetch. `await` then rejects with a `RIVA_DEFINITION` error.
 - `keepPrevious` (default true): a new input keeps the old data with `placeholder: true` until the new data lands.
 - `signal` stops the wait of `await`, not the shared fetch.

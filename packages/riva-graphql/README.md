@@ -6,9 +6,10 @@ Guides and fixes: [docs](./docs/README.md). Work in progress, see the [spec](htt
 
 ```sh
 bun add @softistx/riva @softistx/riva-graphql @softistx/graphql-client @graphql-typed-document-node/core graphql
+bun add react @softistx/riva-react # only for the hooks
 ```
 
-Peers: `@softistx/riva` and `@softistx/graphql-client`. `graphql` and `@graphql-typed-document-node/core` are optional: `graphql` is needed by `/server` (the allowlist parses the manifest's text) and `/codegen`, and the types of every definition need the second (`@softistx/graphql-client` already brings it). The main, `/infinite`, `/cache` and `/bff` entries import none of them.
+Peers: `@softistx/riva` and `@softistx/graphql-client`. `graphql` and `@graphql-typed-document-node/core` are optional: `graphql` is needed by `/server` (the allowlist parses the manifest's text) and `/codegen`, and the types of every definition need the second (`@softistx/graphql-client` already brings it). The main, `/infinite`, `/cache` and `/bff` entries import none of them. `react` and `@softistx/riva-react` are optional too: only `/react` needs them.
 
 ## Documents
 
@@ -76,6 +77,46 @@ const closeFeed = added.subscribe((state) => console.log(state.status)); // open
 - `subscribe` returns a stream resource (no `await`): `loading` until the first result, then `success` with the last one. Callbacks and `enabled` are optional. It needs a transport that can (a transport must not define `mutate`, which is how `graphql()` tells a client from a transport): the `@softistx/graphql-client` one does (server-sent events, never reconnected). An error thrown by `next` (or by the cache merge) is raised outside the stream and ends it, never sent to `error`. With `normalized()` each result is merged into the entity cache; with another cache, or none, it only goes to `next`.
 - The definitions behind the calls are made once per riva, per document (never shared between rivas), under the id `graphql:<operation id>`: a hand-made `query(DOC)` on the same riva keeps its own entries (and cache). `invalidates: [DOC]` marks the simple call's entries stale; `invalidates: [handMadeDef]` marks the hand-made definition's only. `invalidates` is an array (no function form), checked before the mutation runs.
 - Definitions (`query()`, `mutation()`, `infinite()`) keep working on the same riva, for shared settings.
+
+## React hooks
+
+`@softistx/riva-graphql/react` calls the simple API from components, on the riva of the nearest `RivaProvider` (`react` and `@softistx/riva-react` are optional peers; the riva needs `createRiva({ graphql })`).
+
+```tsx
+import { useGraphQL, useGraphQLMutation, useGraphQLSubscription } from '@softistx/riva-graphql/react';
+
+// BOOKS_QUERY, ADD_BOOK_MUTATION and BOOK_ADDED_SUBSCRIPTION are documents written with graphql(), as above.
+function Books({ first }: { first: number }) {
+	const books = useGraphQL(BOOKS_QUERY, { first });
+	const add = useGraphQLMutation(ADD_BOOK_MUTATION);
+	if (books.status === 'loading') return <Spinner />;
+	if (books.status === 'error') return <Failure error={books.error} />; // books.data keeps a partial result
+	return <button onClick={() => add({ title: 'Dune' }, { invalidates: [BOOKS_QUERY] })}>{books.data.books.length}</button>;
+}
+// useGraphQL(DOC, vars, { suspense: true }) suspends and returns the success state.
+// useGraphQLSubscription(BOOK_ADDED_SUBSCRIPTION, {}, { next(added) {} }) is loading, then the last message.
+```
+
+How the hooks behave:
+
+- They return the resource state (`idle | loading | success | error`). A server render seeds and dehydrates like `useQuery`, and hydration does not refetch fresh data.
+- Variables are a plain value, a riva signal or computed, or a function. A function is evaluated at each render, so it follows props (`() => ({ id: props.id })`) as well as the signals it reads; a change of the result re-derives the key. Equal variables are one key.
+- A new key refetches and keeps the previous data as `placeholder` (`keepPrevious`, default true).
+- While `enabled` is false the status is `idle`, the variables function is not called and nothing is fetched.
+- `suspense: true` suspends until data and types the state as `success`. Any error, a response with partial data and errors included, goes to the nearest error boundary. A disabled hook does not suspend. A subscription cannot suspend.
+- Under `suspense` the fetch uses a `staleTime` of at least 1000 ms (your `staleTime`, else the riva's default, whichever is longer), so the data a Suspense render just fetched is not fetched again at mount.
+
+The mutation hooks return a callable with the state fields and `reset`. The callable (and `reset`) change identity with the state, so call them from handlers and never list them in an effect's dependencies; to react to a result, read `status` and `data`:
+
+```tsx
+const add = useGraphQLMutation(ADD_BOOK_MUTATION);
+// Handler: fine.
+<button onClick={() => add({ title: 'Dune' })}>Add</button>;
+// Effect: depend on the state, not on `add`.
+useEffect(() => {
+	if (add.status === 'success') close();
+}, [add.status]);
+```
 
 ## Provide the transport
 
@@ -223,6 +264,7 @@ export const loader = route.loader;
 | `@softistx/riva-graphql/infinite` | `infinite` | Imports `@softistx/riva/infinite`. |
 | `@softistx/riva-graphql/cache` | `normalized` | Imports `@softistx/riva/entities`; no `graphql` value import. |
 | `@softistx/riva-graphql/bff` | `bffTransport` | Browser; imports `@softistx/riva/ssr` only. |
+| `@softistx/riva-graphql/react` | `useGraphQL`, `useGraphQLMutation`, `useGraphQLSubscription` | Optional peers `react` and `@softistx/riva-react`. |
 | `@softistx/riva-graphql/server` | `allowlist` | Server only; needs `graphql`. |
 | `@softistx/riva-graphql/codegen` | `buildAllowlist`, `writeAllowlist` | Node and codegen only; needs `graphql`. |
 

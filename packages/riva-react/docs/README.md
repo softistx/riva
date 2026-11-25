@@ -10,6 +10,7 @@
 - [Infinite lists](./guide/infinite.md): read for `useInfiniteQuery` and paging.
 - [Entities](./guide/entities.md): read for `useFragment` over the normalized cache.
 - [Stores](./guide/store.md): read for `useStore` and its tracked, read-only state.
+- [Resource hooks](./guide/resource.md): read to build a hook over a resource, as `useGraphQL` and `useRest` do.
 - [Server rendering](./guide/ssr.md): read to render a request on the server.
 
 ## Reference
