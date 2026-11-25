@@ -85,3 +85,18 @@ function Rename({ id, name }: { id: string; name: string }) {
 	return <button onClick={() => run({ id, name }).catch(() => {})}>Rename</button>;
 }
 ```
+
+## `Store "<name>": "<key>" is read-only here; write it in an action.`
+
+Code: `RIVA_STORE` (`RivaError`).
+
+**When:** a component assigns to the `s` that `useStore(def)` returns (`s.filter = 'x'`).
+
+**Why:** `s` is a read-only, tracked view of the store's state and computeds: the component re-renders only when a key it read changes. Only the store's actions write.
+
+**Fix:** call the action from `a`.
+
+```tsx
+const [s, a] = useStore(BookStore);
+a.filterBy('x'); // not s.filter = 'x'
+```

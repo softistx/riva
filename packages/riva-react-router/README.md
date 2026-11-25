@@ -53,25 +53,7 @@ export default function Root() {
 }
 ```
 
-`/server` imports `node:async_hooks`, so it must stay out of the browser bundle. The safe pattern is to build the middleware in a `*.server.ts` module (React Router never bundles it for the browser) and import it from the root:
-
-```ts
-// app/riva.server.ts
-import { rivaMiddleware } from '@softistx/riva-react-router/server';
-
-export const rivaMw = rivaMiddleware({ /* create, setup */ });
-```
-
-```tsx
-// app/root.tsx
-import { rivaMw } from './riva.server';
-
-export const middleware = [rivaMw];
-```
-
-Only loaders that return `riva(context)` feed the provider, the root's or a child's: it hydrates the `~riva` snapshot of each match, once. Every `riva(context)` call dehydrates the whole request client, so return it from one loader per request (usually the root's) and not from every route: the other loaders then only `ensure` their data.
-
-The `client` prop of `RivaRouterProvider` must stay the same object for the lifetime of the mount, and `setup` must be idempotent: React StrictMode runs it twice in development.
+Keep `/server` out of the browser bundle (it imports `node:async_hooks`): build the middleware in a `*.server.ts` module. Declare it once, on the root route; the provider's `client` prop must stay the same object. [Guide](./docs/guide/setup.md).
 
 ## The loader pattern
 
@@ -98,11 +80,7 @@ export default function Patients({ params }: Route.ComponentProps) {
 }
 ```
 
-`rivaOf` and `riva` are for server loaders and actions only; `clientLoader` is not supported.
-
-The provider hydrates each match's `~riva` once. The first render is seeded before its children read, so the server markup and the browser's first render agree and fresh data is not fetched again. On a navigation or revalidation, entries something observes (and entries with a cache policy) are applied in a layout effect, never during a render. Named signals that travel (`ssr: true`) are seeded once; a signal the browser already holds, and every local signal, keeps its value.
-
-The ambient scope (`mySignal.get()` resolving to the request's client, also after an `await`) works only inside the `next` that `rivaMiddleware` runs, that is in loaders, actions and the code they call. Outside it (another middleware that runs before, a module scope), use `rivaOf(context)`.
+`rivaOf` and `riva` are for server loaders and actions only; return `riva(context)` from one loader per request. [Guide](./docs/guide/loader.md).
 
 ## The `/_data` route
 
@@ -123,15 +101,15 @@ export const action = route.action;
 export const loader = route.loader; // 405
 ```
 
-For REST, add `operations(api)` from `@softistx/riva-rest/server` to `sources` (`sources: [allowlist(manifest as AllowlistManifest), operations(api)]`) and use `bffTransport` from `@softistx/riva-rest/bff` in the browser: see [BFF mode in the riva-rest README](https://github.com/softistx/riva/blob/develop/packages/riva-rest/README.md#bff-mode). An unknown id and a non-JSON answer: [404 on an operation that exists](https://github.com/softistx/riva/blob/develop/packages/riva-rest/docs/troubleshooting.md#riva_data_unknown-404-on-an-operation-that-exists), [body that is not JSON](https://github.com/softistx/riva/blob/develop/packages/riva-rest/docs/troubleshooting.md#the-data-route-answered-n-with-a-body-that-is-not-json).
-
-Options: `sources` (asked in order, the first that knows the id runs it), `origin` (the one allowed origin, default the request's own; set it behind a proxy), `maxBytes` (default 262144), `onError(error, request)` (what a non-`RivaRequestError` threw, or a network or HTTP failure of the API; the browser only sees a generic answer). Refusals are `{ error: { code, message, status } }` with `RIVA_DATA_*` codes (the `DataRouteCode` type), listed in the [`riva-graphql` troubleshooting](https://github.com/softistx/riva/blob/develop/packages/riva-graphql/docs/troubleshooting.md#riva_data_-refusals-from-the-_data-route).
+For REST, add `operations(api)` from `@softistx/riva-rest/server` to `sources`. Options: `sources`, `origin`, `maxBytes` (262144), `onError`. Refusals carry `RIVA_DATA_*` codes. [Guide](./docs/guide/data-route.md).
 
 ## After a write
 
-- `useActionResult(result, { into, vars, select? })` writes an action's result (`useActionData()`, or a fetcher's `data`) into a query's entry, once per result. `select` picks the data out of the result (required when the types differ); returning `undefined` (a validation error) writes nothing.
-- `revalidate` is a query: invalidating it re-runs the route loaders through the router's `revalidate()`. Put it in a mutation's `invalidates`, or call `revalidate.invalidate(client)`; invalidations of one tick make one run. It needs `RivaRouterProvider` above the caller, else it fails with `RIVA_SCOPE`: `revalidate is observed by RivaRouterProvider: render it above the component that invalidates it.`
-- `<RivaRouterProvider invalidateOnAction={[patients, revalidate]}>` invalidates that list each time a non-GET navigation or fetcher settles, so a plain `<Form>` keeps the data fresh with no hand-written glue.
+- `useActionResult(result, { into, vars, select? })` writes an action's result into a query's entry, once per result.
+- `revalidate` is a query: invalidating it re-runs the route loaders. It needs `RivaRouterProvider` above the caller.
+- `<RivaRouterProvider invalidateOnAction={[patients, revalidate]}>` invalidates that list each time a non-GET navigation or fetcher settles.
+
+[Guide](./docs/guide/after-a-write.md).
 
 ```tsx
 // app/patients.tsx
@@ -191,4 +169,4 @@ Types: `ContextLike` (what `rivaOf` and `riva` accept, a `context.get`), `RivaRo
 - `Snapshot` keeps its brand through `useLoaderData`, so `data['~riva']` can be handed to `hydrate` by hand.
 - Errors travel as codes: a failed query rehydrates as its class (`instanceof RivaRequestError` holds) with an empty message.
 
-More: [docs](https://github.com/softistx/riva/blob/develop/packages/riva-react-router/docs/README.md), [troubleshooting](https://github.com/softistx/riva/blob/develop/packages/riva-react-router/docs/troubleshooting.md), [spec](https://github.com/softistx/riva/blob/develop/docs/spec.md).
+More: [guides](https://github.com/softistx/riva/blob/develop/packages/riva-react-router/docs/README.md), [troubleshooting](https://github.com/softistx/riva/blob/develop/packages/riva-react-router/docs/troubleshooting.md), [spec](https://github.com/softistx/riva/blob/develop/docs/spec.md).

@@ -2,7 +2,7 @@
 
 React bindings for [riva](https://github.com/softistx/riva/blob/develop/packages/riva/README.md): a provider, hooks over signals, queries, mutations, infinite lists and entities, and Suspense. Typed end to end: variables and data are inferred from the definition, never annotated at the call site.
 
-Errors and fixes: [docs](./docs/README.md). Work in progress, see the [spec](https://github.com/softistx/riva/blob/develop/docs/spec.md).
+Guides and fixes: [docs](./docs/README.md). Work in progress, see the [spec](https://github.com/softistx/riva/blob/develop/docs/spec.md).
 
 ```sh
 bun add @softistx/riva @softistx/riva-react react
@@ -29,7 +29,7 @@ export const App = () => (
 );
 ```
 
-`useClient()` returns the client, to call `def.invalidate(client, vars)` or `def.ensure(client, vars)` from an event handler.
+`useClient()` returns the client, to call `def.invalidate(client, vars)` or `def.ensure(client, vars)` from an event handler. [Guide](./docs/guide/provider.md).
 
 ## Signals and computeds
 
@@ -46,6 +46,8 @@ function Search() {
 	return <input value={q} data-active={active} onChange={(e) => setQ(e.target.value)} />;
 }
 ```
+
+[Guide](./docs/guide/signals.md).
 
 ## Queries
 
@@ -68,21 +70,11 @@ function PatientList({ school }: { school: string }) {
 }
 ```
 
-Options (`opts`):
-
-| Option | Default | Effect |
-| --- | --- | --- |
-| `enabled` | `true` | `false` observes nothing, creates no entry and reads `idle`. |
-| `suspense` | `false` | See below. |
-
-- Variables are compared by value (`stableKey`), so an inline `{ school }` never resubscribes.
-- `refetch()` marks the entry stale and fetches it. It never rejects: the error is in the state.
+Options: `enabled` (`true`) and `suspense` (`false`). Variables are compared by value, so an inline `{ school }` never resubscribes; `refetch()` never rejects. [Guide](./docs/guide/queries.md).
 
 ## Suspense
 
 With `suspense: true`, the component suspends while there is no data, and `data` is no longer optional in its type. A failure with no data is thrown to the nearest error boundary. With `enabled: false` it never suspends: the query reads `idle`.
-
-What a Suspense render fetched is not fetched again when the component mounts, whatever the query's `staleTime`. After an entity is evicted, a suspending component suspends again while the query refetches.
 
 ```tsx
 import { Suspense } from 'react';
@@ -102,11 +94,11 @@ export const Page = ({ school }: { school: string }) => (
 );
 ```
 
-`ErrorBoundary` here is the one of [react-error-boundary](https://www.npmjs.com/package/react-error-boundary); any error boundary works. To retry after an error, start the fetch again before resetting the boundary (`onReset={() => patients.prefetch(client, { school })}`, see [troubleshooting](./docs/troubleshooting.md)).
+To retry after an error, start the fetch again before resetting the boundary (`onReset={() => patients.prefetch(client, { school })}`). [Guide](./docs/guide/suspense.md).
 
 ## Mutations
 
-`useMutation(def)` holds its status per hook instance. `run` resolves with the server data and rejects with the error (also in `error`); the mutation finishes even if the component unmounts, it only stops reporting. When runs overlap, the latest owns the state.
+`useMutation(def)` holds its status per hook instance. `run` resolves with the server data and rejects with the error (also in `error`). [Guide](./docs/guide/mutations.md).
 
 ```tsx
 import { mutation } from '@softistx/riva';
@@ -130,7 +122,7 @@ function Rename({ id }: { id: string }) {
 
 ## Infinite lists
 
-`@softistx/riva-react/infinite` binds a list built with `infinite()` from `@softistx/riva/infinite` (see the core README). `connection` reads the Relay shape `{ edges: [{ node, cursor }], pageInfo }` out of a page, and `data.nodes` is every loaded page's nodes, flattened.
+`@softistx/riva-react/infinite` binds a list built with `infinite()` from `@softistx/riva/infinite`. `data.nodes` is every loaded page's nodes, flattened.
 
 ```tsx
 import { infinite } from '@softistx/riva/infinite';
@@ -155,7 +147,7 @@ function Feed({ school }: { school: string }) {
 }
 ```
 
-It also returns `fetchPrevious`, `hasPrevious`, `isFetchingPrevious` and `refetch` (every loaded page). Its option `enabled` defaults to `true`.
+It also returns `fetchPrevious`, `hasPrevious`, `isFetchingPrevious` and `refetch`. [Guide](./docs/guide/infinite.md).
 
 ## Stores
 
@@ -177,15 +169,11 @@ function Books() {
 }
 ```
 
-- `s` is tracked per key: the component re-renders only when a key it read during its render changes. `s.total` alone does not re-render on a `filter` change.
-- `s` is read-only: a write throws a `RivaError` with code `RIVA_STORE` (`Store "books": "filter" is read-only here; write it in an action.`). Write through `a`.
-- `s` is a new object after each change of a key the component read, so `useMemo(…, [s])` and `React.memo` children that take `s` follow it.
-- `useValue(BookStore.total)` still reads a single value.
-- Under `renderToString` the hook reads the provider's client, as `useValue` does.
+`s` is tracked per key and read-only: a write throws `RIVA_STORE`; write through `a`. [Guide](./docs/guide/store.md).
 
 ## Entities
 
-`@softistx/riva-react/entities` reads one entity of the normalized cache (`@softistx/riva/entities`) by its ref (`Type:id`). The component re-renders when that entity's fields change, and only then. `useFragment<T>(ref)` takes the entity's type as its parameter (default `Record<string, unknown>`), and accepts `null` or `undefined` as a ref: it then reads `undefined`, as it does for a missing entity.
+`@softistx/riva-react/entities` reads one entity of the normalized cache by its ref (`Type:id`); the component re-renders when that entity changes, and only then. [Guide](./docs/guide/entities.md).
 
 ```tsx
 import { useFragment } from '@softistx/riva-react/entities';
@@ -217,9 +205,7 @@ export async function handle(school: string): Promise<Response> {
 }
 ```
 
-- A hook never starts a fetch during a server render, except through `suspense: true`, which waits for it and streams the result (`renderToReadableStream` and `renderToPipeableStream`).
-- Effects and subscriptions run in the browser only.
-- Handing the server's cache to the browser (dehydrate and hydrate) comes with `@softistx/riva-react-router`; until then the browser fetches what it does not have.
+A hook never starts a fetch during a server render, except through `suspense: true`. To hand the cache to the browser, use `@softistx/riva-react-router` or `dehydrate` and `hydrate`. [Guide](./docs/guide/ssr.md).
 
 ## Entry points
 

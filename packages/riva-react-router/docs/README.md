@@ -1,6 +1,17 @@
-# @softistx/riva-react-router docs
+# riva-react-router docs
 
-- [Troubleshooting](https://github.com/softistx/riva/blob/develop/packages/riva-react-router/docs/troubleshooting.md): the `RIVA_SCOPE` messages of the host (including `revalidate`), and "data refetches right after hydration".
-- [Package README](https://github.com/softistx/riva/blob/develop/packages/riva-react-router/README.md): setup (middleware and provider), the loader pattern, the `/_data` route, `useActionResult`, `revalidate` and `invalidateOnAction`, notes for hosts.
-- [Core SSR](https://github.com/softistx/riva/blob/develop/packages/riva/README.md): `dehydrate` and `hydrate`.
-- [Spec](https://github.com/softistx/riva/blob/develop/docs/spec.md): the decision record.
+The package's [README](../README.md) is the short path. These pages go deeper.
+
+## Guides
+
+| Page | Read it when |
+|---|---|
+| [Setup](./guide/setup.md) | You wire the middleware and the provider in the root route. |
+| [The loader pattern](./guide/loader.md) | You fetch in a loader and read in a component, and need to know how hydration works. |
+| [The `/_data` route](./guide/data-route.md) | The browser must run operations through your server (BFF). |
+| [After a write](./guide/after-a-write.md) | An action or a mutation must refresh what is on screen. |
+
+## Also
+
+- [Troubleshooting](./troubleshooting.md): every error message and `RIVA_DATA_*` code this package throws, with the fix.
+- [The core guides](../../riva/docs/README.md).
