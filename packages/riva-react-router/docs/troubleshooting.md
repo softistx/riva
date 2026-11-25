@@ -8,7 +8,7 @@ Code: `RIVA_SCOPE` (`RivaScopeError`).
 
 **When:** `rivaOf(context)` or `riva(context)` ran in a loader or action of a request where the middleware did not run.
 
-**Why:** the request's client is created by the middleware and put in the router context; nothing else makes one.
+**Why:** `rivaOf` and `riva` are for server loaders and actions only (`clientLoader` is not supported), and the request's client is created by the middleware and put in the router context; nothing else makes one.
 
 **Fix:** declare it on the root route.
 
@@ -32,10 +32,12 @@ Code: `RIVA_SCOPE` (`RivaScopeError`).
 
 **When:** the browser fetches a query it received from the loader.
 
-**Why:** a query's `staleTime` defaults to 0, so data is stale the moment it lands. Hydration seeds the entry but never marks it fresh beyond its definition's policy.
+**Why:** the entry's age travels with the snapshot, so its freshness is the definition's `staleTime` minus that age. With the default `staleTime` of 0 the data is stale the moment it lands.
 
 **Fix:** give the definition a `staleTime` that covers the navigation.
 
 ```ts
-const PATIENTS = query(PATIENTS_DOC, { staleTime: '30s' });
+import { query } from '@softistx/riva-graphql';
+
+export const patients = query(PATIENTS_QUERY, { staleTime: '30s' });
 ```

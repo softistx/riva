@@ -55,7 +55,7 @@ renamePatient.run(client, { id, name });
 | `@softistx/riva-react` | `RivaProvider`, hooks, Suspense support |
 | `@softistx/riva-graphql` | GraphQL transport over `@softistx/graphql-client`, persisted ids, allowlist codegen |
 | `@softistx/riva-rest` | REST transport over `openapi-httpyz`, plus a free fetcher |
-| `@softistx/riva-react-router` | Per-request client, SSR hydration, the `/_data` route, action helper |
+| `@softistx/riva-react-router` | Per-request client, ambient scope, SSR hydration and navigation merge |
 
 ## Status
 

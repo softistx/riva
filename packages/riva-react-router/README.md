@@ -8,29 +8,43 @@ bun add @softistx/riva-react-router @softistx/riva @softistx/riva-react
 
 ## Setup
 
-The middleware goes on the root route, the provider in the root component:
+`middleware` on a route module needs React Router 8 framework mode. The middleware goes on the root route, the provider in the root component:
 
 ```tsx
 // app/root.tsx
-import { provideGraphQL, graphqlClientTransport } from '@softistx/riva-graphql';
+import { createGraphQLClient } from '@softistx/graphql-client';
+import { graphqlClientTransport, provideGraphQL } from '@softistx/riva-graphql';
 import { RivaRouterProvider } from '@softistx/riva-react-router';
 import { rivaMiddleware } from '@softistx/riva-react-router/server';
 import { Outlet } from 'react-router';
 
+const API_URL = 'https://api.example.com/graphql'; // schematic: your API
+
 export const middleware = [
 	rivaMiddleware({
-		// the caller port of the request: its session, its headers
+		// the caller port of the request: here its session cookie goes to the API
 		setup: (client, { request }) =>
-			provideGraphQL(client, graphqlClientTransport(callerOf(request))),
+			provideGraphQL(
+				client,
+				graphqlClientTransport(
+					createGraphQLClient({
+						url: API_URL,
+						headers: { cookie: request.headers.get('cookie') ?? '' },
+					}),
+				),
+			),
 	}),
 ];
 
 export default function Root() {
 	return (
 		<RivaRouterProvider
-			setup={(client, { server }) =>
-				// the browser's own transport; on the server the snapshots are already there
-				provideGraphQL(client, graphqlClientTransport(server ? serverCaller : browserCaller))
+			// the client the render and the browser use; the data itself comes from the loaders
+			setup={(client) =>
+				provideGraphQL(
+					client,
+					graphqlClientTransport(createGraphQLClient({ url: API_URL })),
+				)
 			}
 		>
 			<Outlet />
@@ -39,22 +53,38 @@ export default function Root() {
 }
 ```
 
-`/server` imports `node:async_hooks`: keep it out of the browser bundle (a `.server` module, or import it only from the route's `middleware` export).
+`/server` imports `node:async_hooks`: keep it out of the browser bundle (React Router drops a route module's `middleware` export from the client build).
+
+Only loaders that return `riva(context)` feed the provider, the root's or a child's: it hydrates the `~riva` snapshot of each match, once.
 
 ## The loader pattern
 
-A loader reads through the request's client, then returns its snapshot under `~riva`:
+Define the query once, read it in the loader and in the component:
 
 ```tsx
+// app/patients.tsx
+import { query } from '@softistx/riva-graphql';
+import { useQuery } from '@softistx/riva-react';
 import { riva, rivaOf } from '@softistx/riva-react-router';
+import { PATIENTS_QUERY } from './graphql'; // schematic: your document
+import type { Route } from './+types/patients';
 
-export async function loader({ context }: Route.LoaderArgs) {
-	await PATIENTS_QUERY_DEF.ensure(rivaOf(context), { school });
-	return { ...riva(context), school };
+export const patients = query(PATIENTS_QUERY, { staleTime: '30s' });
+
+export async function loader({ context, params }: Route.LoaderArgs) {
+	await patients.ensure(rivaOf(context), { school: params.school });
+	return riva(context);
+}
+
+export default function Patients({ params }: Route.ComponentProps) {
+	const { data } = useQuery(patients, { school: params.school });
+	return <ul>{data?.patients.map((p) => <li key={p.id}>{p.name}</li>)}</ul>;
 }
 ```
 
-The component just reads: `useQuery(PATIENTS_QUERY_DEF, { school })`. The provider hydrates each match's `~riva` once. The first render is seeded before its children read, so the server markup and the browser's first render agree and fresh data is not fetched again. On a navigation or revalidation, entries something observes (and entries with a cache policy) are applied in a layout effect, never during a render. Named signals that travel (`ssr: true`) are seeded once; a signal the browser already holds, and every local signal, keeps its value.
+`rivaOf` and `riva` are for server loaders and actions only; `clientLoader` is not supported.
+
+The provider hydrates each match's `~riva` once. The first render is seeded before its children read, so the server markup and the browser's first render agree and fresh data is not fetched again. On a navigation or revalidation, entries something observes (and entries with a cache policy) are applied in a layout effect, never during a render. Named signals that travel (`ssr: true`) are seeded once; a signal the browser already holds, and every local signal, keeps its value.
 
 Inside a request (loader, action, middleware) the ambient scope works after an `await`: `mySignal.get()` resolves to the request's client.
 

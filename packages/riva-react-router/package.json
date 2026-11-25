@@ -1,7 +1,7 @@
 {
 	"name": "@softistx/riva-react-router",
 	"version": "0.0.0",
-	"description": "React Router host for riva: per-request client, dehydrate and hydrate, the /_data resource route, action-result helper and revalidation bridge.",
+	"description": "React Router host for riva: one RivaClient per request with an ambient scope, SSR dehydrate and hydrate through loader data, and a merge on each navigation.",
 	"license": "MIT",
 	"type": "module",
 	"main": "./dist/index.js",
