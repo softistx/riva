@@ -86,7 +86,7 @@ React Router host for riva: one Riva per request with an ambient scope, SSR dehy
 REST transport for riva, typed by OpenAPI through openapi-httpyz, with a free fetcher for schema-less APIs.
 
 - Entry points: `@softistx/riva-rest`, `@softistx/riva-rest/entities`, `@softistx/riva-rest/server`, `@softistx/riva-rest/bff`
-- Peers: `@softistx/riva` `^0.2.0`, `@softistx/httpyz` `^0.6.1`, `@softistx/openapi-httpyz` `^0.4.1` (optional)
+- Peers: `@softistx/riva` `^0.3.0`, `@softistx/httpyz` `^0.6.1`, `@softistx/openapi-httpyz` `^0.4.1` (optional)
 - Read first: `node_modules/@softistx/riva-rest/README.md` (one example per section, links to the guides)
 - Shipped docs:
   - `node_modules/@softistx/riva-rest/docs/README.md`: riva-rest docs
@@ -95,5 +95,6 @@ REST transport for riva, typed by OpenAPI through openapi-httpyz, with a free fe
   - `node_modules/@softistx/riva-rest/docs/guide/errors.md`: Errors
   - `node_modules/@softistx/riva-rest/docs/guide/free-fetcher.md`: Free fetcher
   - `node_modules/@softistx/riva-rest/docs/guide/openapi.md`: OpenAPI mode
+  - `node_modules/@softistx/riva-rest/docs/guide/simple-api.md`: Simple API
   - `node_modules/@softistx/riva-rest/docs/guide/transport.md`: Transport
   - `node_modules/@softistx/riva-rest/docs/troubleshooting.md`: Troubleshooting

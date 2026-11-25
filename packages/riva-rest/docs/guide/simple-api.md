@@ -1,0 +1,77 @@
+# Simple API
+
+## What it is for
+
+`createRiva({ rest: rest(api) })` gives `riva.rest.get`, `mutation`, `post`, `put`, `patch` and `delete`: call a path with httpyz's `{ param, query, json }` input, get a reactive resource, a handle or the data. The resources come from [`@softistx/riva/resource`](https://github.com/softistx/riva/blob/develop/packages/riva/docs/guide/resources.md).
+
+## Setup
+
+The other snippets of this page reuse this one.
+
+```ts
+import { createHttpClient } from '@softistx/httpyz';
+import { createOpenApiClient } from '@softistx/openapi-httpyz';
+import { createRiva, signal } from '@softistx/riva';
+import { rest } from '@softistx/riva-rest';
+import { operations } from './generated/openapi/operations'; // from `nxgt-openapi generate`
+
+const http = createHttpClient({ baseUrl: 'https://api.example.com' });
+const riva = createRiva({ rest: rest(createOpenApiClient(http, operations)) });
+const invoiceId = signal('1');
+const signedIn = signal(true);
+const render = (state: unknown) => console.log(state);
+```
+
+With no spec, `rest({ baseUrl })` installs the untyped calls over `fetch`:
+
+```ts
+import { createRiva } from '@softistx/riva';
+import { rest } from '@softistx/riva-rest';
+
+const plain = createRiva({
+	rest: rest({ baseUrl: 'https://api.example.com', headers: { authorization: 'Bearer …' } }),
+});
+const todo = await plain.rest.get<{ id: string; done: boolean }>('/todos/{id}', { param: { id: '1' } });
+```
+
+## Reads
+
+```ts
+const invoice = riva.rest.get(
+	'/invoices/{id}',
+	() => ({ param: { id: riva.get(invoiceId) } }),
+	{ enabled: () => riva.get(signedIn), keepPrevious: true, staleTime: '30s' },
+);
+
+invoice.state; // idle | loading | success | error
+invoice.subscribe(render); // starts the fetch
+const data = await invoice; // one-shot: the data, or throws
+```
+
+- The path is the one the spec writes, checked by the compiler: a path the spec has no `get` for does not compile, and throws `RIVA_DEFINITION` when it reaches runtime.
+- The input is a plain value, a riva signal or computed, or a function reading signals (tracked). It is optional when the operation takes none.
+- `enabled` false: `idle`, the input function is not called, no fetch. `await` then rejects with a `RIVA_DEFINITION` error.
+- `keepPrevious` (default true): a new input keeps the old data with `placeholder: true` until the new data lands.
+- `signal` stops the wait of `await`, not the shared fetch.
+- Calls with the same path and input share one cache entry and one request.
+
+## Writes
+
+```ts
+const save = riva.rest.mutation('post', '/invoices');
+save.state; // idle first, then loading, success or error
+const created = await save({ json: { number: 'F-1', total: 10 } }, { invalidates: ['/invoices'] });
+save.reset();
+
+await riva.rest.delete('/invoices/{id}', { param: { id: '1' } }, { invalidates: ['/invoices'] });
+```
+
+`riva.rest.post / put / patch / delete(path, input, opts)` is the one-shot call with no state. `invalidates` is an array, checked before the call runs: a string is the path of a `get` (every input of it, written as the spec writes it: `'/invoices/{id}'`), and a hand-made `query()` definition or `at(query, vars)` targets its own entries.
+
+## Errors
+
+The transport's errors are riva's: a declared non-2xx reply is a `RivaHttpError`, a failed request a `RivaNetworkError`, a request or reply the spec refuses a `RivaRequestError`, an abort a `RivaAbortError`. They are the `error` of the state and what `await` throws; see [Errors](./errors.md).
+
+Definitions made with `query()` and `mutation()` keep working on the same riva, under their own ids; the simple calls use `rest:<method> <path>`.
+
+Problems: [troubleshooting](../troubleshooting.md).

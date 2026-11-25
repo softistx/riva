@@ -141,7 +141,7 @@ export const budgets: Budget[] = [
 	{
 		name: '@softistx/riva + riva-rest',
 		entry: ['packages/riva/dist/index.js', 'packages/riva-rest/dist/index.js'],
-		limit: 8192,
+		limit: 9472,
 	},
 	{
 		name: '@softistx/riva + riva-rest/bff',
@@ -151,7 +151,7 @@ export const budgets: Budget[] = [
 			'packages/riva-rest/dist/index.js',
 			'packages/riva-rest/dist/bff/index.js',
 		],
-		limit: 9472,
+		limit: 11264,
 	},
 ];
 

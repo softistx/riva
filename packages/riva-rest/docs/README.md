@@ -6,6 +6,7 @@ The package's [README](../README.md) is the short path. These pages go deeper.
 
 | Page | Read it when |
 |---|---|
+| [Simple API](./guide/simple-api.md) | You call `riva.rest.get / mutation / post / put / patch / delete` instead of defining. |
 | [Transport](./guide/transport.md) | You wire a riva to the API, per request on a server. |
 | [OpenAPI mode](./guide/openapi.md) | You have a spec and want typed `query` and `mutation` from it. |
 | [Free fetcher](./guide/free-fetcher.md) | The API has no schema and you write the function. |
