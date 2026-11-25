@@ -36,7 +36,8 @@ test('extensions are typed on the instance', () => {
 	expectTypeOf(riva.graphql.query(1)).toEqualTypeOf<string>();
 	expectTypeOf(riva.get).toEqualTypeOf<Riva['get']>();
 	expectTypeOf(createRiva()).toEqualTypeOf<Riva>();
-	// A key that is not an extension adds nothing.
+	// A key that is not an extension is a type error (and adds nothing at run time).
+	// @ts-expect-error a plain value is not an extension
 	const plain = createRiva({ note: { text: 'x' } });
 	expectTypeOf(plain).not.toHaveProperty('note');
 	// biome-ignore lint/suspicious/noExplicitAny: any-typed extension

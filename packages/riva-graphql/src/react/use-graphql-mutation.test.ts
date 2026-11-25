@@ -86,3 +86,15 @@ test('types: variables and data come from the document', () => {
 		>
 	>();
 });
+
+test('types: the input is inferred from the document', () => {
+	const never = () => {
+		const rename = useGraphQLMutation(RENAME_PATIENT_MUTATION);
+		// @ts-expect-error `id` must be a string
+		rename({ id: 1, name: 'Z' });
+		// @ts-expect-error `nom` is not an input of the document
+		rename({ id: '1', nom: 'Z' });
+		void rename({ id: '1', name: 'Z' });
+	};
+	expect(typeof never).toBe('function');
+});

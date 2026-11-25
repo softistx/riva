@@ -2,6 +2,7 @@ import '../../test/happydom';
 import { expect, expectTypeOf, test } from 'bun:test';
 import { createRiva, signal } from '@softistx/riva';
 import type { ResourceState } from '@softistx/riva/resource';
+import { dehydrate, hydrate } from '@softistx/riva/ssr';
 import { RivaProvider } from '@softistx/riva-react';
 import { Component, type ReactNode, Suspense } from 'react';
 import { renderToReadableStream } from 'react-dom/server';
@@ -19,7 +20,10 @@ import { useRest } from './use-rest';
 
 const inv = (id: string): Invoice => ({ id, number: `N${id}`, total: 10 });
 
-function server(gates?: Map<string, () => void>) {
+function server(
+	gates?: Map<string, () => void>,
+	defaults?: { staleTime: '1m' },
+) {
 	const seen: string[] = [];
 	const handle: Handler = async (req) => {
 		const u = new URL(req.url);
@@ -30,7 +34,10 @@ function server(gates?: Map<string, () => void>) {
 		return id === 'missing' ? json({ title: 'gone' }, 404) : json(inv(id));
 	};
 	const api = apiOver(httpWith(handle));
-	return { seen, riva: createRiva({ rest: rest(api) }) };
+	return {
+		seen,
+		riva: createRiva({ ...(defaults ? { defaults } : {}), rest: rest(api) }),
+	};
 }
 
 const show = (s: ResourceState<Invoice | { ok: boolean }>) =>
@@ -70,7 +77,13 @@ test('goes loading then success, and an error lands in the state', async () => {
 test('a new input refetches and keeps the previous data as a placeholder', async () => {
 	const gates = new Map<string, () => void>();
 	const { riva } = server(gates);
-	function C({ id, opts }: { id: string; opts?: UseRestOptions }) {
+	function C({
+		id,
+		opts,
+	}: {
+		id: string;
+		opts?: UseRestOptions & { suspense?: false };
+	}) {
 		return h(
 			'p',
 			null,
@@ -235,4 +248,26 @@ test('without a rest extension it throws a RIVA_DEFINITION error saying how to i
 test('types: data comes from the operations table', () => {
 	const s = {} as ReturnType<typeof useRest<'/health'>>;
 	expectTypeOf(s).toEqualTypeOf<ResourceState<{ ok: boolean }>>();
+});
+
+test('SSR lifecycle: a server fetch, dehydrate and hydrate leave the client mount with no second call', async () => {
+	const defaults = { staleTime: '1m' } as const;
+	const origin = server(undefined, defaults);
+	await origin.riva.rest.get('/invoices/{id}', { param: { id: '1' } });
+	const snapshot = dehydrate(origin.riva);
+	const client = server(undefined, defaults);
+	hydrate(client.riva, snapshot);
+	function C() {
+		return h(
+			'p',
+			null,
+			show(useRest('get', '/invoices/{id}', { param: { id: '1' } })),
+		);
+	}
+	const m = await mount(h(C), client.riva);
+	await flush();
+	expect(m.text()).toBe('success:1:false');
+	expect(origin.seen).toEqual(['GET /invoices/1']);
+	expect(client.seen).toEqual([]);
+	await m.unmount();
 });

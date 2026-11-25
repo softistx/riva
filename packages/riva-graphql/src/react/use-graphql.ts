@@ -21,6 +21,8 @@ export interface UseGraphQLOptions extends Omit<QueryCall, 'signal'> {
 
 // biome-ignore lint/suspicious/noConfusingVoidType: no variables is `void`
 type Void = void | undefined;
+/** `enabled` is not available with `suspense`: a hook that suspends has data or throws, it is never idle. */
+type Suspending<O> = Omit<O, 'enabled'> & { suspense: true; enabled?: never };
 type SuspenseArgs<V, O> = [V] extends [Void]
 	? [vars: V | undefined, options: O]
 	: [vars: V, options: O];
@@ -35,14 +37,14 @@ type SuspenseArgs<V, O> = [V] extends [Void]
  */
 export function useGraphQL<Data, Vars>(
 	document: Doc<Data, Vars>,
-	...args: SuspenseArgs<
-		VarsInput<VarsOf<Vars>>,
-		UseGraphQLOptions & { suspense: true }
-	>
+	...args: SuspenseArgs<VarsInput<VarsOf<Vars>>, Suspending<UseGraphQLOptions>>
 ): SuspendedState<Data>;
 export function useGraphQL<Data, Vars>(
 	document: Doc<Data, Vars>,
-	...args: VarsArgs<VarsInput<VarsOf<Vars>>, [options?: UseGraphQLOptions]>
+	...args: VarsArgs<
+		VarsInput<VarsOf<Vars>>,
+		[options?: UseGraphQLOptions & { suspense?: false }]
+	>
 ): ResourceState<Data>;
 export function useGraphQL(
 	document: Doc<unknown, never>,

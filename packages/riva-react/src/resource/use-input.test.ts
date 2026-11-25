@@ -79,9 +79,17 @@ test('the input handed on is the one of the render that changed the key', async 
 	await m.unmount();
 });
 
-test('a signal is passed as given and read untracked for the key', async () => {
+test('a signal is passed as given and keyed by identity, not by its value', async () => {
 	const s = signal({ id: 5 });
-	const [a] = await inputs([s, undefined]);
+	const other = signal({ id: 5 });
+	const [a, b] = await inputs([s, undefined], [s, undefined]);
+	const [c] = await inputs([other, undefined]);
 	expect(a?.input).toBe(s);
-	expect(a?.key).toContain('5');
+	expect(a?.key).toBe(b?.key as string);
+	expect(a?.key).not.toBe(c?.key as string);
+	// Another value of the same signal is the same key: the resource tracks it.
+	const riva = newRiva();
+	riva.set(s, { id: 6 });
+	const [d] = await inputs([s, undefined]);
+	expect(d?.key).toBe(a?.key as string);
 });

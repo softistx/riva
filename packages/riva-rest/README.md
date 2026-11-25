@@ -101,7 +101,7 @@ Without `Register` the hooks are untyped (`useRest<T>`). How they behave:
 - The input is a plain value, a riva signal or computed, or a function. A function is evaluated at each render, so it follows props (`() => ({ param: { id: props.id } })`) as well as the signals it reads. Equal inputs are one key.
 - A new key refetches and keeps the previous data as `placeholder` (`keepPrevious`, default true).
 - While `enabled` is false the status is `idle`, the input function is not called and nothing is fetched.
-- `suspense: true` suspends until data, types the state as `success` and sends any error to the nearest error boundary. Its fetch uses a `staleTime` of at least 1000 ms (yours, else the riva's default, whichever is longer).
+- `suspense: true` suspends until data, types the state as `success` and sends any error to the nearest error boundary. `enabled` cannot be combined with `suspense` (a type error): a suspending hook is never idle. Its fetch uses a `staleTime` of at least 1000 ms (yours, else the riva's default, whichever is longer).
 
 The mutation hooks return a callable with the state fields and `reset`. The callable (and `reset`) change identity with the state, so call them from handlers and never list them in an effect's dependencies; to react to a result, read `status` and `data`:
 

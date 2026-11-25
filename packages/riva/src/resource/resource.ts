@@ -63,7 +63,10 @@ export function resource<Vars, Data>(
 	const view = computed<ResourceState<Data>>(
 		() => {
 			const t = riva.get(target);
-			if (!t) return IDLE;
+			if (!t) {
+				last = undefined;
+				return IDLE;
+			}
 			const s = (riva.get as (d: unknown, v?: unknown) => QueryState<Data>)(
 				t.def,
 				t.vars,

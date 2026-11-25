@@ -20,6 +20,9 @@ export type SuspendedState<D> = Extract<
 	{ status: 'success' }
 >;
 
+/** The state of a disabled resource. */
+export type IdleState = Extract<ResourceState<never>, { status: 'idle' }>;
+
 /** What a Suspense mount trusts as fresh at least: the data its own render just fetched is not fetched again. */
 const SUSPENSE_FRESH = 1000;
 
@@ -73,7 +76,7 @@ export function useResource<D>(
 	key: string,
 	make: (riva: Riva) => Resource<D>,
 	opts: UseResourceOptions & { suspense: true },
-): SuspendedState<D>;
+): SuspendedState<D> | IdleState;
 export function useResource<D>(
 	key: string,
 	make: (riva: Riva) => Resource<D> | StreamResource<D>,
@@ -93,6 +96,7 @@ export function useResource<D>(
 	);
 	// The last data shown, kept across keys (the resource keeps it across its own re-derivations).
 	const last = useRef<unknown>(undefined);
+	if (raw.status === 'idle') last.current = undefined;
 	if (raw.status === 'success' && !raw.placeholder) last.current = raw.data;
 	const kept = last.current;
 	const state = useMemo<ResourceState<D>>(
