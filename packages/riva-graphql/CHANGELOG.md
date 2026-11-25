@@ -1,5 +1,40 @@
 # @softistx/riva-graphql
 
+## 0.3.0
+
+### Minor Changes
+
+- [#80](https://github.com/softistx/riva/pull/80) [`4a769da`](https://github.com/softistx/riva/commit/4a769da68f661b307fe475c79c74a131a285bfea) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `riva.graphql.query` returns a `Resource` (reactive `state` and `subscribe`, tracked variables, `enabled`, `keepPrevious`) that is still awaitable: `await riva.graphql.query(...)` gives the data or throws. `riva.graphql.mutation(DOC)` returns a callable handle with a reactive `state` and `reset()`; `mutate` stays. A response with data and errors is the `error` state with the partial `data` kept; the error is a new `GraphQLError` (a `RivaRequestError`, defined in `@softistx/riva/resource` and re-exported by riva-graphql) listing the errors with their paths.
+  
+  Breaking, riva-graphql:
+  
+  - A bare `riva.graphql.query(...)` no longer fetches when it is called: it is lazy and fetches from its first subscriber or observed reader, or when awaited. Migration: `await riva.graphql.query(...)`, or `.subscribe(listener)`.
+  - `riva.graphql.subscribe` returns a lazy stream resource instead of a `stop` function, and its callbacks are optional. Migration: `const off = riva.graphql.subscribe(DOC, vars, { next }).subscribe(() => {})`, then `off()` instead of `stop()`.
+  - The `@softistx/riva` peer range is `^0.3.0` (it needs `@softistx/riva/resource`).
+
+- [#80](https://github.com/softistx/riva/pull/80) [`4a769da`](https://github.com/softistx/riva/commit/4a769da68f661b307fe475c79c74a131a285bfea) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Hooks per namespace. `@softistx/riva-graphql/react` adds `useGraphQL(DOC, vars, opts)`, `useGraphQLMutation(DOC)` and `useGraphQLSubscription(DOC, vars, opts)`; `@softistx/riva-rest/react` adds `useRest('get', path, input, opts)` and `useRestMutation(method, path)` (typed by augmenting the `Register` interface with the operations table). They return the resource state (`idle | loading | success | error`); mutations also return the callable handle with `reset`. `{ suspense: true }` suspends until data and types the state as success. `enabled`, function variables and `keepPrevious` work as on `riva.graphql` and `riva.rest`; a server render reads the request's riva, seeds and dehydrates, and hydration does not refetch fresh data.
+  
+  `@softistx/riva-react/resource` is a new subpath with the generic building blocks the adapters use: `useResource`, `useMutationHandle`, `useStableInput` and `suspenseStaleTime`. The main entry is unchanged. Function variables and `enabled` are evaluated at each render, so they follow props as well as signals. Under `suspense` the fetch uses a `staleTime` of at least 1000 ms (the call's, else the riva's default, whichever is longer). A mutation hook's callable and `reset` change identity with the state: call them from handlers, not from effect dependencies.
+  
+  `react` and `@softistx/riva-react` are optional peers of the two adapters (`^19` and `^0.3.0`); `@softistx/riva-react` now peers on `@softistx/riva` `^0.3.0`.
+
+- [#80](https://github.com/softistx/riva/pull/80) [`4a769da`](https://github.com/softistx/riva/commit/4a769da68f661b307fe475c79c74a131a285bfea) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `keepPrevious` never shows another key's data across a disabled gap: a resource that went `idle` (`enabled` false) and comes back under a new key shows `loading`, in the core `resource` and in `useResource`. A signal or computed passed as the variables or input of a hook is keyed by identity, so a change of its value fetches the new key once and does not reopen a stream (a function input still follows the render).
+  
+  **Breaking (types):** `useGraphQL` and `useRest` refuse `enabled` together with `suspense: true`, since a suspending hook has data or throws and is never `idle`; the non-suspense overload takes `suspense?: false`. Migration: drop `enabled` from a suspending call (render the component once its variables are known) or leave `suspense` off. `useResource` with `suspense` is typed `SuspendedState<D> | IdleState`.
+
+- [#80](https://github.com/softistx/riva/pull/80) [`4a769da`](https://github.com/softistx/riva/commit/4a769da68f661b307fe475c79c74a131a285bfea) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `riva.graphql`: `createRiva({ graphql: graphql(client) })` gives `query`, `mutate` and `subscribe`, which take a typed document and its variables and return the data (cache, dedupe and derived keys included); `GraphQLTransport` gains an optional `subscribe`, implemented by `graphqlClientTransport`. The core's `EnsureOptions` gains `staleTime`, overriding the definition's and the riva's default for that call.
+
+### Patch Changes
+
+- [#80](https://github.com/softistx/riva/pull/80) [`4a769da`](https://github.com/softistx/riva/commit/4a769da68f661b307fe475c79c74a131a285bfea) Thanks [@SteveGT96](https://github.com/SteveGT96)! - docs: the READMEs and guides lead with the simple API (`createRiva({ graphql, rest })`, `riva.graphql`, `riva.rest` and the hooks over them); definitions move to a new "Advanced: shared definitions" guide.
+
+- [#80](https://github.com/softistx/riva/pull/80) [`4a769da`](https://github.com/softistx/riva/commit/4a769da68f661b307fe475c79c74a131a285bfea) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `@softistx/riva/resource`: `resource(riva, source, opts)` is a reactive, awaitable view of a query entry (tracked variables, `enabled`, `keepPrevious` with `placeholder`, lazy observation); `mutationHandle(riva, run)` gives a callable with a reactive `state` and `reset`; `streamResource(riva, source, opts)` turns an async-iterable factory into a resource. Breaking: the query status `pending` is now `loading` (also the status of `useMutation`; `isPending` stays). The adapters only rename the status.
+  
+  **Breaking:** the `useMutation` status `pending` is now `loading` (`riva-react`; `isPending` stays). Migration: compare `status === 'loading'` where you compared `'pending'`; the other adapters only re-export the renamed status.
+- Updated dependencies [[`4a769da`](https://github.com/softistx/riva/commit/4a769da68f661b307fe475c79c74a131a285bfea), [`4a769da`](https://github.com/softistx/riva/commit/4a769da68f661b307fe475c79c74a131a285bfea), [`4a769da`](https://github.com/softistx/riva/commit/4a769da68f661b307fe475c79c74a131a285bfea), [`4a769da`](https://github.com/softistx/riva/commit/4a769da68f661b307fe475c79c74a131a285bfea), [`4a769da`](https://github.com/softistx/riva/commit/4a769da68f661b307fe475c79c74a131a285bfea), [`4a769da`](https://github.com/softistx/riva/commit/4a769da68f661b307fe475c79c74a131a285bfea), [`4a769da`](https://github.com/softistx/riva/commit/4a769da68f661b307fe475c79c74a131a285bfea), [`4a769da`](https://github.com/softistx/riva/commit/4a769da68f661b307fe475c79c74a131a285bfea)]:
+  - @softistx/riva@0.3.0
+  - @softistx/riva-react@0.3.0
+
 ## 0.2.0
 
 ### Minor Changes
