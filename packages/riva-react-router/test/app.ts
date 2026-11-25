@@ -217,9 +217,7 @@ export function makeApp({
 		let loaderData: Record<string, unknown> = {};
 		// A server has no `document`: hide happy-dom's so the provider takes its
 		// server branch, as in production.
-		const g = globalThis as { document?: unknown };
-		const doc = g.document;
-		delete g.document;
+		hideDocument();
 		try {
 			await handler.query(request, {
 				requestContext: context,
@@ -241,7 +239,7 @@ export function makeApp({
 				},
 			});
 		} finally {
-			g.document = doc;
+			restoreDocument();
 		}
 		return { html, loaderData, client: context.get(rivaContext) };
 	}
@@ -278,4 +276,19 @@ export function makeApp({
 	}
 
 	return { server, browser, envs, serverRoutes, browserRoutes, serve, boot };
+}
+
+// Overlapping serve() calls (Promise.all) share one hidden document: a depth
+// counter restores it only when the last one ends.
+const g = globalThis as { document?: unknown };
+let hidden = 0;
+let saved: unknown;
+function hideDocument() {
+	if (hidden++ === 0) {
+		saved = g.document;
+		delete g.document;
+	}
+}
+function restoreDocument() {
+	if (--hidden === 0) g.document = saved;
 }
