@@ -28,7 +28,7 @@ binding until the owner changes it.
 | D13 | **Mutations in a BFF** go through `/_data` (allowlisted, same-origin JSON, session). React Router actions stay for forms, with a helper that writes their result into the cache. |
 | D14 | **REST typed by OpenAPI** through `openapi-httpyz`; a free-fetcher mode for schema-less APIs. |
 | D15 | **Pilot: one of our BFF apps.** Subscriptions and SSE in v1.1, devtools in v1.2, persistence/offline in v2. |
-| D16 | **Draft, for the owner's review in the PR.** Stores (owner, 2026-11-24): `store({ name, ssr?, state, computed, actions })` from `@softistx/riva/store` groups a domain's state, computeds and actions. Each state key is a signal named `<name>.<key>` and each computed is a riva computed: both are read as definitions. Only actions write, by top-level assignment on `s`, batched; writes elsewhere throw RIVA_STORE, except `hydrate` and `reset()`. Actions get `(s, ...args, { client, fetch, mutate })`, and `s` stays bound to its client across `await`. `ssr: true` makes every key travel. One instance per client. React: `useStore(def)` gives `[s, a]`, tracked per key. Deep signals and store families come later. |
+| D16 | Stores (owner, 2026-11-24; validated 2026-11-25): `store({ name, ssr?, state, computed, actions })` from `@softistx/riva/store` groups a domain's state, computeds and actions. Each state key is a signal named `<name>.<key>` and each computed is a riva computed: both are read as definitions. Only actions write, by top-level assignment on `s`, batched; writes elsewhere throw RIVA_STORE, except `hydrate` and `reset()`. Actions get `(s, ...args, { client, fetch, mutate })`, and `s` stays bound to its client across `await`. `ssr: true` makes every key travel. One instance per client. React: `useStore(def)` gives `[s, a]`, tracked per key. Deep signals and store families come later. |
 
 ## 2. Packages
 
@@ -54,7 +54,7 @@ export const filter = signal("");
 export const sidebarOpen = signal(true, { persist: false });
 export const hasFilter = computed((get) => get(filter).length > 0);
 
-// Domain store — state, computeds and actions in one definition (D16, draft)
+// Domain store — state, computeds and actions in one definition (D16)
 import { store } from "@softistx/riva/store";
 
 export const BookStore = store({
@@ -117,7 +117,7 @@ Rules of the API:
   `untracked(fn)`. Glitch-free, lazy computeds, synchronous propagation.
 - Values are stored per `RivaClient` (D12). A server-side read with no client in
   scope throws `RivaScopeError` with a message naming the fix.
-- Draft, for the owner's review (D16): a store's state keys are signals whose
+- D16: a store's state keys are signals whose
   `equals` refuses any write made outside an action or `reset()` with
   `RIVA_STORE`; hydration seeds values and never writes.
 

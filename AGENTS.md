@@ -28,5 +28,5 @@ departure.
 - Size budget: core <= 6 kB gzipped, core + react <= 9 kB.
 - Type inference is covered by type tests (`expectTypeOf`).
 - A spec sits beside every source file (`x.ts` and `x.test.ts`).
-- [docs/spec.md](./docs/spec.md) is the decision record (D1 to D15); only the
+- [docs/spec.md](./docs/spec.md) is the decision record (D1 to D16); only the
   owner changes it.
