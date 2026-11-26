@@ -5,7 +5,7 @@ import {
 	RivaScopeError,
 	signal,
 } from '@softistx/riva';
-import { Component, type ReactNode, Suspense } from 'react';
+import { Component, type ReactNode, StrictMode, Suspense } from 'react';
 import { deferred, flush, h, mount, newRiva } from '../test/render';
 import { RivaProvider } from './context';
 import { useQuery } from './use-query';
@@ -393,4 +393,109 @@ test('a suspense query that resolves undefined fetches once, with no loop', asyn
 	expect(seen).toContain(undefined);
 	expect(m.text()).toBe('done');
 	await m.unmount();
+});
+
+class Resettable extends Component<
+	{ children?: ReactNode; onCatch?: (reset: () => void) => void },
+	{ error: Error | undefined }
+> {
+	override state = { error: undefined as Error | undefined };
+	static getDerivedStateFromError(error: Error) {
+		return { error };
+	}
+	override render() {
+		if (!this.state.error) return this.props.children;
+		this.props.onCatch?.(() => this.setState({ error: undefined }));
+		return h('p', null, `caught:${this.state.error.message}`);
+	}
+}
+
+test('suspense refetches once when the error boundary resets, and shows a second failure again', async () => {
+	const log = spyOn(console, 'error').mockImplementation(() => {});
+	let calls = 0;
+	const def = users('uq/suspense-reset', async () => {
+		calls++;
+		if (calls === 1) throw new Error('first');
+		return `ok${calls}`;
+	});
+	function C() {
+		const q = useQuery(def, { school: 's' }, { suspense: true });
+		return h('p', null, `got:${q.data}`);
+	}
+	let reset = () => {};
+	const m = await mount(
+		h(
+			Resettable,
+			{ onCatch: (r) => (reset = r) },
+			h(Suspense, { fallback: h('p', null, 'loading') }, h(C)),
+		),
+		newRiva(),
+	);
+	await flush();
+	expect(m.text()).toBe('caught:first');
+	expect(calls).toBe(1);
+	await flush(() => reset());
+	expect(m.text()).toBe('got:ok2');
+	expect(calls).toBe(2);
+	await m.unmount();
+	log.mockRestore();
+});
+
+test('a synchronous re-render of a failed suspense query does not refetch (StrictMode)', async () => {
+	const log = spyOn(console, 'error').mockImplementation(() => {});
+	let calls = 0;
+	const def = users('uq/suspense-strict', async () => {
+		calls++;
+		throw new Error('bad');
+	});
+	function C() {
+		useQuery(def, { school: 's' }, { suspense: true });
+		return h('p', null, 'unreachable');
+	}
+	const m = await mount(
+		h(
+			StrictMode,
+			null,
+			h(
+				Resettable,
+				null,
+				h(Suspense, { fallback: h('p', null, 'loading') }, h(C)),
+			),
+		),
+		newRiva(),
+	);
+	await flush();
+	expect(m.text()).toBe('caught:bad');
+	expect(calls).toBe(1);
+	await m.unmount();
+	log.mockRestore();
+});
+
+test('a failure after a reset reaches the boundary again', async () => {
+	const log = spyOn(console, 'error').mockImplementation(() => {});
+	let calls = 0;
+	const def = users('uq/suspense-reset-fail', async () => {
+		calls++;
+		throw new Error(`fail${calls}`);
+	});
+	function C() {
+		useQuery(def, { school: 's' }, { suspense: true });
+		return h('p', null, 'unreachable');
+	}
+	let reset = () => {};
+	const m = await mount(
+		h(
+			Resettable,
+			{ onCatch: (r) => (reset = r) },
+			h(Suspense, { fallback: h('p', null, 'loading') }, h(C)),
+		),
+		newRiva(),
+	);
+	await flush();
+	expect(m.text()).toBe('caught:fail1');
+	await flush(() => reset());
+	expect(m.text()).toBe('caught:fail2');
+	expect(calls).toBe(2);
+	await m.unmount();
+	log.mockRestore();
 });

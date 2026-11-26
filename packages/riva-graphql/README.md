@@ -110,7 +110,7 @@ How the hooks behave:
 - Variables are a plain value, a riva signal or computed, or a function. A function is evaluated at each render, so it follows props (`() => ({ id: props.id })`) as well as the signals it reads; a change of the result re-derives the key. Equal variables are one key. A signal or computed is keyed by identity: define it once (module level or `useMemo`), never inline in render.
 - A new key refetches and keeps the previous data as `placeholder` (`keepPrevious`, default true).
 - While `enabled` is false the status is `idle`, the variables function is not called and nothing is fetched.
-- `suspense: true` suspends until data and types the state as `success`. Any error, a response with partial data and errors included, goes to the nearest error boundary. `enabled` cannot be combined with `suspense` (a type error): a suspending hook has data or throws, it is never idle. A subscription cannot suspend.
+- `suspense: true` suspends until data and types the state as `success`. Any error, a response with partial data and errors included, goes to the nearest error boundary, and resetting the boundary refetches it by itself. `enabled` cannot be combined with `suspense` (a type error): a suspending hook has data or throws, it is never idle. A subscription cannot suspend.
 - Under `suspense` the fetch uses a `staleTime` of at least 1000 ms (your `staleTime`, else the riva's default, whichever is longer), so the data a Suspense render just fetched is not fetched again at mount.
 
 The mutation hook returns `{ run, status, data, error, reset }`, the same shape as `useMutation` and `useRestMutation` (type `MutationResult`). `run` and `reset` keep their identity across renders; to react to a result, read `status` and `data`:

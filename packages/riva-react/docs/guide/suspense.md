@@ -7,7 +7,7 @@ With `suspense: true`, `useQuery` suspends while there is no data, and `data` is
 ```tsx
 import { Suspense } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
-import { useRiva, useQuery } from '@softistx/riva-react';
+import { useQuery } from '@softistx/riva-react';
 
 function PatientList({ school }: { school: string }) {
 	const { data } = useQuery(patients, { school }, { suspense: true });
@@ -15,9 +15,8 @@ function PatientList({ school }: { school: string }) {
 }
 
 export function Page({ school }: { school: string }) {
-	const riva = useRiva();
 	return (
-		<ErrorBoundary fallback={<p>Failed</p>} onReset={() => patients.prefetch(riva, { school })}>
+		<ErrorBoundary fallback={<p>Failed</p>}>
 			<Suspense fallback={<p>Loading…</p>}>
 				<PatientList school={school} />
 			</Suspense>
@@ -33,8 +32,10 @@ export function Page({ school }: { school: string }) {
 - What a Suspense render fetched is not fetched again when the component mounts, whatever the query's `staleTime` (the hooks fetch with a `staleTime` of at least 1000 ms: the call's, else the definition's, else the riva's default; never below 1 s). An invalid duration string throws `RIVA_DURATION`.
 - After an entity is evicted, a suspending component suspends again while the query refetches.
 - On the server, `suspense: true` waits for the fetch and streams the result (`renderToReadableStream` and `renderToPipeableStream`).
+- A failure with no data is thrown to the boundary. Resetting the boundary (a retry button, `resetErrorBoundary`) refetches it by itself and suspends on the new fetch; a new failure reaches the boundary again. `useResource` with `suspense` does the same.
+- The retry happens in the browser only (the server always throws). An error is armed one task after its first throw: React's synchronous retry and StrictMode re-render it before that, so they never refetch. Any later read of the same error counts as a reset (a remount, a second boundary, a replayed render): it costs one extra fetch, never a loop.
 
 ## Traps
 
-- To retry after an error, start the fetch again **before** resetting the boundary (`onReset={() => def.prefetch(riva, vars)}`), or the boundary re-renders the cached error: see [troubleshooting](../troubleshooting.md).
+- Under fake timers the error is never armed, so a reset throws it again: advance the timers, or use real ones.
 - A suspending query with no `staleTime` can fetch twice around the Suspense boundary: see [troubleshooting](../troubleshooting.md).

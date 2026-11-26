@@ -7,7 +7,7 @@ import {
 	RivaScopeError,
 } from '@softistx/riva';
 import { type Resource, resource } from '@softistx/riva/resource';
-import { Component, type ReactNode, Suspense } from 'react';
+import { Component, type ReactNode, StrictMode, Suspense } from 'react';
 import { renderToReadableStream } from 'react-dom/server';
 import { deferred, flush, h, mount, newRiva } from '../../test/render';
 import { RivaProvider } from '../context';
@@ -376,4 +376,86 @@ test('a server render seeds from what a loader fetched and starts no client fetc
 test('types: the state narrows on status, suspense gives success', () => {
 	expectTypeOf<SuspendedState<number>['status']>().toEqualTypeOf<'success'>();
 	expectTypeOf<SuspendedState<number>['data']>().toEqualTypeOf<number>();
+});
+
+class Resettable extends Component<
+	{ children?: ReactNode; onCatch?: (reset: () => void) => void },
+	{ error: Error | undefined }
+> {
+	override state = { error: undefined as Error | undefined };
+	static getDerivedStateFromError(error: Error) {
+		return { error };
+	}
+	override render() {
+		if (!this.state.error) return this.props.children;
+		this.props.onCatch?.(() => this.setState({ error: undefined }));
+		return h('p', null, `caught:${this.state.error.message}`);
+	}
+}
+
+function resetCase(id: string, fail: (n: number) => boolean) {
+	let calls = 0;
+	const def = users(id, async () => {
+		calls++;
+		if (fail(calls)) throw new Error(`fail${calls}`);
+		return `ok${calls}`;
+	});
+	function C() {
+		const s = useResource(
+			'k',
+			(riva) =>
+				resource(riva, () => [def, { school: 'a' }], {
+					staleTime: suspenseStaleTime(riva),
+				}),
+			{ suspense: true },
+		);
+		return h('p', null, `${s.status}:${s.data}`);
+	}
+	let reset = () => {};
+	const ui = (strict = false) => {
+		const tree = h(
+			Resettable,
+			{ onCatch: (r) => (reset = r) },
+			h(Suspense, { fallback: h('p', null, 'wait') }, h(C)),
+		);
+		return strict ? h(StrictMode, null, tree) : tree;
+	};
+	return { ui, calls: () => calls, reset: () => reset() };
+}
+
+test('suspense refetches once when the error boundary resets', async () => {
+	const log = spyOn(console, 'error').mockImplementation(() => {});
+	const c = resetCase('ur/reset', (n) => n === 1);
+	const m = await mount(c.ui(), newRiva());
+	await flush();
+	expect(m.text()).toBe('caught:fail1');
+	expect(c.calls()).toBe(1);
+	await flush(() => c.reset());
+	expect(m.text()).toBe('success:ok2');
+	expect(c.calls()).toBe(2);
+	await m.unmount();
+	log.mockRestore();
+});
+
+test('a synchronous re-render of a failed suspense resource does not refetch (StrictMode)', async () => {
+	const log = spyOn(console, 'error').mockImplementation(() => {});
+	const c = resetCase('ur/reset-strict', () => true);
+	const m = await mount(c.ui(true), newRiva());
+	await flush();
+	expect(m.text()).toBe('caught:fail1');
+	expect(c.calls()).toBe(1);
+	await m.unmount();
+	log.mockRestore();
+});
+
+test('a failure after a reset reaches the boundary again', async () => {
+	const log = spyOn(console, 'error').mockImplementation(() => {});
+	const c = resetCase('ur/reset-fail', () => true);
+	const m = await mount(c.ui(), newRiva());
+	await flush();
+	await flush(() => c.reset());
+	expect(m.text()).toBe('caught:fail2');
+	expect(c.calls()).toBe(2);
+	await m.unmount();
+	log.mockRestore();
 });

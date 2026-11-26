@@ -7,6 +7,7 @@ import {
 } from '@softistx/riva/resource';
 import { useCallback, useMemo, useRef, useSyncExternalStore } from 'react';
 import { useRiva } from '../context';
+import { retryOnReset } from '../suspend';
 
 export interface UseResourceOptions {
 	/** Suspends while there is no data and throws an error to the nearest error boundary. Needs an awaitable resource. Default false. */
@@ -49,7 +50,7 @@ const SLOT = {};
 
 /** The one promise React waits on for a key, so every render that suspends gets the same one. */
 function suspendOn(riva: Riva, key: string, res: PromiseLike<unknown>) {
-	let map = riva.slots.get(SLOT) as Map<string, Promise<void>> | undefined;
+	let map = riva.slots.get(SLOT) as Map<string, PromiseLike<void>> | undefined;
 	if (!map) {
 		map = new Map();
 		riva.slots.set(SLOT, map);
@@ -58,7 +59,7 @@ function suspendOn(riva: Riva, key: string, res: PromiseLike<unknown>) {
 	if (!promise) {
 		const entries = map;
 		const done = () => void entries.delete(key);
-		promise = Promise.resolve(res).then(done, done);
+		promise = res.then(done, done);
 		entries.set(key, promise);
 	}
 	return promise;
@@ -117,8 +118,10 @@ export function useResource<D>(
 		[raw, kept, opts.keepPrevious],
 	);
 	if (opts.suspense && state.status !== 'idle') {
-		if (state.status === 'error') throw state.error;
-		if (state.status === 'loading') {
+		if (state.status === 'error' && !retryOnReset(riva, state.error))
+			throw state.error;
+		// Loading, or an error being retried: suspend on a fresh fetch.
+		if (state.status !== 'success') {
 			if (!('then' in res))
 				throw new TypeError(
 					'useResource: `suspense` needs an awaitable resource, not a stream.',
