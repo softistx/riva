@@ -2,7 +2,7 @@
 
 ## Now
 
-- **Settle the simple API's public names before 1.0** — the extensions become `withGraphQL` and `withRest`, the GraphQL error `RivaGraphQLError`, the call types carry their protocol (`GraphQLQueryCall`, `RestQueryCall`, …) and one `TrackedInput` replaces the adapters' copies; then one mutation-hook shape and a path-first `useRest`. No deprecated aliases. [#81](https://github.com/softistx/riva/issues/81)
+- **Settle the simple API's public names before 1.0** — the extensions become `withGraphQL` and `withRest`, the GraphQL error `RivaGraphQLError`, the call types carry their protocol (`GraphQLQueryCall`, `RestQueryCall`, …) and one `TrackedInput` replaces the adapters' copies; then one mutation-hook shape (`{ run, status, data, error, reset }`, `run` and `reset` stable, no `isPending`) and a path-first `useRest(path)` (slice 2). No deprecated aliases. [#81](https://github.com/softistx/riva/issues/81)
 - **Deprecate the graphql-client cache and React layer** — consumers of `@softistx/graphql-client` are pointed to riva for caching and React bindings, once riva has its first release.
 - **Pilot in a BFF app** — riva run end to end in a server-rendered app with a backend-for-frontend, to validate the API before wider adoption.
 

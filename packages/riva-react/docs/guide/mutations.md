@@ -15,9 +15,9 @@ const rename = mutation({
 });
 
 function Rename({ id }: { id: string }) {
-	const { run, isPending, error, reset } = useMutation(rename);
+	const { run, status, error, reset } = useMutation(rename);
 	return (
-		<button disabled={isPending} onClick={() => run({ id, name: 'New name' }).catch(() => {})}>
+		<button disabled={status === 'loading'} onClick={() => run({ id, name: 'New name' }).catch(() => {})}>
 			Rename
 		</button>
 	);
@@ -32,8 +32,9 @@ function Rename({ id }: { id: string }) {
 | `status` | `idle`, `loading`, `success` or `error`. |
 | `data` | The last result of the latest run. |
 | `error` | The last error of the latest run. |
-| `isPending` | `status === 'loading'`. |
 | `reset()` | Back to `idle`, clears `data` and `error`. |
+
+`run` and `reset` keep their identity across renders (also from `idle` to `loading` to `success`). There is no `isPending`: read `status === 'loading'`. `useGraphQLMutation` and `useRestMutation` return the same shape (type `MutationResult`).
 
 The definition's own options (`optimistic`, `updates`, `invalidates`, `cache`, `retry`) apply: see the core's [mutations guide](https://github.com/softistx/riva/blob/develop/packages/riva/docs/guide/mutations.md).
 

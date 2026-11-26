@@ -2,12 +2,20 @@ import type { OperationsShape } from '@softistx/openapi-httpyz';
 import type { Query } from '@softistx/riva';
 import type { ResourceState, TrackedInput } from '@softistx/riva/resource';
 import type {
-	MutationHook,
+	MutationResult,
 	SuspendedState,
 } from '@softistx/riva-react/resource';
 import type { RestMutateCall, RestQueryCall } from '../calls';
-import type { MutationMethod, PathsOf } from '../simple';
-import type { DataOf, InputOf, RouteOf } from '../types';
+import type {
+	GetData,
+	GetInput,
+	MutationMethod,
+	PathsOf,
+	Route,
+	UntypedData,
+	UntypedInput,
+} from '../simple';
+import type { DataOf, InputOf } from '../types';
 
 /**
  * Types the hooks by your spec: augment it once, with the operations table
@@ -34,11 +42,6 @@ export interface UseRestOptions extends Omit<RestQueryCall, 'signal'> {
 /** `enabled` is not available with `suspense`: a hook that suspends has data or throws, it is never idle. */
 type Suspending<O> = Omit<O, 'enabled'> & { suspense: true; enabled?: never };
 
-type Route<Ops extends OperationsShape<Ops>, M extends string, P> = Extract<
-	`${M} ${P & string}`,
-	RouteOf<Ops>
->;
-
 // biome-ignore lint/suspicious/noConfusingVoidType: no input is `void`
 type Optional<I> = [I] extends [void | undefined] ? true : false;
 type Args<I, O> =
@@ -51,39 +54,25 @@ type SuspenseArgs<I, O> =
 		: [input: TrackedInput<I>, options: O];
 
 /**
- * `useRest` over the registered spec. The path overloads come last, with
- * `method` a type parameter: TypeScript moves overloads with a literal
- * parameter first, and a bad input is only named (`'nope' does not exist`)
- * when the path overload is the last one tried.
+ * `useRest` over the registered spec: one generic signature over the path or
+ * the definition, as `riva.rest.get`. The non-suspense overload comes last,
+ * because TypeScript reports the error of the last overload tried, so a wrong
+ * input is named on the parameter (`'nope' does not exist`).
  */
 export interface TypedUseRest<
 	Ops extends OperationsShape<Ops>,
 	Decoded extends boolean,
 > {
-	<I, Data>(
-		definition: Query<I, Data>,
-		...args: SuspenseArgs<I, Suspending<UseRestOptions>>
-	): SuspendedState<Data>;
-	<I, Data>(
-		definition: Query<I, Data>,
-		...args: Args<I, UseRestOptions & { suspense?: false }>
-	): ResourceState<Data>;
-	<P extends PathsOf<Ops, 'get'>, M extends 'get' = 'get'>(
-		method: M,
-		path: P,
-		...args: SuspenseArgs<
-			InputOf<Ops, Route<Ops, 'get', P>>,
-			Suspending<UseRestOptions>
-		>
-	): SuspendedState<DataOf<Ops, Route<Ops, 'get', P>, Decoded>>;
-	<P extends PathsOf<Ops, 'get'>, M extends 'get' = 'get'>(
-		method: M,
-		path: P,
-		...args: Args<
-			InputOf<Ops, Route<Ops, 'get', P>>,
-			UseRestOptions & { suspense?: false }
-		>
-	): ResourceState<DataOf<Ops, Route<Ops, 'get', P>, Decoded>>;
+	// biome-ignore lint/suspicious/noExplicitAny: matches any definition
+	<T extends PathsOf<Ops, 'get'> | Query<any, any>>(
+		target: T,
+		...args: SuspenseArgs<GetInput<Ops, T>, Suspending<UseRestOptions>>
+	): SuspendedState<GetData<Ops, T, Decoded>>;
+	// biome-ignore lint/suspicious/noExplicitAny: matches any definition
+	<T extends PathsOf<Ops, 'get'> | Query<any, any>>(
+		target: T,
+		...args: Args<GetInput<Ops, T>, UseRestOptions & { suspense?: false }>
+	): ResourceState<GetData<Ops, T, Decoded>>;
 }
 
 /** `useRestMutation` over the registered spec. */
@@ -93,42 +82,39 @@ export type TypedUseRestMutation<
 > = <M extends MutationMethod, P extends PathsOf<Ops, M>>(
 	method: M,
 	path: P,
-) => MutationHook<
+) => MutationResult<
 	InputOf<Ops, Route<Ops, M, P>>,
 	DataOf<Ops, Route<Ops, M, P>, Decoded>,
 	RestMutateCall
 >;
 
-/** `useRest` with no spec: `Data` is what you expect back. */
+// A definition's input is required when it has one; a path takes any httpyz input, optionally.
+type UntypedArgs<T, O> =
+	// biome-ignore lint/suspicious/noExplicitAny: matches any definition
+	T extends Query<infer I, any>
+		? Args<I, O>
+		: [input?: TrackedInput<UntypedInput<T>>, options?: O];
+
+/** `useRest` with no spec: `Data` is what you expect back (a definition brings its own). */
 export interface UntypedUseRest {
-	<Data, Input = unknown>(
-		definition: Query<Input, Data>,
-		input: TrackedInput<Input> | undefined,
+	// biome-ignore lint/suspicious/noExplicitAny: matches any definition
+	<Data = unknown, T extends string | Query<any, any> = string>(
+		target: T,
+		input: TrackedInput<UntypedInput<T>> | undefined,
 		options: Suspending<UseRestOptions>,
-	): SuspendedState<Data>;
-	<Data, Input = unknown>(
-		definition: Query<Input, Data>,
-		...args: Args<Input, UseRestOptions & { suspense?: false }>
-	): ResourceState<Data>;
-	<Data = unknown>(
-		method: 'get',
-		path: string,
-		input: unknown,
-		options: Suspending<UseRestOptions>,
-	): SuspendedState<Data>;
-	<Data = unknown>(
-		method: 'get',
-		path: string,
-		input?: unknown,
-		options?: UseRestOptions & { suspense?: false },
-	): ResourceState<Data>;
+	): SuspendedState<UntypedData<T, Data>>;
+	// biome-ignore lint/suspicious/noExplicitAny: matches any definition
+	<Data = unknown, T extends string | Query<any, any> = string>(
+		target: T,
+		...args: UntypedArgs<T, UseRestOptions & { suspense?: false }>
+	): ResourceState<UntypedData<T, Data>>;
 }
 
 /** `useRestMutation` with no spec. */
 export type UntypedUseRestMutation = <Data = unknown, Input = unknown>(
 	method: MutationMethod,
 	path: string,
-) => MutationHook<Input, Data, RestMutateCall>;
+) => MutationResult<Input, Data, RestMutateCall>;
 
 type Ops = Register extends { operations: infer O extends OperationsShape<O> }
 	? O

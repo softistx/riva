@@ -17,14 +17,14 @@ const state = useResource(key, (riva) => riva.graphql.query(BOOKS_QUERY, vars), 
 ## useMutationHandle
 
 ```tsx
-const save = useMutationHandle('add-book', (riva) => riva.graphql.mutation(ADD_BOOK_MUTATION));
-<button onClick={() => save({ title: 'Dune' })}>Add</button>;
+const { run, status, reset } = useMutationHandle('add-book', (riva) => riva.graphql.mutation(ADD_BOOK_MUTATION));
+<button onClick={() => run({ title: 'Dune' })}>Add</button>;
 useEffect(() => {
-	if (save.status === 'success') close(); // depend on the state
-}, [save.status]); // never on `save` or `save.reset`
+	if (status === 'success') close(); // depend on the state
+}, [status]);
 ```
 
-It returns a callable with the mutation state fields (`status`, `data`, `error`) and `reset()`; the state is `idle` on the server and at first render on the client. The callable and `reset` change identity with the state: call them from handlers, never put them in an effect's dependencies.
+It returns `{ run, status, data, error, reset }` (the `MutationResult` type, as `useMutation` does); the state is `idle` on the server and at first render on the client. `run` and `reset` keep their identity across renders (a stable `run` calls the current handle), so they can sit in effect dependencies. The key is anything comparable: a string, or a definition, which re-makes the handle when its identity changes.
 
 ## useStableInput
 

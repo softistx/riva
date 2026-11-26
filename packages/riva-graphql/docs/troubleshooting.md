@@ -300,3 +300,14 @@ import { RivaGraphQLError, withGraphQL } from '@softistx/riva-graphql';
 const riva = createRiva({ graphql: withGraphQL(client) });
 if (error instanceof RivaGraphQLError) error.errors; // match with instanceof, or error.name === 'RivaGraphQLError'
 ```
+
+## `add` is not a function, or `isPending` is undefined, on `useGraphQLMutation`
+
+**Why:** the hook returns `{ run, status, data, error, reset }`, not a callable, and has no `isPending`. `run` and `reset` are stable across renders.
+
+**Fix:**
+
+```tsx
+const { run: add, status } = useGraphQLMutation(ADD_BOOK_MUTATION);
+<button disabled={status === 'loading'} onClick={() => add({ title: 'Dune' })}>Add</button>;
+```

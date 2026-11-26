@@ -93,7 +93,7 @@ import { useGraphQL, useGraphQLMutation, useGraphQLSubscription } from '@softist
 // Spinner and Failure are schematic: your own components.
 function Books({ first }: { first: number }) {
 	const books = useGraphQL(BOOKS_QUERY, { first });
-	const add = useGraphQLMutation(ADD_BOOK_MUTATION);
+	const { run: add } = useGraphQLMutation(ADD_BOOK_MUTATION);
 	if (books.status === 'loading') return <Spinner />;
 	if (books.status === 'error') return <Failure error={books.error} />; // books.data keeps a partial result
 	return <button onClick={() => add({ title: 'Dune' }, { invalidates: [BOOKS_QUERY] })}>{books.data.books.length}</button>;
@@ -112,16 +112,14 @@ How the hooks behave:
 - `suspense: true` suspends until data and types the state as `success`. Any error, a response with partial data and errors included, goes to the nearest error boundary. `enabled` cannot be combined with `suspense` (a type error): a suspending hook has data or throws, it is never idle. A subscription cannot suspend.
 - Under `suspense` the fetch uses a `staleTime` of at least 1000 ms (your `staleTime`, else the riva's default, whichever is longer), so the data a Suspense render just fetched is not fetched again at mount.
 
-The mutation hooks return a callable with the state fields and `reset`. The callable (and `reset`) change identity with the state, so call them from handlers and never list them in an effect's dependencies; to react to a result, read `status` and `data`:
+The mutation hook returns `{ run, status, data, error, reset }`, the same shape as `useMutation` and `useRestMutation` (type `MutationResult`). `run` and `reset` keep their identity across renders; to react to a result, read `status` and `data`:
 
 ```tsx
-const add = useGraphQLMutation(ADD_BOOK_MUTATION);
-// Handler: fine.
-<button onClick={() => add({ title: 'Dune' })}>Add</button>;
-// Effect: depend on the state, not on `add`.
+const { run, status } = useGraphQLMutation(ADD_BOOK_MUTATION);
+<button onClick={() => run({ title: 'Dune' })}>Add</button>;
 useEffect(() => {
-	if (add.status === 'success') close();
-}, [add.status]);
+	if (status === 'success') close();
+}, [status]);
 ```
 
 ## Errors
