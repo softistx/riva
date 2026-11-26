@@ -20,7 +20,7 @@ import { graphqlResource } from './resources';
 export type Doc<Data, Vars> = TypedDocumentNode<Data, Vars>;
 
 /** Options of one `riva.graphql.query` call. */
-export interface QueryCall {
+export interface GraphQLQueryCall {
 	/** Replaces the riva's default `staleTime` for this call: data younger than it is returned without fetching. */
 	staleTime?: Duration;
 	/** A boolean, or a function read in a tracked computed. While false the state is `idle`, the variables function is not called and nothing is fetched. Default true. */
@@ -32,7 +32,7 @@ export interface QueryCall {
 }
 
 /** Options of one `riva.graphql.mutate` call. */
-export interface MutateCall {
+export interface GraphQLMutateCall {
 	/**
 	 * An array (no function form) of documents, definitions or `at(query, vars)` to mark stale once the mutation succeeded; observed ones refetch.
 	 * A document targets the query `riva.graphql.query` made of it; a hand-made definition targets its own entries only.
@@ -81,7 +81,7 @@ export function callsOf(
 	const mutate = async (
 		doc: Doc<unknown, never>,
 		vars?: unknown,
-		call?: MutateCall,
+		call?: GraphQLMutateCall,
 	) =>
 		mutateInvalidating(riva, mutationOf(doc), vars, call, (t) =>
 			'definitions' in t ? queryOf(t) : t,
@@ -91,7 +91,7 @@ export function callsOf(
 		query(
 			target: Doc<unknown, never> | Query<unknown, unknown>,
 			vars?: unknown,
-			call?: QueryCall,
+			call?: GraphQLQueryCall,
 		) {
 			const def =
 				(target as { kind?: unknown }).kind === 'query'
@@ -104,7 +104,7 @@ export function callsOf(
 			);
 		},
 		mutation: (doc: Doc<unknown, never>) =>
-			mutationHandle(riva, (vars: unknown, call?: MutateCall) =>
+			mutationHandle(riva, (vars: unknown, call?: GraphQLMutateCall) =>
 				mutate(doc, vars, call),
 			),
 	};

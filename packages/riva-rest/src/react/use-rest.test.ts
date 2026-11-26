@@ -15,7 +15,7 @@ import {
 } from '../../test/fixtures';
 import { flush, h, mount } from '../../test/render';
 import { query } from '../query';
-import { rest } from '../simple';
+import { withRest } from '../simple';
 import type { UseRestOptions } from './types';
 import { useRest } from './use-rest';
 
@@ -38,7 +38,10 @@ function server(
 	return {
 		seen,
 		api,
-		riva: createRiva({ ...(defaults ? { defaults } : {}), rest: rest(api) }),
+		riva: createRiva({
+			...(defaults ? { defaults } : {}),
+			rest: withRest(api),
+		}),
 	};
 }
 
@@ -240,7 +243,7 @@ test('without a rest extension it throws a RIVA_DEFINITION error saying how to i
 	console.error = () => {};
 	try {
 		await expect(mount(h(C), createRiva())).rejects.toThrow(
-			'createRiva({ rest: rest(api) })',
+			'createRiva({ rest: withRest(api) })',
 		);
 	} finally {
 		console.error = spy;

@@ -6,7 +6,7 @@ Entry point: `@softistx/riva-react-router/server`.
 
 `dataRoute` lets the browser run allowlisted operations through your server, with the session of the request. Mount it on a route with an action; the browser's `bffTransport` (`@softistx/riva-graphql/bff` or `@softistx/riva-rest/bff`) posts to it.
 
-In the browser, the riva reaches it with `createRiva({ graphql: graphql(bffTransport({ url: '/_data' })) })` ([BFF guide](https://github.com/softistx/riva/blob/develop/packages/riva-graphql/docs/guide/bff.md)).
+In the browser, the riva reaches it with `createRiva({ graphql: withGraphQL(bffTransport({ url: '/_data' })) })` ([BFF guide](https://github.com/softistx/riva/blob/develop/packages/riva-graphql/docs/guide/bff.md)).
 
 ## GraphQL
 

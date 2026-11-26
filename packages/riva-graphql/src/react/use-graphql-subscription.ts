@@ -1,11 +1,10 @@
 import type { VarsArgs } from '@softistx/riva';
-import type { ResourceState } from '@softistx/riva/resource';
+import type { ResourceState, TrackedInput } from '@softistx/riva/resource';
 import { useResource, useStableInput } from '@softistx/riva-react/resource';
 import { useEffect, useRef } from 'react';
 import type { Doc } from '../calls';
 import { operationOf } from '../operation';
-import type { VarsInput } from '../resources';
-import type { SubscribeCall } from '../subscription';
+import type { GraphQLSubscribeCall } from '../subscription';
 import type { VarsOf } from '../types';
 import { graphqlOf } from './graphql-of';
 
@@ -18,18 +17,21 @@ import { graphqlOf } from './graphql-of';
  */
 export function useGraphQLSubscription<Data, Vars>(
 	document: Doc<Data, Vars>,
-	...args: VarsArgs<VarsInput<VarsOf<Vars>>, [options?: SubscribeCall<Data>]>
+	...args: VarsArgs<
+		TrackedInput<VarsOf<Vars>>,
+		[options?: GraphQLSubscribeCall<Data>]
+	>
 ): ResourceState<Data>;
 export function useGraphQLSubscription(
 	document: Doc<unknown, never>,
 	vars?: unknown,
-	options: SubscribeCall<unknown> = {},
+	options: GraphQLSubscribeCall<unknown> = {},
 ): ResourceState<unknown> {
 	const latest = useRef(options);
 	useEffect(() => {
 		latest.current = options;
 	});
-	const calls = useRef<SubscribeCall<unknown>>({
+	const calls = useRef<GraphQLSubscribeCall<unknown>>({
 		next: (d) => latest.current.next?.(d),
 		error: (e) => latest.current.error?.(e),
 		complete: () => latest.current.complete?.(),

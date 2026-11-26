@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { RivaAbortError } from '@softistx/riva';
 import type { Resource, ResourceState } from '@softistx/riva/resource';
-import { GraphQLError } from './errors';
+import { RivaGraphQLError } from './errors';
 import { graphqlResource, memoFactory } from './resources';
 
 describe('memoFactory', () => {
@@ -35,7 +35,7 @@ describe('graphqlResource', () => {
 	});
 
 	test('an error carrying data keeps it, a state is mapped once per source state', () => {
-		const e = new GraphQLError('X', [{ message: 'm' }], 7, {
+		const e = new RivaGraphQLError('X', [{ message: 'm' }], 7, {
 			retryable: false,
 		});
 		const r = graphqlResource(inner(failed(e)));
@@ -50,7 +50,7 @@ describe('graphqlResource', () => {
 		const plain = failed(new Error('x'));
 		expect(graphqlResource(inner(plain)).state).toBe(plain);
 		const nullData = failed(
-			new GraphQLError('X', [], null, { retryable: false }),
+			new RivaGraphQLError('X', [], null, { retryable: false }),
 		);
 		expect(graphqlResource(inner(nullData)).state).toBe(nullData);
 	});

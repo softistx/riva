@@ -1,12 +1,11 @@
 import type { OperationsShape } from '@softistx/openapi-httpyz';
 import type { Query } from '@softistx/riva';
-import type { ResourceState } from '@softistx/riva/resource';
+import type { ResourceState, TrackedInput } from '@softistx/riva/resource';
 import type {
 	MutationHook,
 	SuspendedState,
 } from '@softistx/riva-react/resource';
-import type { GetCall, MutateCall } from '../calls';
-import type { InputArg } from '../resources';
+import type { RestMutateCall, RestQueryCall } from '../calls';
 import type { MutationMethod, PathsOf } from '../simple';
 import type { DataOf, InputOf, RouteOf } from '../types';
 
@@ -27,7 +26,7 @@ import type { DataOf, InputOf, RouteOf } from '../types';
 export interface Register {}
 
 /** Options of `useRest`: `riva.rest.get`'s, plus `suspense`. */
-export interface UseRestOptions extends Omit<GetCall, 'signal'> {
+export interface UseRestOptions extends Omit<RestQueryCall, 'signal'> {
 	/** Suspends until there is data, and throws an error to the nearest error boundary. The state is then `success`. Default false. */
 	suspense?: boolean;
 }
@@ -44,12 +43,12 @@ type Route<Ops extends OperationsShape<Ops>, M extends string, P> = Extract<
 type Optional<I> = [I] extends [void | undefined] ? true : false;
 type Args<I, O> =
 	Optional<I> extends true
-		? [input?: InputArg<NonNullable<I>>, options?: O]
-		: [input: InputArg<I>, options?: O];
+		? [input?: TrackedInput<NonNullable<I>>, options?: O]
+		: [input: TrackedInput<I>, options?: O];
 type SuspenseArgs<I, O> =
 	Optional<I> extends true
-		? [input: InputArg<NonNullable<I>> | undefined, options: O]
-		: [input: InputArg<I>, options: O];
+		? [input: TrackedInput<NonNullable<I>> | undefined, options: O]
+		: [input: TrackedInput<I>, options: O];
 
 /**
  * `useRest` over the registered spec. The path overloads come last, with
@@ -97,14 +96,14 @@ export type TypedUseRestMutation<
 ) => MutationHook<
 	InputOf<Ops, Route<Ops, M, P>>,
 	DataOf<Ops, Route<Ops, M, P>, Decoded>,
-	MutateCall
+	RestMutateCall
 >;
 
 /** `useRest` with no spec: `Data` is what you expect back. */
 export interface UntypedUseRest {
 	<Data, Input = unknown>(
 		definition: Query<Input, Data>,
-		input: InputArg<Input> | undefined,
+		input: TrackedInput<Input> | undefined,
 		options: Suspending<UseRestOptions>,
 	): SuspendedState<Data>;
 	<Data, Input = unknown>(
@@ -129,7 +128,7 @@ export interface UntypedUseRest {
 export type UntypedUseRestMutation = <Data = unknown, Input = unknown>(
 	method: MutationMethod,
 	path: string,
-) => MutationHook<Input, Data, MutateCall>;
+) => MutationHook<Input, Data, RestMutateCall>;
 
 type Ops = Register extends { operations: infer O extends OperationsShape<O> }
 	? O

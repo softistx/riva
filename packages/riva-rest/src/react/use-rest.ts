@@ -1,7 +1,7 @@
 import { type Query, RivaError } from '@softistx/riva';
 import type { ResourceState } from '@softistx/riva/resource';
 import { useCallResource } from '@softistx/riva-react/resource';
-import type { GetCall } from '../calls';
+import type { RestQueryCall } from '../calls';
 import { restOf } from './rest-of';
 import type { UseRest, UseRestOptions } from './types';
 
@@ -25,7 +25,7 @@ function useRestImpl(
 		input,
 		options,
 		(riva, stable, call) =>
-			restOf(riva).get(target as never, stable, call as GetCall),
+			restOf(riva).get(target as never, stable, call as RestQueryCall),
 	);
 }
 

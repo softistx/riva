@@ -1,7 +1,7 @@
 export { toMs } from '../duration';
 export { abortable } from './abortable';
 export { type CallOptions, callResource, mutateInvalidating } from './call';
-export { GraphQLError, type GraphQLErrorEntry } from './graphql-error';
+export { type GraphQLErrorEntry, RivaGraphQLError } from './graphql-error';
 export { isReactive, type TrackedInput, trackedInput } from './input';
 export { type MutationHandle, mutationHandle } from './mutation-handle';
 export {

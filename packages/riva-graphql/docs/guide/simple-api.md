@@ -2,7 +2,7 @@
 
 ## What it is for
 
-`createRiva({ graphql: graphql(client) })` gives `riva.graphql.query`, `mutation`, `mutate` and `subscribe`: call a typed document, get a reactive resource, a handle or a stream. The resources come from [`@softistx/riva/resource`](https://github.com/softistx/riva/blob/develop/packages/riva/docs/guide/resources.md).
+`createRiva({ graphql: withGraphQL(client) })` gives `riva.graphql.query`, `mutation`, `mutate` and `subscribe`: call a typed document, get a reactive resource, a handle or a stream. The resources come from [`@softistx/riva/resource`](https://github.com/softistx/riva/blob/develop/packages/riva/docs/guide/resources.md).
 
 ## Setup
 
@@ -11,7 +11,7 @@ The other snippets of this page reuse this one.
 ```ts
 import { createGraphQLClient } from '@softistx/graphql-client';
 import { createRiva, signal } from '@softistx/riva';
-import { graphql } from '@softistx/riva-graphql';
+import { withGraphQL } from '@softistx/riva-graphql';
 import {
 	BOOKS_QUERY,
 	PATIENT_RENAMED_SUBSCRIPTION,
@@ -20,7 +20,7 @@ import {
 } from './graphql'; // your typed documents
 
 const riva = createRiva({
-	graphql: graphql(createGraphQLClient({ url: 'https://api.example.com/graphql' })),
+	graphql: withGraphQL(createGraphQLClient({ url: 'https://api.example.com/graphql' })),
 });
 const page = signal(1);
 const school = signal('north');
@@ -49,13 +49,13 @@ const data = await books; // one-shot: the data, or throws
 
 ## Partial results
 
-Data with errors is `status: 'error'`, `data` kept, `error` a `GraphQLError` with `errors` (message, path, code):
+Data with errors is `status: 'error'`, `data` kept, `error` a `RivaGraphQLError` with `errors` (message, path, code):
 
 ```ts
-import { GraphQLError } from '@softistx/riva-graphql';
+import { RivaGraphQLError } from '@softistx/riva-graphql';
 
 const s = books.state;
-if (s.status === 'error' && s.error instanceof GraphQLError) {
+if (s.status === 'error' && s.error instanceof RivaGraphQLError) {
 	s.data; // the partial result, or undefined
 	s.error.errors.map((e) => e.path); // where each error happened
 }

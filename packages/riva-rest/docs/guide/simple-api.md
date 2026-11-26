@@ -2,7 +2,7 @@
 
 ## What it is for
 
-`createRiva({ rest: rest(api) })` gives `riva.rest.get`, `mutation`, `post`, `put`, `patch` and `delete`: call a path with httpyz's `{ param, query, json }` input, get a reactive resource, a handle or the data. The resources come from [`@softistx/riva/resource`](https://github.com/softistx/riva/blob/develop/packages/riva/docs/guide/resources.md).
+`createRiva({ rest: withRest(api) })` gives `riva.rest.get`, `mutation`, `post`, `put`, `patch` and `delete`: call a path with httpyz's `{ param, query, json }` input, get a reactive resource, a handle or the data. The resources come from [`@softistx/riva/resource`](https://github.com/softistx/riva/blob/develop/packages/riva/docs/guide/resources.md).
 
 ## Setup
 
@@ -12,24 +12,24 @@ The other snippets of this page reuse this one.
 import { createHttpClient } from '@softistx/httpyz';
 import { createOpenApiClient } from '@softistx/openapi-httpyz';
 import { createRiva, signal } from '@softistx/riva';
-import { rest } from '@softistx/riva-rest';
+import { withRest } from '@softistx/riva-rest';
 import { operations } from './generated/openapi/operations'; // from `nxgt-openapi generate`
 
 const http = createHttpClient({ baseUrl: 'https://api.example.com' });
-const riva = createRiva({ rest: rest(createOpenApiClient(http, operations)) });
+const riva = createRiva({ rest: withRest(createOpenApiClient(http, operations)) });
 const invoiceId = signal('1');
 const signedIn = signal(true);
 const render = (state: unknown) => console.log(state);
 ```
 
-With no spec, `rest({ baseUrl })` installs the untyped calls over `fetch`:
+With no spec, `withRest({ baseUrl })` installs the untyped calls over `fetch`:
 
 ```ts
 import { createRiva } from '@softistx/riva';
-import { rest } from '@softistx/riva-rest';
+import { withRest } from '@softistx/riva-rest';
 
 const plain = createRiva({
-	rest: rest({ baseUrl: 'https://api.example.com', headers: { authorization: 'Bearer …' } }),
+	rest: withRest({ baseUrl: 'https://api.example.com', headers: { authorization: 'Bearer …' } }),
 });
 const todo = await plain.rest.get<{ id: string; done: boolean }>('/todos/{id}', { param: { id: '1' } });
 ```
@@ -70,7 +70,7 @@ await riva.rest.delete('/invoices/{id}', { param: { id: '1' } }, { invalidates: 
 
 ## Cache and staleTime
 
-`rest(api, { cache })` and `rest({ baseUrl, cache })` set how the data of every simple call is stored. Default: as is, a keyed cache with no entities; pass `restEntities(...)` from `@softistx/riva-rest/entities` to share entities between calls. `staleTime` defaults to the riva's `defaults.staleTime` (0 when unset), so data is refetched by the next read once it is older; a per-call `staleTime` overrides it.
+`withRest(api, { cache })` and `withRest({ baseUrl, cache })` set how the data of every simple call is stored. Default: as is, a keyed cache with no entities; pass `restEntities(...)` from `@softistx/riva-rest/entities` to share entities between calls. `staleTime` defaults to the riva's `defaults.staleTime` (0 when unset), so data is refetched by the next read once it is older; a per-call `staleTime` overrides it.
 
 ## Errors
 

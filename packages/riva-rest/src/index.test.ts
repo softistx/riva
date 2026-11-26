@@ -8,9 +8,15 @@ test('the main entry exports the transport and the definitions, nothing from the
 		'operationOf',
 		'provideRest',
 		'query',
-		'rest',
 		'toRivaError',
+		'withRest',
 	]);
+});
+
+test('withRest is a plain function: no query or mutation members', () => {
+	expect(Object.keys(api.withRest)).toEqual([]);
+	expect(api.withRest).not.toHaveProperty('query');
+	expect(api.withRest).not.toHaveProperty('mutation');
 });
 
 test('the runtime entries never import httpyz, openapi-httpyz or the core entities at runtime', async () => {

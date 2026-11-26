@@ -2,7 +2,7 @@ import {
 	type MutationHook,
 	useMutationHandle,
 } from '@softistx/riva-react/resource';
-import type { Doc, MutateCall } from '../calls';
+import type { Doc, GraphQLMutateCall } from '../calls';
 import { operationOf } from '../operation';
 import type { VarsOf } from '../types';
 import { graphqlOf } from './graphql-of';
@@ -16,7 +16,7 @@ import { graphqlOf } from './graphql-of';
  */
 export function useGraphQLMutation<Data, Vars>(
 	document: Doc<Data, Vars>,
-): MutationHook<VarsOf<Vars>, Data, MutateCall> {
+): MutationHook<VarsOf<Vars>, Data, GraphQLMutateCall> {
 	return useMutationHandle(operationOf(document).id, (riva) =>
 		graphqlOf(riva).mutation(document),
 	);

@@ -8,7 +8,7 @@ import { memoFactory } from './resources';
 import type { GraphQLTransport } from './transport';
 
 /** The options and callbacks of `riva.graphql.subscribe`, all optional. An error thrown by `next`, `error` or `complete` is raised outside the stream (never reported to `error`), and a throwing `next` ends it. */
-export interface SubscribeCall<Data> {
+export interface GraphQLSubscribeCall<Data> {
 	/** Each result, after it was merged into the cache when the cache can hold it. */
 	next?(data: Data): void;
 	/** A failure ends the subscription; a `RivaError` when the transport's error is known. */
@@ -26,13 +26,13 @@ export function subscriptionOf(
 	cache: CachePolicy | OperationCache | undefined,
 	doc: Doc<unknown, never>,
 	vars: unknown,
-	on: SubscribeCall<never> = {},
+	on: GraphQLSubscribeCall<never> = {},
 ) {
 	const op = operationOf(doc, 'subscription');
 	if (!transport.subscribe)
 		throw new RivaError(
 			'RIVA_DEFINITION',
-			'riva-graphql: this transport cannot subscribe: give graphql() a @softistx/graphql-client client, or a transport with a subscribe method.',
+			'riva-graphql: this transport cannot subscribe: give withGraphQL() a @softistx/graphql-client client, or a transport with a subscribe method.',
 		);
 	const read = trackedInput(riva, vars as never);
 	const policy =

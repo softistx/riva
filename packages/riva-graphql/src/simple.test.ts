@@ -30,9 +30,9 @@ import {
 	VIEWER_QUERY,
 } from '../test/fixtures';
 import { normalized } from './cache/index';
-import { GraphQLError, toRivaError } from './errors';
+import { RivaGraphQLError, toRivaError } from './errors';
 import { mutation, query } from './query';
-import { graphql } from './simple';
+import { withGraphQL } from './simple';
 import type { GraphQLTransport } from './transport';
 
 const SUB = parse(
@@ -92,7 +92,7 @@ const tick = () => new Promise<void>((r) => setTimeout(r, 5));
 describe('riva.graphql.query', () => {
 	test('returns the data, with a cache and a deduped fetch', async () => {
 		const t = fakeTransport(() => ({ patients: 1 }));
-		const riva = createRiva({ graphql: graphql(t) });
+		const riva = createRiva({ graphql: withGraphQL(t) });
 		const [a, b] = await Promise.all([
 			riva.graphql.query(PATIENTS_QUERY, { school: 's' }),
 			riva.graphql.query(PATIENTS_QUERY, { school: 's' }),
@@ -110,7 +110,7 @@ describe('riva.graphql.query', () => {
 
 	test('a per-call staleTime keeps the data fresh', async () => {
 		const t = fakeTransport(() => ({ viewer: { id: '1' } }));
-		const riva = createRiva({ graphql: graphql(t) });
+		const riva = createRiva({ graphql: withGraphQL(t) });
 		await riva.graphql.query(VIEWER_QUERY);
 		await riva.graphql.query(VIEWER_QUERY, undefined, { staleTime: '1m' });
 		expect(t.calls).toHaveLength(1);
@@ -121,7 +121,7 @@ describe('riva.graphql.query', () => {
 	test('its signal aborts the call', async () => {
 		const ctl = new AbortController();
 		ctl.abort();
-		const riva = createRiva({ graphql: graphql(fakeTransport()) });
+		const riva = createRiva({ graphql: withGraphQL(fakeTransport()) });
 		await expect(
 			Promise.resolve(
 				riva.graphql.query(VIEWER_QUERY, undefined, { signal: ctl.signal }),
@@ -131,7 +131,7 @@ describe('riva.graphql.query', () => {
 
 	test('definitions are memoised per riva and isolated between rivas', async () => {
 		const t = fakeTransport(() => ({ viewer: { id: '1' } }));
-		const ext = graphql(t);
+		const ext = withGraphQL(t);
 		const a = createRiva({ graphql: ext });
 		const b = createRiva({ graphql: ext });
 		await a.graphql.query(VIEWER_QUERY, undefined, { staleTime: '1m' });
@@ -143,7 +143,7 @@ describe('riva.graphql.query', () => {
 
 	test('definitions keep working on the same riva', async () => {
 		const t = fakeTransport(() => ({ viewer: { id: '1' } }));
-		const riva = createRiva({ graphql: graphql(t) });
+		const riva = createRiva({ graphql: withGraphQL(t) });
 		const own = query(VIEWER_QUERY, { id: 'own', staleTime: '1m' });
 		await own.ensure(riva);
 		expect(riva.get(own).data).toEqual({ viewer: { id: '1' } });
@@ -159,7 +159,7 @@ describe('riva.graphql.mutate', () => {
 				? { renamePatient: { id: '1', name: 'Ana' } }
 				: { viewer: { id: '1' } },
 		);
-		const riva = createRiva({ graphql: graphql(t) });
+		const riva = createRiva({ graphql: withGraphQL(t) });
 		const own = query(VIEWER_QUERY, { id: 'own' });
 		await riva.graphql.query(VIEWER_QUERY, undefined, { staleTime: '1h' });
 		await own.ensure(riva);
@@ -180,7 +180,7 @@ describe('riva.graphql.mutate', () => {
 			if (c.kind === 'mutation') throw new Error('no');
 			return { viewer: { id: '1' } };
 		});
-		const riva = createRiva({ graphql: graphql(t) });
+		const riva = createRiva({ graphql: withGraphQL(t) });
 		await riva.graphql.query(VIEWER_QUERY, undefined, { staleTime: '1h' });
 		await expect(
 			riva.graphql.mutate(
@@ -195,7 +195,7 @@ describe('riva.graphql.mutate', () => {
 
 	test('a mutation definition runs on the same riva', async () => {
 		const t = fakeTransport(() => ({ renamePatient: { id: '1', name: 'A' } }));
-		const riva = createRiva({ graphql: graphql(t) });
+		const riva = createRiva({ graphql: withGraphQL(t) });
 		await mutation(RENAME_PATIENT_MUTATION).run(riva, { id: '1', name: 'A' });
 		expect(t.calls).toHaveLength(1);
 	});
@@ -204,7 +204,7 @@ describe('riva.graphql.mutate', () => {
 describe('riva.graphql.subscribe', () => {
 	test('passes each result to next, and stop ends it', async () => {
 		const s = streaming();
-		const riva = createRiva({ graphql: graphql(s.source) });
+		const riva = createRiva({ graphql: withGraphQL(s.source) });
 		const seen: unknown[] = [];
 		const stop = riva.graphql
 			.subscribe(SUB, { school: 's' }, { next: (d) => seen.push(d) })
@@ -219,7 +219,7 @@ describe('riva.graphql.subscribe', () => {
 
 	test('a failure goes to error, mapped, and ends the stream', async () => {
 		const s = streaming();
-		const riva = createRiva({ graphql: graphql(s.source) });
+		const riva = createRiva({ graphql: withGraphQL(s.source) });
 		const errors: unknown[] = [];
 		riva.graphql
 			.subscribe(
@@ -236,7 +236,7 @@ describe('riva.graphql.subscribe', () => {
 
 	test('a stopped subscription reports no error', async () => {
 		const s = streaming();
-		const riva = createRiva({ graphql: graphql(s.source) });
+		const riva = createRiva({ graphql: withGraphQL(s.source) });
 		const errors: unknown[] = [];
 		const stop = riva.graphql
 			.subscribe(
@@ -254,7 +254,7 @@ describe('riva.graphql.subscribe', () => {
 	test('merges each result into the entity cache with normalized()', async () => {
 		const s = streaming();
 		const riva = createRiva({
-			graphql: graphql(s.source, { cache: normalized() }),
+			graphql: withGraphQL(s.source, { cache: normalized() }),
 		});
 		const seen: unknown[] = [];
 		riva.graphql
@@ -269,7 +269,7 @@ describe('riva.graphql.subscribe', () => {
 	});
 
 	test('throws a RivaError when the transport cannot subscribe', () => {
-		const riva = createRiva({ graphql: graphql(fakeTransport()) });
+		const riva = createRiva({ graphql: withGraphQL(fakeTransport()) });
 		expect(() =>
 			riva.graphql
 				.subscribe(SUB, { school: 's' }, { next() {} })
@@ -283,7 +283,7 @@ describe('riva.graphql.subscribe', () => {
 	});
 
 	test('refuses a document that is not a subscription', () => {
-		const riva = createRiva({ graphql: graphql(streaming().source) });
+		const riva = createRiva({ graphql: withGraphQL(streaming().source) });
 		expect(() =>
 			(riva.graphql.subscribe as (...a: unknown[]) => unknown)(VIEWER_QUERY, {
 				next() {},
@@ -295,7 +295,7 @@ describe('riva.graphql.subscribe', () => {
 describe('query resources', () => {
 	test('is lazy: nothing is fetched until a reader subscribes', async () => {
 		const t = fakeTransport(() => ({ viewer: { id: '1' } }));
-		const riva = createRiva({ graphql: graphql(t) });
+		const riva = createRiva({ graphql: withGraphQL(t) });
 		const r = riva.graphql.query(VIEWER_QUERY);
 		expect(r.state.status).toBe('loading');
 		await tick();
@@ -316,7 +316,7 @@ describe('query resources', () => {
 		const t = fakeTransport((c) => ({
 			patients: (c.variables as never)['school'],
 		}));
-		const riva = createRiva({ graphql: graphql(t) });
+		const riva = createRiva({ graphql: withGraphQL(t) });
 		const school = signal('a');
 		const viaSignal = riva.graphql.query(PATIENTS_QUERY, school as never);
 		const viaFn = riva.graphql.query(PATIENTS_QUERY, () => ({
@@ -349,7 +349,7 @@ describe('query resources', () => {
 
 	test('enabled false is idle, does not call the variables function and fetches nothing', async () => {
 		const t = fakeTransport(() => ({ viewer: { id: '1' } }));
-		const riva = createRiva({ graphql: graphql(t) });
+		const riva = createRiva({ graphql: withGraphQL(t) });
 		const on = signal(false);
 		let evaluated = 0;
 		const r = riva.graphql.query(
@@ -384,16 +384,16 @@ describe('query resources', () => {
 		const t = fakeTransport(() => {
 			throw partial;
 		});
-		const riva = createRiva({ graphql: graphql(t) });
+		const riva = createRiva({ graphql: withGraphQL(t) });
 		const r = riva.graphql.query(VIEWER_QUERY);
 		const off = r.subscribe(() => {});
 		await tick();
 		const s = r.state;
 		expect(s.status).toBe('error');
 		expect(s.data).toEqual({ viewer: { id: '1' } });
-		expect(s.error).toBeInstanceOf(GraphQLError);
+		expect(s.error).toBeInstanceOf(RivaGraphQLError);
 		expect(s.error).toBeInstanceOf(RivaRequestError);
-		const e = s.error as GraphQLError;
+		const e = s.error as RivaGraphQLError;
 		expect(e.errors.map((x) => x.path?.join('.'))).toEqual([
 			'viewer.friends.0.email',
 			'viewer.avatar',
@@ -405,7 +405,7 @@ describe('query resources', () => {
 
 	test('await still rejects with a plain failure, and its signal stops the wait', async () => {
 		const t = fakeTransport(() => new Promise(() => {}) as never);
-		const riva = createRiva({ graphql: graphql(t) });
+		const riva = createRiva({ graphql: withGraphQL(t) });
 		const ctl = new AbortController();
 		const p = riva.graphql.query(VIEWER_QUERY, undefined, {
 			signal: ctl.signal,
@@ -425,7 +425,7 @@ describe('riva.graphql.mutation', () => {
 			await gate;
 			return { renamePatient: { id: '1', name: 'Ana' } };
 		});
-		const riva = createRiva({ graphql: graphql(t) });
+		const riva = createRiva({ graphql: withGraphQL(t) });
 		const save = riva.graphql.mutation(RENAME_PATIENT_MUTATION);
 		expect(save.state.status).toBe('idle');
 		const p = save({ id: '1', name: 'Ana' });
@@ -447,7 +447,7 @@ describe('riva.graphql.mutation', () => {
 			}
 			return { viewer: { id: '1' } };
 		});
-		const riva = createRiva({ graphql: graphql(t) });
+		const riva = createRiva({ graphql: withGraphQL(t) });
 		await riva.graphql.query(VIEWER_QUERY, undefined, { staleTime: '1h' });
 		const save = riva.graphql.mutation(RENAME_PATIENT_MUTATION);
 		await expect(save({ id: '1', name: 'A' })).rejects.toThrow('no');
@@ -462,7 +462,7 @@ describe('riva.graphql.mutation', () => {
 describe('subscription resources', () => {
 	test('loading, then success with the last result; the last reader stops the stream', async () => {
 		const s = streaming();
-		const riva = createRiva({ graphql: graphql(s.source) });
+		const riva = createRiva({ graphql: withGraphQL(s.source) });
 		const r = riva.graphql.subscribe(SUB, { school: 's' });
 		expect(r.state.status).toBe('loading');
 		const off = r.subscribe(() => {});
@@ -482,7 +482,7 @@ describe('subscription resources', () => {
 
 	test('tracked variables restart the stream, equal ones do not reconnect', async () => {
 		const s = streaming();
-		const riva = createRiva({ graphql: graphql(s.source) });
+		const riva = createRiva({ graphql: withGraphQL(s.source) });
 		const school = signal('a');
 		const noise = signal(0);
 		const r = riva.graphql.subscribe(SUB, () => {
@@ -504,7 +504,7 @@ describe('subscription resources', () => {
 
 	test('enabled false is idle and opens nothing; callbacks are optional', async () => {
 		const s = streaming();
-		const riva = createRiva({ graphql: graphql(s.source) });
+		const riva = createRiva({ graphql: withGraphQL(s.source) });
 		const r = riva.graphql.subscribe(SUB, { school: 's' }, { enabled: false });
 		const off = r.subscribe(() => {});
 		await tick();
@@ -516,7 +516,7 @@ describe('subscription resources', () => {
 describe('hardening', () => {
 	test('a hand-made query(DOC) and riva.graphql.query(DOC) coexist on one riva', async () => {
 		const t = fakeTransport(() => ({ viewer: { id: '1' } }));
-		const riva = createRiva({ graphql: graphql(t) });
+		const riva = createRiva({ graphql: withGraphQL(t) });
 		const own = query(VIEWER_QUERY, { staleTime: '1h' });
 		await own.ensure(riva);
 		await riva.graphql.query(VIEWER_QUERY, undefined, { staleTime: '1h' });
@@ -530,7 +530,7 @@ describe('hardening', () => {
 				? { renamePatient: { id: '1', name: 'A' } }
 				: { viewer: { id: '1' } },
 		);
-		const riva = createRiva({ graphql: graphql(t) });
+		const riva = createRiva({ graphql: withGraphQL(t) });
 		const own = query(VIEWER_QUERY, { staleTime: '1h' });
 		await own.ensure(riva);
 		await riva.graphql.query(VIEWER_QUERY, undefined, { staleTime: '1h' });
@@ -546,7 +546,7 @@ describe('hardening', () => {
 
 	test('a bad invalidates entry throws before the mutation runs', async () => {
 		const t = fakeTransport();
-		const riva = createRiva({ graphql: graphql(t) });
+		const riva = createRiva({ graphql: withGraphQL(t) });
 		await expect(
 			riva.graphql.mutate(
 				RENAME_PATIENT_MUTATION,
@@ -571,7 +571,7 @@ describe('hardening', () => {
 				}),
 			}),
 		};
-		const riva = createRiva({ graphql: graphql(source) });
+		const riva = createRiva({ graphql: withGraphQL(source) });
 		const stop = riva.graphql
 			.subscribe(SUB, { school: 's' }, { next() {} })
 			.subscribe(() => {});
@@ -587,7 +587,7 @@ describe('hardening', () => {
 					yield { n: 1 } as never;
 				})(),
 		};
-		const riva = createRiva({ graphql: graphql(source) });
+		const riva = createRiva({ graphql: withGraphQL(source) });
 		const log: string[] = [];
 		riva.graphql
 			.subscribe(
@@ -602,7 +602,7 @@ describe('hardening', () => {
 
 	test('an error thrown by next is rethrown outside, not sent to error', async () => {
 		const s = streaming();
-		const riva = createRiva({ graphql: graphql(s.source) });
+		const riva = createRiva({ graphql: withGraphQL(s.source) });
 		const errors: unknown[] = [];
 		const raised: unknown[] = [];
 		const on = (e: unknown) => raised.push(e);
@@ -636,7 +636,7 @@ describe('hardening', () => {
 
 	test('an error thrown by error is raised outside, not unhandled', async () => {
 		const s = streaming();
-		const riva = createRiva({ graphql: graphql(s.source) });
+		const riva = createRiva({ graphql: withGraphQL(s.source) });
 		const raised: unknown[] = [];
 		const on = (e: unknown) => raised.push(e);
 		const real = globalThis.queueMicrotask;
@@ -666,7 +666,7 @@ describe('hardening', () => {
 		expect(raised).toEqual([boom]);
 	});
 
-	test('graphql() takes a client, told apart by its mutate method', async () => {
+	test('withGraphQL() takes a client, told apart by its mutate method', async () => {
 		const calls: string[] = [];
 		const client = {
 			query: async () => {
@@ -682,7 +682,7 @@ describe('hardening', () => {
 				return (async function* () {})();
 			},
 		};
-		const riva = createRiva({ graphql: graphql(client as never) });
+		const riva = createRiva({ graphql: withGraphQL(client as never) });
 		await riva.graphql.query(VIEWER_QUERY);
 		await riva.graphql.mutate(RENAME_PATIENT_MUTATION, { id: '1', name: 'A' });
 		riva.graphql
@@ -693,7 +693,7 @@ describe('hardening', () => {
 });
 
 test('install gives the riva its transport and a typed namespace', () => {
-	const riva = createRiva({ graphql: graphql(fakeTransport()) });
+	const riva = createRiva({ graphql: withGraphQL(fakeTransport()) });
 	expectTypeOf(riva.graphql.query).toBeFunction();
 	// @ts-expect-error `graphql` is only there when installed
 	createRiva().graphql;
@@ -701,7 +701,7 @@ test('install gives the riva its transport and a typed namespace', () => {
 
 // Type tests only: nothing here runs.
 const types = async () => {
-	const riva = createRiva({ graphql: graphql(fakeTransport()) });
+	const riva = createRiva({ graphql: withGraphQL(fakeTransport()) });
 	const patients = await riva.graphql.query(PATIENTS_QUERY, { school: 's' });
 	expectTypeOf(patients.patients.pageInfo.hasNextPage).toBeBoolean();
 	const viewer = await riva.graphql.query(VIEWER_QUERY);
@@ -780,7 +780,7 @@ void types;
 describe('riva.graphql.query over a definition', () => {
 	test('shares its entry with a loader ensure, and types come from the definition', async () => {
 		const t = fakeTransport(() => ({ viewer: { id: '1' } }));
-		const riva = createRiva({ graphql: graphql(t) });
+		const riva = createRiva({ graphql: withGraphQL(t) });
 		const def = query(VIEWER_QUERY);
 		await def.ensure(riva);
 		const r = riva.graphql.query(def, undefined, { staleTime: '1m' });
@@ -791,7 +791,7 @@ describe('riva.graphql.query over a definition', () => {
 
 	test('a definition with variables is typed by them', () => {
 		const t = fakeTransport(() => ({}));
-		const riva = createRiva({ graphql: graphql(t) });
+		const riva = createRiva({ graphql: withGraphQL(t) });
 		const def = query(PATIENTS_QUERY);
 		// @ts-expect-error the variables are required by the definition
 		riva.graphql.query(def);

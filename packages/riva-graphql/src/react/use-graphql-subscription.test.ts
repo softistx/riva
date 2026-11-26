@@ -7,7 +7,7 @@ import type { ResourceState } from '@softistx/riva/resource';
 import { parse } from 'graphql';
 import { fakeTransport } from '../../test/fixtures';
 import { flush, h, mount } from '../../test/render';
-import { graphql } from '../simple';
+import { withGraphQL } from '../simple';
 import type { GraphQLTransport } from '../transport';
 import { useGraphQLSubscription } from './use-graphql-subscription';
 
@@ -59,7 +59,7 @@ const msg = (name: string) => ({ patientRenamed: { id: '1', name } });
 
 test('loading until the first message, then the last one; unmount closes the stream', async () => {
 	const s = streaming();
-	const riva = createRiva({ graphql: graphql(s.source) });
+	const riva = createRiva({ graphql: withGraphQL(s.source) });
 	const nexts: string[] = [];
 	function C() {
 		const st = useGraphQLSubscription(
@@ -87,7 +87,7 @@ test('loading until the first message, then the last one; unmount closes the str
 
 test('changed variables restart it; enabled false opens nothing', async () => {
 	const s = streaming();
-	const riva = createRiva({ graphql: graphql(s.source) });
+	const riva = createRiva({ graphql: withGraphQL(s.source) });
 	function C({ school, on }: { school: string; on: boolean }) {
 		const st = useGraphQLSubscription(SUB, { school }, { enabled: on });
 		return h('p', null, st.status);
@@ -106,7 +106,7 @@ test('changed variables restart it; enabled false opens nothing', async () => {
 
 test('tracked variables restart it', async () => {
 	const s = streaming();
-	const riva = createRiva({ graphql: graphql(s.source) });
+	const riva = createRiva({ graphql: withGraphQL(s.source) });
 	const school = signal('a');
 	function C() {
 		useGraphQLSubscription(SUB, () => ({ school: riva.get(school) }));

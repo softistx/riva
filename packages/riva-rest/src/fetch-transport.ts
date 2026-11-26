@@ -16,7 +16,7 @@ export interface RestInput {
 	json?: unknown;
 }
 
-/** What `rest({ baseUrl })` takes. */
+/** What `withRest({ baseUrl })` takes. */
 export interface RestBaseOptions {
 	/** Prepended to each path. */
 	baseUrl: string;

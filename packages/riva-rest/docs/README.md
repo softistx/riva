@@ -7,7 +7,7 @@ The package's [README](../README.md) is the short path. These pages go deeper.
 | Page | Read it when |
 |---|---|
 | [Simple API](./guide/simple-api.md) | You call `riva.rest.get / mutation / post / put / patch / delete`, in code, loaders and components. Start here. |
-| [Transport](./guide/transport.md) | You wire a riva to the API (`rest(api)`), per request on a server. |
+| [Transport](./guide/transport.md) | You wire a riva to the API (`withRest(api)`), per request on a server. |
 | [Errors](./guide/errors.md) | You branch on a failure or map httpyz errors. |
 | [BFF mode](./guide/bff.md) | The browser must never reach the API. |
 

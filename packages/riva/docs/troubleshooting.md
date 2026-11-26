@@ -29,8 +29,8 @@ Code: `RIVA_DEFINITION` (`RivaError`).
 **Fix:** rename the key.
 
 ```ts
-createRiva({ get: graphql(gql) }); // throws: "get" is reserved.
-createRiva({ graphql: graphql(gql) }); // riva.graphql
+createRiva({ get: withGraphQL(gql) }); // throws: "get" is reserved.
+createRiva({ graphql: withGraphQL(gql) }); // riva.graphql
 ```
 
 ## setDefaultRiva is browser-only
@@ -413,4 +413,18 @@ streamResource(riva, () => {
 	const id = riva.get(roomId);
 	return (signal) => subscribeToRoom(id, signal);
 });
+```
+
+## `GraphQLError` is not exported by `@softistx/riva/resource`
+
+**When:** `import { GraphQLError } from '@softistx/riva/resource'` (or from `@softistx/riva-graphql`) fails after 0.7.0, or `error.name === 'GraphQLError'` never matches.
+
+**Why:** the class is `RivaGraphQLError` now, and its `name` is `'RivaGraphQLError'`, so it cannot be mistaken for the `GraphQLError` of the `graphql` package. `GraphQLErrorEntry` keeps its name. There is no alias.
+
+**Fix:** import `RivaGraphQLError` and match with `instanceof`.
+
+```ts
+import { RivaGraphQLError } from '@softistx/riva/resource';
+
+if (error instanceof RivaGraphQLError) error.errors;
 ```

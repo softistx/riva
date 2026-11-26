@@ -10,8 +10,8 @@ import {
 	json,
 } from '../../test/fixtures';
 import { flush, h, mount } from '../../test/render';
-import type { MutateCall } from '../calls';
-import { rest } from '../simple';
+import type { RestMutateCall } from '../calls';
+import { withRest } from '../simple';
 import { useRest } from './use-rest';
 import { useRestMutation } from './use-rest-mutation';
 
@@ -29,7 +29,10 @@ function setup() {
 		if (req.method === 'DELETE') return new Response(null, { status: 204 });
 		return json({ items: [{ id: String(++n), number: 'n', total: 1 }] });
 	};
-	return { seen, riva: createRiva({ rest: rest(apiOver(httpWith(handle))) }) };
+	return {
+		seen,
+		riva: createRiva({ rest: withRest(apiOver(httpWith(handle))) }),
+	};
 }
 
 test('idle, loading, success, reset; invalidates refetches the observed GET', async () => {
@@ -67,7 +70,7 @@ test('idle, loading, success, reset; invalidates refetches the observed GET', as
 
 test('a failure rejects the call and lands in the state', async () => {
 	const riva = createRiva({
-		rest: rest(apiOver(httpWith(async () => json({ title: 'no' }, 500)))),
+		rest: withRest(apiOver(httpWith(async () => json({ title: 'no' }, 500)))),
 	});
 	let create!: (...a: unknown[]) => Promise<unknown>;
 	let status = '';
@@ -91,7 +94,7 @@ test('types: input and data come from the operations table', () => {
 		MutationHook<
 			{ json: { number: string; total: number } },
 			Invoice,
-			MutateCall
+			RestMutateCall
 		>
 	>();
 });
