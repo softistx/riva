@@ -1,6 +1,6 @@
 {
 	"name": "@softistx/riva-react",
-	"version": "0.7.1",
+	"version": "0.7.2",
 	"description": "React adapter for riva: RivaProvider, hooks, Suspense and SSR support.",
 	"license": "MIT",
 	"type": "module",
@@ -75,7 +75,7 @@
 	},
 	"peerDependencies": {
 		"react": "^19.0.0",
-		"@softistx/riva": "^0.7.1"
+		"@softistx/riva": "^0.7.2"
 	},
 	"nxgt": {
 		"entrypoints": [

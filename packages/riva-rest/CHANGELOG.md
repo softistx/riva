@@ -1,5 +1,13 @@
 # @softistx/riva-rest
 
+## 0.7.2
+
+### Patch Changes
+
+- Updated dependencies [[`7ea2dee`](https://github.com/softistx/riva/commit/7ea2dee5a79a0372a9a7142f8d9321c2f66eb1cb)]:
+  - @softistx/riva@0.7.2
+  - @softistx/riva-react@0.7.2
+
 ## 0.7.1
 
 ### Patch Changes

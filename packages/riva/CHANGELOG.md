@@ -1,5 +1,11 @@
 # @softistx/riva
 
+## 0.7.2
+
+### Patch Changes
+
+- [#104](https://github.com/softistx/riva/pull/104) [`7ea2dee`](https://github.com/softistx/riva/commit/7ea2dee5a79a0372a9a7142f8d9321c2f66eb1cb) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Fixes a resource that stayed observed (never garbage-collected, still refetching) after its last computed or effect reader was dropped, when its entry had no polling. The resource now stops at the next microtask, and starts again when a reader (a cached computed included) observes it again.
+
 ## 0.7.1
 
 No changes in this release.
