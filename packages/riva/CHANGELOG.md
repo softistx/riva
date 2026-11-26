@@ -1,5 +1,11 @@
 # @softistx/riva
 
+## 0.6.0
+
+### Minor Changes
+
+- [#91](https://github.com/softistx/riva/pull/91) [`45849d3`](https://github.com/softistx/riva/commit/45849d31ba3d245d22ef014bc79ab07f4a017fc6) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Read the definition's `staleTime` under Suspense. `useQuery` and `suspenseStaleTime` (`@softistx/riva-react/resource`, now taking the definition as an optional third argument) trust the call's `staleTime`, else the definition's, else the riva's default, never less than 1000 ms; a definition with `staleTime: '5m'` no longer refetches on its first mount after Suspense. `@softistx/riva/resource` exports `toMs`, which riva-react now reuses instead of a private copy: an invalid duration string now throws `RIVA_DURATION` where the copy returned 0 (intended).
+
 ## 0.5.0
 
 ### Minor Changes

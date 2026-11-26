@@ -1,6 +1,6 @@
 {
 	"name": "@softistx/riva-react-router",
-	"version": "0.5.0",
+	"version": "0.6.0",
 	"description": "React Router host for riva: one Riva per request with an ambient scope, SSR dehydrate and hydrate through loader data, and a merge on each navigation.",
 	"license": "MIT",
 	"type": "module",
@@ -67,8 +67,8 @@
 		"react-router": "^8.5.3"
 	},
 	"peerDependencies": {
-		"@softistx/riva": "^0.5.0",
-		"@softistx/riva-react": "^0.5.0",
+		"@softistx/riva": "^0.6.0",
+		"@softistx/riva-react": "^0.6.0",
 		"react": "^19.0.0",
 		"react-router": "^8.0.0",
 		"@softistx/alxia-react-router": "^0.83.1"

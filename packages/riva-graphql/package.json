@@ -1,6 +1,6 @@
 {
 	"name": "@softistx/riva-graphql",
-	"version": "0.5.0",
+	"version": "0.6.0",
 	"description": "GraphQL transport for riva over @softistx/graphql-client, with persisted ids and the allowlist codegen plugin.",
 	"license": "MIT",
 	"type": "module",
@@ -90,12 +90,12 @@
 		"react-dom": "^19.0.0"
 	},
 	"peerDependencies": {
-		"@softistx/riva": "^0.5.0",
+		"@softistx/riva": "^0.6.0",
 		"@softistx/graphql-client": "^0.9.0 || ^0.10.0 || ^0.11.0",
 		"@graphql-typed-document-node/core": "^3.2.0",
 		"graphql": "^16.11.0 || ^17.0.0",
 		"react": "^19.0.0",
-		"@softistx/riva-react": "^0.5.0"
+		"@softistx/riva-react": "^0.6.0"
 	},
 	"peerDependenciesMeta": {
 		"@graphql-typed-document-node/core": {
