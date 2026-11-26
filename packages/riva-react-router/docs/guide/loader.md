@@ -63,7 +63,7 @@ The provider hydrates each match's `~riva` once. The first render is seeded befo
 
 - The instance variable and the `riva(context)` helper share a name. In a loader, do not name the instance `riva` (e.g. `const r = rivaOf(context)`), or import the helper under an alias (`import { riva as rivaData } from '@softistx/riva-react-router'`); otherwise the call fails with "riva is not a function".
 - `rivaOf` and `riva` are for server loaders and actions only; `clientLoader` is not supported.
-- Every `riva(context)` call dehydrates the whole request riva: return it from one loader per request (usually the root's), and let the others only await their data.
+- Every loader that needs the data may return `riva(context)`: the first call of a request holds the whole riva, a later one only the entries and signals not sent yet or changed since, so nothing is repeated in the hydration payload or a `.data` revalidation.
 - Only loaders that return `riva(context)` feed the provider.
 - The ambient scope (`mySignal.get()` resolving to the request's riva, also after an `await`) works only inside the `next` that `rivaMiddleware` runs: loaders, actions and the code they call. Outside it (an earlier middleware, a module scope), use `rivaOf(context)`.
 - The loader and the component use the same kind of entry: a loader that awaits `riva.graphql.query(DOC)` is read by `useGraphQL(DOC)`, not by `useQuery(def)`. To mix them, pass the definition to the simple call or hook (`riva.graphql.query(def, vars)`, `useGraphQL(def, vars)`, `riva.rest.get(def, input)`, `useRest(def, input)`): a loader's `def.ensure(riva, vars)` and the component then share one entry.
