@@ -71,7 +71,7 @@
 		"@softistx/riva-react": "^0.8.0",
 		"react": "^19.0.0",
 		"react-router": "^8.0.0",
-		"@softistx/alxia-react-router": "^0.83.1"
+		"@softistx/alxia-react-router": "^0.83.1 || ^0.84.0 || ^0.85.0 || ^0.86.0"
 	},
 	"peerDependenciesMeta": {
 		"@softistx/alxia-react-router": {

@@ -73,7 +73,7 @@ React adapter for riva: RivaProvider, hooks, Suspense and SSR support.
 React Router host for riva: one Riva per request with an ambient scope, SSR dehydrate and hydrate through loader data, and a merge on each navigation.
 
 - Entry points: `@softistx/riva-react-router`, `@softistx/riva-react-router/server`
-- Peers: `@softistx/riva` `^0.8.0`, `@softistx/riva-react` `^0.8.0`, `react` `^19.0.0`, `react-router` `^8.0.0`, `@softistx/alxia-react-router` `^0.83.1` (optional)
+- Peers: `@softistx/riva` `^0.8.0`, `@softistx/riva-react` `^0.8.0`, `react` `^19.0.0`, `react-router` `^8.0.0`, `@softistx/alxia-react-router` `^0.83.1 || ^0.84.0 || ^0.85.0 || ^0.86.0` (optional)
 - Read first: `node_modules/@softistx/riva-react-router/README.md` (one example per section, links to the guides)
 - Shipped docs:
   - `node_modules/@softistx/riva-react-router/docs/README.md`: riva-react-router docs
