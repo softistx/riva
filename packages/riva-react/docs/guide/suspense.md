@@ -30,7 +30,7 @@ export function Page({ school }: { school: string }) {
 
 ## Behaviour
 
-- What a Suspense render fetched is not fetched again when the component mounts, whatever the query's `staleTime` (the hooks fetch with a `staleTime` of at least 1000 ms: yours or the riva's default, whichever is longer).
+- What a Suspense render fetched is not fetched again when the component mounts, whatever the query's `staleTime` (the hooks fetch with a `staleTime` of at least 1000 ms: the call's, else the definition's, else the riva's default; never below 1 s). An invalid duration string throws `RIVA_DURATION`.
 - After an entity is evicted, a suspending component suspends again while the query refetches.
 - On the server, `suspense: true` waits for the fetch and streams the result (`renderToReadableStream` and `renderToPipeableStream`).
 

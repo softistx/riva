@@ -31,7 +31,7 @@ This is not the core's "No Riva in scope: read through riva.get(def)…" error, 
 
 **When:** you mount the same query once with `suspense: true` and once without (or under `Suspense` with `enabled` toggled), and the network shows a second request.
 
-**Why:** a `suspense: true` mount trusts what a Suspense render just fetched, whatever the query's `staleTime`: the hooks fetch with a `staleTime` of at least 1000 ms (the query's own, else the riva's default, whichever is longer). A mount without it follows the query's own `staleTime`, `0` by default, so it fetches stale data again.
+**Why:** a `suspense: true` mount trusts what a Suspense render just fetched, whatever the query's `staleTime`: the hooks fetch with a `staleTime` of at least 1000 ms (the call's, else the query's own, else the riva's default; never below 1 s, so a definition's `staleTime` of 5 minutes is honoured). A mount without it follows the query's own `staleTime`, `0` by default, so it fetches stale data again.
 
 **Fix:** give the query a `staleTime`, or use `suspense: true` on every reader of that query.
 

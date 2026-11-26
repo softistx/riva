@@ -141,7 +141,7 @@ inc(s, by?: number, ctx?: StoreContext) { s.n += by ?? 1; }
 
 Code: `RIVA_DURATION` (`RivaError`).
 
-**When:** an option such as `staleTime`, `gcTime` or `refetchEvery` got a value it cannot read, at the `query({...})` call.
+**When:** an option such as `staleTime`, `gcTime` or `refetchEvery` got a value it cannot read, at the `query({...})` call, or `toMs` (from `@softistx/riva/resource`) got an invalid string, or a call-level `staleTime` under Suspense (`suspenseStaleTime`, `useQuery`) did.
 
 **Why:** a duration is a non-negative number of milliseconds (or `Infinity`), or a string of a number (decimals allowed, e.g. `"1.5s"`) and exactly one unit: `ms`, `s`, `m`, `h`.
 
