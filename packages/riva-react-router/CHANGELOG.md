@@ -1,5 +1,18 @@
 # @softistx/riva-react-router
 
+## 0.9.0
+
+### Minor Changes
+
+- [#110](https://github.com/softistx/riva/pull/110) [`031e4c5`](https://github.com/softistx/riva/commit/031e4c5df2a8940ce28dc1f2ac7f2e28c4ca49be) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `riva(context)` emits each snapshot key once per request: the first call holds the whole request riva, a later call only the entries and signals not emitted yet or changed since. Every loader that needs it can now return `riva(context)` without repeating data in the hydration payload. A later `riva()` call in a request is no longer a full snapshot, so code that reads one route's `loaderData['~riva']` alone may not see everything.
+
+### Patch Changes
+
+- [#109](https://github.com/softistx/riva/pull/109) [`613ad02`](https://github.com/softistx/riva/commit/613ad0289c60690956c24d86f234c7a784baf6c7) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Accept `@softistx/alxia-react-router` 0.84 to 0.86 as the optional peer (it was `^0.83.1` only, so hosts on 0.86 saw a peer warning).
+- Updated dependencies []:
+  - @softistx/riva@0.9.0
+  - @softistx/riva-react@0.9.0
+
 ## 0.8.0
 
 ### Patch Changes

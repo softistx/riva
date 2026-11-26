@@ -1,5 +1,13 @@
 # @softistx/riva-graphql
 
+## 0.9.0
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @softistx/riva@0.9.0
+  - @softistx/riva-react@0.9.0
+
 ## 0.8.0
 
 ### Patch Changes
