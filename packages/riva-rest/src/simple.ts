@@ -6,8 +6,12 @@ import {
 	RivaError,
 	type RivaExtension,
 } from '@softistx/riva';
-import type { MutationHandle, Resource } from '@softistx/riva/resource';
-import { callsOf, type GetCall, type MutateCall } from './calls';
+import type {
+	MutationHandle,
+	Resource,
+	TrackedInput,
+} from '@softistx/riva/resource';
+import { callsOf, type RestMutateCall, type RestQueryCall } from './calls';
 import {
 	fetchTransport,
 	type RestBaseOptions,
@@ -15,12 +19,11 @@ import {
 } from './fetch-transport';
 import { apiTransport } from './http-transport';
 import { operationOf } from './operation';
-import type { InputArg } from './resources';
 import { provideRest, type RestTransport } from './transport';
 import type { ClientOf, DataOf, DecodedOf, InputOf, RouteOf } from './types';
 import { SAFE } from './wire';
 
-export type { GetCall, MutateCall } from './calls';
+export type { RestMutateCall, RestQueryCall } from './calls';
 export type { RestBaseOptions, RestInput } from './fetch-transport';
 
 /** The methods a mutation takes. */
@@ -34,23 +37,28 @@ export type PathsOf<Ops extends OperationsShape<Ops>, Method extends string> =
 			: never
 		: never;
 
-type Route<Ops extends OperationsShape<Ops>, M extends string, P> = Extract<
-	`${M} ${P & string}`,
-	RouteOf<Ops>
->;
+export type Route<
+	Ops extends OperationsShape<Ops>,
+	M extends string,
+	P,
+> = Extract<`${M} ${P & string}`, RouteOf<Ops>>;
 
 /** The input a typed `get` takes: a definition's own, or the route's. */
-type GetInput<Ops extends OperationsShape<Ops>, T> =
+export type GetInput<Ops extends OperationsShape<Ops>, T> =
 	// biome-ignore lint/suspicious/noExplicitAny: matches any definition
 	T extends Query<infer I, any> ? I : InputOf<Ops, Route<Ops, 'get', T>>;
 /** The data a typed `get` resolves with. */
-type GetData<Ops extends OperationsShape<Ops>, T, Decoded extends boolean> =
+export type GetData<
+	Ops extends OperationsShape<Ops>,
+	T,
+	Decoded extends boolean,
+> =
 	// biome-ignore lint/suspicious/noExplicitAny: matches any definition
 	T extends Query<any, infer D>
 		? D
 		: DataOf<Ops, Route<Ops, 'get', T>, Decoded>;
 
-/** What `createRiva({ rest: rest(api) })` puts on `riva.rest`, typed by the spec's operations. */
+/** What `createRiva({ rest: withRest(api) })` puts on `riva.rest`, typed by the spec's operations. */
 export interface RestApi<
 	Ops extends OperationsShape<Ops>,
 	Decoded extends boolean = true,
@@ -68,7 +76,7 @@ export interface RestApi<
 	// biome-ignore lint/suspicious/noExplicitAny: matches any definition
 	get<T extends PathsOf<Ops, 'get'> | Query<any, any>>(
 		target: T,
-		...args: RestArgs<GetInput<Ops, T>, GetCall>
+		...args: RestArgs<GetInput<Ops, T>, RestQueryCall>
 	): Resource<GetData<Ops, T, Decoded>>;
 	/** A callable handle over a mutation: `await save(input, { invalidates })`, a reactive `state` (idle first) and `reset()`. */
 	mutation<M extends MutationMethod, P extends PathsOf<Ops, M>>(
@@ -77,7 +85,7 @@ export interface RestApi<
 	): MutationHandle<
 		InputOf<Ops, Route<Ops, M, P>>,
 		DataOf<Ops, Route<Ops, M, P>, Decoded>,
-		MutateCall
+		RestMutateCall
 	>;
 	/** Runs the call and resolves with its data; throws after the transport's error. `invalidates` is marked stale once it succeeded. */
 	post<P extends PathsOf<Ops, 'post'>>(
@@ -102,46 +110,46 @@ export interface RestApi<
 }
 
 /** The input an untyped `get` takes: a definition's own, or any httpyz input. */
-type UntypedInput<T> =
+export type UntypedInput<T> =
 	// biome-ignore lint/suspicious/noExplicitAny: matches any definition
 	T extends Query<infer I, any> ? I : RestInput;
 /** The data an untyped `get` resolves with: a definition's own, or the `Data` the caller expects. */
-type UntypedData<T, Data> =
+export type UntypedData<T, Data> =
 	// biome-ignore lint/suspicious/noExplicitAny: matches any definition
 	T extends Query<any, infer D> ? D : Data;
 
-/** What `createRiva({ rest: rest({ baseUrl }) })` puts on `riva.rest`: no spec, so the data type is yours. */
+/** What `createRiva({ rest: withRest({ baseUrl }) })` puts on `riva.rest`: no spec, so the data type is yours. */
 export interface UntypedRestApi {
 	/** As the typed `get`, over a URL path (`'/invoices/42'`, or `'/invoices/{id}'` with `param`); `Data` is what you expect back. With a definition, `Data` is the definition's: type the definition rather than the call. */
 	// biome-ignore lint/suspicious/noExplicitAny: matches any definition
 	get<Data = unknown, T extends string | Query<any, any> = string>(
 		target: T,
-		input?: InputArg<UntypedInput<T>>,
-		call?: GetCall,
+		input?: TrackedInput<UntypedInput<T>>,
+		call?: RestQueryCall,
 	): Resource<UntypedData<T, Data>>;
 	mutation<Data = unknown, Input = RestInput>(
 		method: MutationMethod,
 		path: string,
-	): MutationHandle<Input, Data, MutateCall>;
+	): MutationHandle<Input, Data, RestMutateCall>;
 	post<Data = unknown>(
 		path: string,
 		input?: RestInput,
-		call?: MutateCall,
+		call?: RestMutateCall,
 	): Promise<Data>;
 	put<Data = unknown>(
 		path: string,
 		input?: RestInput,
-		call?: MutateCall,
+		call?: RestMutateCall,
 	): Promise<Data>;
 	patch<Data = unknown>(
 		path: string,
 		input?: RestInput,
-		call?: MutateCall,
+		call?: RestMutateCall,
 	): Promise<Data>;
 	delete<Data = unknown>(
 		path: string,
 		input?: RestInput,
-		call?: MutateCall,
+		call?: RestMutateCall,
 	): Promise<Data>;
 }
 
@@ -150,12 +158,12 @@ export interface UntypedRestApi {
 type Optional<I> = [I] extends [void | undefined] ? true : false;
 type RestArgs<I, Call> =
 	Optional<I> extends true
-		? [input?: InputArg<NonNullable<I>>, call?: Call]
-		: [input: InputArg<I>, call?: Call];
+		? [input?: TrackedInput<NonNullable<I>>, call?: Call]
+		: [input: TrackedInput<I>, call?: Call];
 type OneShot<I> =
 	Optional<I> extends true
-		? [input?: NonNullable<I>, call?: MutateCall]
-		: [input: I, call?: MutateCall];
+		? [input?: NonNullable<I>, call?: RestMutateCall]
+		: [input: I, call?: RestMutateCall];
 
 export interface RestSimpleOptions {
 	/** Stores the data of every call; default as is. */
@@ -166,23 +174,23 @@ const isBase = (x: unknown): x is RestBaseOptions =>
 	typeof (x as RestBaseOptions)?.baseUrl === 'string';
 
 /**
- * The REST extension of `createRiva`: `createRiva({ rest: rest(api) })`, with
+ * The REST extension of `createRiva`: `createRiva({ rest: withRest(api) })`, with
  * `api` from `createOpenApiClient`, gives `riva.rest.get / mutation / post /
  * put / patch / delete` typed by the spec's operations;
- * `rest({ baseUrl })` gives the untyped ones over `fetch`. Definitions made with `query()` and
+ * `withRest({ baseUrl })` gives the untyped ones over `fetch`. Definitions made with `query()` and
  * `mutation()` keep working on the same riva.
  */
-export function rest<
+export function withRest<
 	Ops extends OperationsShape<Ops>,
 	Api extends ClientOf<Ops, boolean>,
 >(
 	api: Api & ClientOf<Ops, boolean>,
 	options?: RestSimpleOptions,
 ): RivaExtension<RestApi<Ops, DecodedOf<Ops, Api>>>;
-export function rest(
+export function withRest(
 	options: RestBaseOptions & RestSimpleOptions,
 ): RivaExtension<UntypedRestApi>;
-export function rest(
+export function withRest(
 	source: unknown,
 	options: RestSimpleOptions = {},
 ): RivaExtension<unknown> {
@@ -221,7 +229,7 @@ export function rest(
 			);
 			const one =
 				(method: MutationMethod) =>
-				(path: string, input?: unknown, call?: MutateCall) =>
+				(path: string, input?: unknown, call?: RestMutateCall) =>
 					calls.mutate(method, path, input, call);
 			return {
 				get: calls.get,

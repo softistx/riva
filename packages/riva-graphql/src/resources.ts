@@ -3,16 +3,8 @@ import {
 	abortable,
 	type Resource,
 	type ResourceState,
-	type TrackedInput,
 } from '@softistx/riva/resource';
-import { GraphQLError } from './errors';
-
-/**
- * What a call takes as variables: a plain value, a riva signal or computed, or
- * a function that reads signals (tracked: when what it reads changes, the
- * query or subscription follows).
- */
-export type VarsInput<Vars> = TrackedInput<Vars>;
+import { RivaGraphQLError } from './errors';
 
 /**
  * The factory of a stream, memoised on the stable key of its variables: a
@@ -32,13 +24,13 @@ export function memoFactory<F>(
 }
 
 /**
- * A GraphQL response with data and errors is a `GraphQLError` whose `data`
+ * A GraphQL response with data and errors is a `RivaGraphQLError` whose `data`
  * is the partial result: the state is `error` and keeps that data.
  */
 const withPartial = <D>(s: ResourceState<D>): ResourceState<D> =>
 	s.status === 'error' &&
 	s.data === undefined &&
-	s.error instanceof GraphQLError &&
+	s.error instanceof RivaGraphQLError &&
 	s.error.data != null
 		? { ...s, data: s.error.data as D }
 		: s;

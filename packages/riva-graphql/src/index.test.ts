@@ -3,14 +3,14 @@ import * as api from './index';
 
 test('the main entry exports the transport and the definitions, nothing from the subpaths', () => {
 	expect(Object.keys(api).sort()).toEqual([
-		'GraphQLError',
-		'graphql',
+		'RivaGraphQLError',
 		'graphqlClientTransport',
 		'mutation',
 		'operationOf',
 		'provideGraphQL',
 		'query',
 		'toRivaError',
+		'withGraphQL',
 	]);
 });
 

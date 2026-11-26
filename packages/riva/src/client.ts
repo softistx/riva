@@ -163,7 +163,7 @@ export class Riva {
 	}
 }
 
-/** A riva, with its extensions installed and typed: `createRiva({ graphql })` gives `riva.graphql`. */
+/** A riva, with its extensions installed and typed: `createRiva({ graphql: withGraphQL(client) })` gives `riva.graphql`. */
 export const createRiva: {
 	(options?: RivaOptions): Riva;
 	<

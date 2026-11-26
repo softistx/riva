@@ -1,3 +1,4 @@
+export type { MutationResult } from '@softistx/riva-react/resource';
 export type {
 	Register,
 	UseRest,

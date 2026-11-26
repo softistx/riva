@@ -6,7 +6,7 @@ Each entry is headed by the message you will see.
 
 Code: `RIVA_SCOPE` (`RivaScopeError`).
 
-**When:** a definition (`query()`, `mutation()`, `infinite()`) ran on a `Riva` that was never given a transport. A riva made with `createRiva({ graphql: graphql(client) })` has one already.
+**When:** a definition (`query()`, `mutation()`, `infinite()`) ran on a `Riva` that was never given a transport. A riva made with `createRiva({ graphql: withGraphQL(client) })` has one already.
 
 **Why:** the transport lives on the riva, not on the definition, so two server requests never share one.
 
@@ -15,9 +15,9 @@ Code: `RIVA_SCOPE` (`RivaScopeError`).
 ```ts
 import { createGraphQLClient } from '@softistx/graphql-client';
 import { createRiva } from '@softistx/riva';
-import { graphql } from '@softistx/riva-graphql';
+import { withGraphQL } from '@softistx/riva-graphql';
 
-const riva = createRiva({ graphql: graphql(createGraphQLClient({ url: 'https://api.example.com/graphql' })) });
+const riva = createRiva({ graphql: withGraphQL(createGraphQLClient({ url: 'https://api.example.com/graphql' })) });
 ```
 
 A riva made with `createRiva()` takes its transport with `provideGraphQL(riva, graphqlClientTransport(client))`, but has no `riva.graphql`.
@@ -208,13 +208,13 @@ Code: `RIVA_DEFINITION` (`RivaError`), thrown when `query()`, `mutation()` or `i
 
 **Why:** a definition runs one request and one reply; a subscription is a stream.
 
-**Fix:** use `riva.graphql.subscribe(DOC, vars, { next, error })` from `graphql()` (and read its `state` or `subscribe` to open it), or poll with `refetchEvery`.
+**Fix:** use `riva.graphql.subscribe(DOC, vars, { next, error })` from `withGraphQL()` (and read its `state` or `subscribe` to open it), or poll with `refetchEvery`.
 
-## `riva-graphql: this transport cannot subscribe: give graphql() a @softistx/graphql-client client, or a transport with a subscribe method.`
+## `riva-graphql: this transport cannot subscribe: give withGraphQL() a @softistx/graphql-client client, or a transport with a subscribe method.`
 
 Code: `RIVA_DEFINITION` (`RivaError`), thrown by `riva.graphql.subscribe`.
 
-**Why:** the transport given to `graphql()` has no optional `subscribe(operation, variables, { signal })` method (a BFF transport, a test double).
+**Why:** the transport given to `withGraphQL()` has no optional `subscribe(operation, variables, { signal })` method (a BFF transport, a test double).
 
 **Fix:** pass the `@softistx/graphql-client` client (or `graphqlClientTransport(client)`), or add `subscribe` returning an `AsyncIterable` of results that ends when the signal aborts.
 
@@ -232,15 +232,15 @@ Code: `RIVA_DEFINITION`, from `riva.graphql.subscribe` given a query or mutation
 
 ## A query shows `error` and keeps `data`
 
-**Why:** the response carried data and errors (a partial result). The state is `error`, `data` is the partial result and `error` is a `GraphQLError`: `error.errors` lists every error with its `path`, and `error.cause` is the client's `ApiError`.
+**Why:** the response carried data and errors (a partial result). The state is `error`, `data` is the partial result and `error` is a `RivaGraphQLError`: `error.errors` lists every error with its `path`, and `error.cause` is the client's `ApiError`.
 
 **Fix:** show the partial data and the problem together, or ignore the error when the partial result is enough:
 
 ```ts
-import { GraphQLError } from '@softistx/riva-graphql';
+import { RivaGraphQLError } from '@softistx/riva-graphql';
 
 const s = books.state;
-if (s.status === 'error' && s.error instanceof GraphQLError) {
+if (s.status === 'error' && s.error instanceof RivaGraphQLError) {
 	s.data; // what the API resolved
 	s.error.errors.map((e) => e.path?.join('.')); // where it failed
 }
@@ -266,7 +266,7 @@ Code: `RIVA_DEFINITION` (`RivaError`), the rejection of `await riva.graphql.quer
 
 **Fix:** await it once `enabled` is true, or leave `enabled` out for a one-shot `await`.
 
-## `riva-graphql/react: the riva in scope has no GraphQL: create it with createRiva({ graphql: graphql(client) }).`
+## `riva-graphql/react: the riva in scope has no GraphQL: create it with createRiva({ graphql: withGraphQL(client) }).`
 
 Code: `RIVA_DEFINITION` (`RivaError`).
 
@@ -275,7 +275,7 @@ Code: `RIVA_DEFINITION` (`RivaError`).
 **Fix:**
 
 ```ts
-const riva = createRiva({ graphql: graphql(client) });
+const riva = createRiva({ graphql: withGraphQL(client) });
 ```
 
 A hook outside any provider throws the riva-react `No Riva in scope` error instead (see [riva-react's troubleshooting](https://github.com/softistx/riva/blob/develop/packages/riva-react/docs/troubleshooting.md)).
@@ -285,3 +285,29 @@ A hook outside any provider throws the riva-react `No Riva in scope` error inste
 **Why:** `query(DOC)` and `riva.graphql.query(DOC)` / `useGraphQL(DOC)` are two definitions on one riva, so they use separate cache entries (`graphql:<operation id>` for the simple call), and `invalidates: [DOC]` misses the hand-made one.
 
 **Fix:** pass the definition: `const def = query(DOC)`, then `await def.ensure(riva, vars)` in the loader and `useGraphQL(def, vars)` (or `riva.graphql.query(def, vars)`) in the component. The definition is used as is, so both read one entry, and `invalidates: [def]` marks it stale.
+
+## `graphql` is not exported by `@softistx/riva-graphql`
+
+**When:** `import { graphql } from '@softistx/riva-graphql'` fails to compile or resolves to `undefined` (0.7.0 and later).
+
+**Why:** the extension is named `withGraphQL`, so it cannot be mistaken for the client preset's `graphql()` document function, which writes your documents. The same release renamed `GraphQLError` to `RivaGraphQLError` (its `name` too, so a check on `error.name === 'GraphQLError'` fails now), `QueryCall` to `GraphQLQueryCall`, `MutateCall` to `GraphQLMutateCall`, `SubscribeCall` to `GraphQLSubscribeCall`, and dropped `VarsInput` for the core's `TrackedInput`. No old name is kept as an alias.
+
+**Fix:** rename them.
+
+```ts
+import { RivaGraphQLError, withGraphQL } from '@softistx/riva-graphql';
+
+const riva = createRiva({ graphql: withGraphQL(client) });
+if (error instanceof RivaGraphQLError) error.errors; // match with instanceof, or error.name === 'RivaGraphQLError'
+```
+
+## `add` is not a function, or `isPending` is undefined, on `useGraphQLMutation`
+
+**Why:** the hook returns `{ run, status, data, error, reset }`, not a callable, and has no `isPending`. `run` and `reset` are stable across renders.
+
+**Fix:**
+
+```tsx
+const { run: add, status } = useGraphQLMutation(ADD_BOOK_MUTATION);
+<button disabled={status === 'loading'} onClick={() => add({ title: 'Dune' })}>Add</button>;
+```

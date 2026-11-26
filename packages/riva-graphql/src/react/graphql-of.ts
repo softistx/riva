@@ -7,7 +7,7 @@ export function graphqlOf(riva: Riva): GraphQLApi {
 	if (!api)
 		throw new RivaError(
 			'RIVA_DEFINITION',
-			'riva-graphql/react: the riva in scope has no GraphQL: create it with createRiva({ graphql: graphql(client) }).',
+			'riva-graphql/react: the riva in scope has no GraphQL: create it with createRiva({ graphql: withGraphQL(client) }).',
 		);
 	return api;
 }

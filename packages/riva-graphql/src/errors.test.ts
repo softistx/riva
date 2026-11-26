@@ -10,7 +10,7 @@ import {
 	RivaNetworkError,
 	RivaRequestError,
 } from '@softistx/riva';
-import { GraphQLError, toRivaError } from './errors';
+import { RivaGraphQLError, toRivaError } from './errors';
 
 const api = (code: string | undefined, http?: number, httpStatus = 200) =>
 	new ApiError(
@@ -132,7 +132,7 @@ test('an ApiError with no status is read as 400 and never retried; a 503 status 
 	expect([retryable(503), retryable(404)]).toEqual([true, false]);
 });
 
-test('an ApiError becomes a GraphQLError listing its errors with their paths and the partial data', () => {
+test('an ApiError becomes a RivaGraphQLError listing its errors with their paths and the partial data', () => {
 	const cause = new ApiError(
 		[
 			{
@@ -145,8 +145,8 @@ test('an ApiError becomes a GraphQLError listing its errors with their paths and
 		{ viewer: { id: '1' } },
 		200,
 	);
-	const e = toRivaError(cause) as GraphQLError;
-	expect(e).toBeInstanceOf(GraphQLError);
+	const e = toRivaError(cause) as RivaGraphQLError;
+	expect(e).toBeInstanceOf(RivaGraphQLError);
 	expect(e).toBeInstanceOf(RivaRequestError);
 	expect(e.errors).toEqual([
 		{

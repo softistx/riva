@@ -2,15 +2,16 @@
 import '../../test/happydom';
 import { expect, expectTypeOf, test } from 'bun:test';
 import { createRiva } from '@softistx/riva';
-import type { MutationHook } from '@softistx/riva-react/resource';
+import type { MutationResult } from '@softistx/riva-react/resource';
 import {
 	fakeTransport,
 	RENAME_PATIENT_MUTATION,
 	VIEWER_QUERY,
 } from '../../test/fixtures';
 import { flush, h, mount } from '../../test/render';
-import type { MutateCall } from '../calls';
-import { graphql } from '../simple';
+import type { GraphQLMutateCall } from '../calls';
+import { withGraphQL } from '../simple';
+import type { MutationResult as ReexportedMutationResult } from './index';
 import { useGraphQL } from './use-graphql';
 import { useGraphQLMutation } from './use-graphql-mutation';
 
@@ -21,8 +22,12 @@ test('idle, loading, success, reset; a call invalidates the observed query', asy
 			? { renamePatient: { id: '1', name: 'Z' } }
 			: { viewer: { id: String(++n) } },
 	);
-	const riva = createRiva({ graphql: graphql(t) });
-	let rename!: { status: string; reset(): void };
+	const riva = createRiva({ graphql: withGraphQL(t) });
+	let rename!: {
+		status: string;
+		reset(): void;
+		run: (...a: unknown[]) => Promise<unknown>;
+	};
 	let shown = '';
 	function C() {
 		rename = useGraphQLMutation(RENAME_PATIENT_MUTATION) as never;
@@ -35,7 +40,7 @@ test('idle, loading, success, reset; a call invalidates the observed query', asy
 	expect(m.text()).toBe('idle:1');
 	let result: unknown;
 	await flush(async () => {
-		result = await (rename as unknown as (...a: unknown[]) => Promise<unknown>)(
+		result = await rename.run(
 			{ id: '1', name: 'Z' },
 			{ invalidates: [VIEWER_QUERY] },
 		);
@@ -49,7 +54,7 @@ test('idle, loading, success, reset; a call invalidates the observed query', asy
 
 test('a failure rejects the call and lands in the state', async () => {
 	const riva = createRiva({
-		graphql: graphql(
+		graphql: withGraphQL(
 			fakeTransport(() => {
 				throw new Error('no');
 			}),
@@ -59,7 +64,7 @@ test('a failure rejects the call and lands in the state', async () => {
 	let status = '';
 	function C() {
 		const r = useGraphQLMutation(RENAME_PATIENT_MUTATION);
-		rename = r as never;
+		rename = r.run as never;
 		status = r.status;
 		return h('p', null, r.status);
 	}
@@ -79,17 +84,17 @@ test('types: variables and data come from the document', () => {
 		>
 	>;
 	expectTypeOf(hook).toEqualTypeOf<
-		MutationHook<
+		MutationResult<
 			{ id: string; name: string },
 			{ renamePatient: { id: string; name: string } },
-			MutateCall
+			GraphQLMutateCall
 		>
 	>();
 });
 
 test('types: the input is inferred from the document', () => {
 	const never = () => {
-		const rename = useGraphQLMutation(RENAME_PATIENT_MUTATION);
+		const { run: rename } = useGraphQLMutation(RENAME_PATIENT_MUTATION);
 		// @ts-expect-error `id` must be a string
 		rename({ id: 1, name: 'Z' });
 		// @ts-expect-error `nom` is not an input of the document
@@ -97,4 +102,10 @@ test('types: the input is inferred from the document', () => {
 		void rename({ id: '1', name: 'Z' });
 	};
 	expect(typeof never).toBe('function');
+});
+
+test('MutationResult is re-exported from the react entry', () => {
+	expectTypeOf<ReexportedMutationResult<{ a: 1 }, 2>>().toEqualTypeOf<
+		MutationResult<{ a: 1 }, 2>
+	>();
 });

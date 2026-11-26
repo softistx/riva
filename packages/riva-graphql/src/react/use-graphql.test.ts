@@ -16,9 +16,9 @@ import {
 	VIEWER_QUERY,
 } from '../../test/fixtures';
 import { deferred, flush, h, mount } from '../../test/render';
-import { GraphQLError, toRivaError } from '../errors';
+import { RivaGraphQLError, toRivaError } from '../errors';
 import { query } from '../query';
-import { graphql } from '../simple';
+import { withGraphQL } from '../simple';
 import { type UseGraphQLOptions, useGraphQL } from './use-graphql';
 
 const refused = toRivaError(new ApiError([{ message: 'No' }], undefined, 400));
@@ -44,7 +44,7 @@ test('goes loading then success', async () => {
 		await gate.promise;
 		return viewer();
 	});
-	const riva = createRiva({ graphql: graphql(t) });
+	const riva = createRiva({ graphql: withGraphQL(t) });
 	function C() {
 		const s = useGraphQL(VIEWER_QUERY);
 		return h('p', null, show(s));
@@ -62,7 +62,7 @@ test('an error lands in the state; a partial result keeps its data', async () =>
 		new ApiError([{ message: 'No access', path: ['viewer'] }], viewer(), 200),
 	);
 	const riva = createRiva({
-		graphql: graphql(
+		graphql: withGraphQL(
 			fakeTransport(() => {
 				throw partial;
 			}),
@@ -77,11 +77,11 @@ test('an error lands in the state; a partial result keeps its data', async () =>
 	await flush();
 	expect(m.text()).toBe('error');
 	expect(seen.data).toEqual(viewer());
-	expect(seen.error).toBeInstanceOf(GraphQLError);
+	expect(seen.error).toBeInstanceOf(RivaGraphQLError);
 	await m.unmount();
 
 	const plain = createRiva({
-		graphql: graphql(
+		graphql: withGraphQL(
 			fakeTransport(() => {
 				throw refused;
 			}),
@@ -96,7 +96,7 @@ test('an error lands in the state; a partial result keeps its data', async () =>
 
 test('enabled false is idle, calls neither the variables function nor the transport', async () => {
 	const t = fakeTransport(() => viewer());
-	const riva = createRiva({ graphql: graphql(t) });
+	const riva = createRiva({ graphql: withGraphQL(t) });
 	let evaluated = 0;
 	function C({ on }: { on: boolean }) {
 		const s = useGraphQL(
@@ -125,7 +125,7 @@ test('a tracked enabled function toggles the fetch', async () => {
 		await gate.promise;
 		return viewer();
 	});
-	const riva = createRiva({ graphql: graphql(t) });
+	const riva = createRiva({ graphql: withGraphQL(t) });
 	const on = signal(false);
 	function C() {
 		return h(
@@ -149,7 +149,7 @@ test('a variables function follows props without suspense', async () => {
 	const t = fakeTransport((c) => ({
 		patients: (c.variables as { school: string }).school,
 	}));
-	const riva = createRiva({ graphql: graphql(t) });
+	const riva = createRiva({ graphql: withGraphQL(t) });
 	function C({ school }: { school: string }) {
 		const s = useGraphQL(PATIENTS_QUERY, () => ({ school }));
 		return h('p', null, show(s));
@@ -175,7 +175,7 @@ test('new variables refetch and keep the previous data as a placeholder', async 
 				gates.set(school, () => resolve({ patients: school }));
 			}),
 	);
-	const riva = createRiva({ graphql: graphql(t) });
+	const riva = createRiva({ graphql: withGraphQL(t) });
 	function C({
 		school,
 		opts,
@@ -202,7 +202,7 @@ test('new variables refetch and keep the previous data as a placeholder', async 
 
 test('inline equal variables do not refetch', async () => {
 	const t = fakeTransport(() => viewer());
-	const riva = createRiva({ graphql: graphql(t) });
+	const riva = createRiva({ graphql: withGraphQL(t) });
 	function C() {
 		return h('p', null, useGraphQL(PATIENTS_QUERY, { school: 's' }).status);
 	}
@@ -220,7 +220,7 @@ test('suspense waits for the data and the state is success', async () => {
 		await gate.promise;
 		return viewer();
 	});
-	const riva = createRiva({ graphql: graphql(t) });
+	const riva = createRiva({ graphql: withGraphQL(t) });
 	function C() {
 		const s = useGraphQL(VIEWER_QUERY, undefined, { suspense: true });
 		expectTypeOf(s.status).toEqualTypeOf<'success'>();
@@ -241,7 +241,7 @@ test('suspense waits for the data and the state is success', async () => {
 
 test('suspense throws a failure to the error boundary', async () => {
 	const riva = createRiva({
-		graphql: graphql(
+		graphql: withGraphQL(
 			fakeTransport(() => {
 				throw refused;
 			}),
@@ -275,7 +275,7 @@ test('without a graphql extension it throws a RIVA_DEFINITION error saying how t
 	console.error = () => {};
 	try {
 		await expect(mount(h(C), createRiva())).rejects.toThrow(
-			'createRiva({ graphql: graphql(client) })',
+			'createRiva({ graphql: withGraphQL(client) })',
 		);
 		await expect(mount(h(C))).rejects.toThrow('No Riva in scope');
 	} finally {
@@ -285,7 +285,7 @@ test('without a graphql extension it throws a RIVA_DEFINITION error saying how t
 
 test('SSR: a render shows what the loader fetched and a client mount does not refetch it', async () => {
 	const t = fakeTransport(() => viewer());
-	const riva = createRiva({ graphql: graphql(t) });
+	const riva = createRiva({ graphql: withGraphQL(t) });
 	await riva.graphql.query(VIEWER_QUERY);
 	expect(t.calls).toHaveLength(1);
 	function C() {
@@ -304,7 +304,7 @@ test('SSR: a render shows what the loader fetched and a client mount does not re
 	);
 	// An empty riva with suspense fetches during the render.
 	const fresh = createRiva({
-		graphql: graphql(fakeTransport(() => viewer('9'))),
+		graphql: withGraphQL(fakeTransport(() => viewer('9'))),
 	});
 	const s2 = await renderToReadableStream(
 		h(RivaProvider, { riva: fresh }, h(Suspense, { fallback: 'wait' }, h(C))),
@@ -334,7 +334,7 @@ test('types: data comes from the document', () => {
 
 test('a signal input that changes fetches the new variables exactly once, without an abort', async () => {
 	const t = fakeTransport(() => ({ patients: page([], null) }));
-	const riva = createRiva({ graphql: graphql(t) });
+	const riva = createRiva({ graphql: withGraphQL(t) });
 	const vars = signal({ school: 'a' });
 	function C() {
 		return h('p', null, show(useGraphQL(PATIENTS_QUERY, vars)));
@@ -354,11 +354,11 @@ test('a signal input that changes fetches the new variables exactly once, withou
 test('SSR lifecycle: a server fetch, dehydrate and hydrate leave the client mount with no second call', async () => {
 	const server = fakeTransport(() => viewer('7'));
 	const defaults = { staleTime: '1m' } as const;
-	const serverRiva = createRiva({ defaults, graphql: graphql(server) });
+	const serverRiva = createRiva({ defaults, graphql: withGraphQL(server) });
 	await serverRiva.graphql.query(VIEWER_QUERY);
 	const snapshot = dehydrate(serverRiva);
 	const client = fakeTransport(() => viewer('8'));
-	const clientRiva = createRiva({ defaults, graphql: graphql(client) });
+	const clientRiva = createRiva({ defaults, graphql: withGraphQL(client) });
 	hydrate(clientRiva, snapshot);
 	function C() {
 		return h('p', null, show(useGraphQL(VIEWER_QUERY)));
@@ -390,7 +390,7 @@ test('a definition shares its entry with a loader ensure', async () => {
 	const t = fakeTransport(() => viewer());
 	const riva = createRiva({
 		defaults: { staleTime: '1m' },
-		graphql: graphql(t),
+		graphql: withGraphQL(t),
 	});
 	const def = query(VIEWER_QUERY);
 	await def.ensure(riva);
@@ -409,7 +409,7 @@ test('a definition and a document of one operation keep their own entries', asyn
 	const t = fakeTransport(() => viewer());
 	const riva = createRiva({
 		defaults: { staleTime: '1m' },
-		graphql: graphql(t),
+		graphql: withGraphQL(t),
 	});
 	const def = query(VIEWER_QUERY);
 	await def.ensure(riva);

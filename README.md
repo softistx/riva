@@ -12,12 +12,12 @@ hand-written keys.
 // Schematic names: PATIENTS_QUERY and the other documents, Invoice, Route
 import { createGraphQLClient } from "@softistx/graphql-client";
 import { createRiva, signal } from "@softistx/riva";
-import { graphql } from "@softistx/riva-graphql";
-import { rest } from "@softistx/riva-rest";
+import { withGraphQL } from "@softistx/riva-graphql";
+import { withRest } from "@softistx/riva-rest";
 
 export const appRiva = createRiva({
-  graphql: graphql(createGraphQLClient({ url: "https://api.example.com/graphql" })),
-  rest: rest({ baseUrl: "https://api.example.com" }), // or rest(openApiClient), typed
+  graphql: withGraphQL(createGraphQLClient({ url: "https://api.example.com/graphql" })),
+  rest: withRest({ baseUrl: "https://api.example.com" }), // or withRest(openApiClient), typed
   defaults: { staleTime: "30s" },
 });
 
@@ -39,7 +39,7 @@ export async function loader({ context, params }: Route.LoaderArgs) {
 // Component: the same call, as a hook
 function PatientList({ school }: { school: string }) {
   const patients = useGraphQL(PATIENTS_QUERY, { school });
-  const rename = useGraphQLMutation(RENAME_PATIENT_MUTATION);
+  const { run: rename } = useGraphQLMutation(RENAME_PATIENT_MUTATION);
   if (patients.status !== "success") return null;
   return patients.data.patients.map((p) => <button key={p.id} onClick={() => rename({ id: p.id, name: "Ana" })}>{p.name}</button>);
 }

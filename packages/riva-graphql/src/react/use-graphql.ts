@@ -1,16 +1,15 @@
 import type { Query, VarsArgs } from '@softistx/riva';
-import type { ResourceState } from '@softistx/riva/resource';
+import type { ResourceState, TrackedInput } from '@softistx/riva/resource';
 import {
 	type SuspendedState,
 	useCallResource,
 } from '@softistx/riva-react/resource';
-import type { Doc, QueryCall } from '../calls';
+import type { Doc, GraphQLQueryCall } from '../calls';
 import { operationOf } from '../operation';
-import type { VarsInput } from '../resources';
 import type { TargetData, TargetVars } from '../types';
 import { graphqlOf } from './graphql-of';
 
-export interface UseGraphQLOptions extends Omit<QueryCall, 'signal'> {
+export interface UseGraphQLOptions extends Omit<GraphQLQueryCall, 'signal'> {
 	/** Suspends until there is data, and throws an error to the nearest error boundary (a response with data and errors included). The state is then `success`. Default false. */
 	suspense?: boolean;
 }
@@ -34,13 +33,16 @@ type SuspenseArgs<V, O> = [V] extends [Void]
 // biome-ignore lint/suspicious/noExplicitAny: matches any document or definition
 export function useGraphQL<T extends Doc<any, any> | Query<any, any>>(
 	target: T,
-	...args: SuspenseArgs<VarsInput<TargetVars<T>>, Suspending<UseGraphQLOptions>>
+	...args: SuspenseArgs<
+		TrackedInput<TargetVars<T>>,
+		Suspending<UseGraphQLOptions>
+	>
 ): SuspendedState<TargetData<T>>;
 // biome-ignore lint/suspicious/noExplicitAny: matches any document or definition
 export function useGraphQL<T extends Doc<any, any> | Query<any, any>>(
 	target: T,
 	...args: VarsArgs<
-		VarsInput<TargetVars<T>>,
+		TrackedInput<TargetVars<T>>,
 		[options?: UseGraphQLOptions & { suspense?: false }]
 	>
 ): ResourceState<TargetData<T>>;
@@ -59,7 +61,7 @@ export function useGraphQL(
 			graphqlOf(riva).query(
 				document as never,
 				input as never,
-				call as QueryCall,
+				call as GraphQLQueryCall,
 			) as never,
 	);
 }

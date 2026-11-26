@@ -27,7 +27,7 @@ export function httpyzTransport(
 	return { ...apiTransport(api), http };
 }
 
-/** The same transport with no httpyz client of its own: what `rest(api)` runs on. */
+/** The same transport with no httpyz client of its own: what `withRest(api)` runs on. */
 export function apiTransport(
 	// biome-ignore lint/suspicious/noExplicitAny: any spec's client
 	api?: OpenApiClient<any, any, any>,

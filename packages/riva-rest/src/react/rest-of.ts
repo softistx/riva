@@ -12,7 +12,7 @@ export function restOf(riva: Riva): RestNamespace {
 	if (!api)
 		throw new RivaError(
 			'RIVA_DEFINITION',
-			'riva-rest/react: the riva in scope has no REST: create it with createRiva({ rest: rest(api) }).',
+			'riva-rest/react: the riva in scope has no REST: create it with createRiva({ rest: withRest(api) }).',
 		);
 	return api;
 }

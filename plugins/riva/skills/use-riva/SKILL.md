@@ -35,21 +35,21 @@ points, peers and the exact docs pages it ships. The tarball carries no
 ## 1. Choose the package by need
 
 Install the core and one package per need. Every adapter peers
-`@softistx/riva`. Start from the simple API: `createRiva({ graphql, rest })`,
+`@softistx/riva`. Start from the simple API: `createRiva({ graphql: withGraphQL(client), rest: withRest(api) })`,
 then `riva.graphql.query(DOC, vars)` and `riva.rest.get(path, input)`.
 
 | Need | Package and subpath |
 | --- | --- |
 | `createRiva`, signals, computeds, effects, errors | `@softistx/riva` |
-| GraphQL as calls: `riva.graphql.query / mutate / mutation / subscribe` | `@softistx/riva-graphql` (`graphql(client)`) |
-| REST as calls: `riva.rest.get / mutation / post / put / patch / delete` | `@softistx/riva-rest` (`rest(api)` or `rest({ baseUrl })`) |
+| GraphQL as calls: `riva.graphql.query / mutate / mutation / subscribe` | `@softistx/riva-graphql` (`withGraphQL(client)`) |
+| REST as calls: `riva.rest.get / mutation / post / put / patch / delete` | `@softistx/riva-rest` (`withRest(api)` or `withRest({ baseUrl })`) |
 | The calls as hooks in components | `@softistx/riva-graphql/react` (`useGraphQL`), `@softistx/riva-rest/react` (`useRest`), over `@softistx/riva-react` |
 | A reactive, awaitable resource of your own (a hook over it) | `@softistx/riva/resource`, `@softistx/riva-react/resource` |
 | React: provider, `useRiva`, signals | `@softistx/riva-react` |
 | React Router 8: one riva per request, SSR hydration, `/_data`, revalidation | `@softistx/riva-react-router` (`/server`) |
 | Dehydrate on the server, hydrate in the browser, an ambient scope resolver | `@softistx/riva/ssr` |
 | A domain's state, computeds and actions | `@softistx/riva/store` |
-| The adapter's entity cache (one copy per entity) | `graphql(client, { cache: normalized() })` from `@softistx/riva-graphql/cache`; `rest(api, { cache: restEntities(...) })` from `@softistx/riva-rest/entities` |
+| The adapter's entity cache (one copy per entity) | `withGraphQL(client, { cache: normalized() })` from `@softistx/riva-graphql/cache`; `withRest(api, { cache: restEntities(...) })` from `@softistx/riva-rest/entities` |
 | GraphQL allowlist for a BFF (codegen, server source, browser transport) | `@softistx/riva-graphql/codegen`, `/server`, `/bff` |
 | REST through a BFF | `@softistx/riva-rest/server`, `/bff` |
 | Polling, `gcTime`, optimistic updates, cursor pagination, one setting shared by call sites | definitions: `query()`, `mutation()`, `infinite()`, `useQuery`, `useMutation`, `useInfiniteQuery` |
@@ -62,14 +62,15 @@ The peers each package adds, with their ranges, are in
 1. Read `node_modules/@softistx/riva/README.md` (its quick start), then the
    README of each adapter the app needs.
 2. Create one `Riva` with its extensions: `createRiva({ graphql:
-   graphql(client), rest: rest(api), defaults: { staleTime: '30s' } })`. One
+   withGraphQL(client), rest: withRest(api), defaults: { staleTime: '30s' } })`. One
    in the browser, **one per request on the server**. The extension installs
    the transport: no `provideGraphQL` or `provideRest` call.
 3. Call it: `await riva.graphql.query(DOC, vars)` for the data, the same call
    without `await` for a reactive resource, `riva.graphql.mutate(DOC, vars,
    { invalidates: [PATIENTS_QUERY] })` for a write, `riva.rest.get(path, input)`
    for REST. In components use `useGraphQL`, `useGraphQLMutation`,
-   `useRest`.
+   `useRest(path, input)`; every mutation hook returns
+   `{ run, status, data, error, reset }` (`status === 'loading'`, no `isPending`).
 4. In a React Router 8 app, add `rivaMiddleware({ create })` on the root
    route and `RivaRouterProvider riva={...}` in the root component; loaders
    `await riva.graphql.query(...)` or `riva.rest.get(...)` and return

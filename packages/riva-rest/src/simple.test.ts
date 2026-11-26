@@ -21,7 +21,7 @@ import {
 	json,
 } from '../test/fixtures';
 import { query } from './query';
-import { rest } from './simple';
+import { withRest } from './simple';
 
 const g = globalThis as { document?: unknown };
 beforeEach(() => {
@@ -49,7 +49,7 @@ function server() {
 		return id === 'missing' ? json({ title: 'gone' }, 404) : json(inv(id));
 	};
 	const api = apiOver(httpWith(handle));
-	return { seen, riva: createRiva({ rest: rest(api) }), api };
+	return { seen, riva: createRiva({ rest: withRest(api) }), api };
 }
 
 describe('riva.rest.get (typed)', () => {
@@ -164,7 +164,7 @@ describe('riva.rest.get (typed)', () => {
 
 	test('memoised per riva, isolated between rivas, and beside hand-made definitions', async () => {
 		const { api, seen } = server();
-		const ext = rest(api);
+		const ext = withRest(api);
 		const a = createRiva({ rest: ext });
 		const b = createRiva({ rest: ext });
 		await a.rest.get('/health', undefined, { staleTime: '1m' });
@@ -229,11 +229,11 @@ describe('riva.rest mutations (typed)', () => {
 	});
 });
 
-describe('rest({ baseUrl }) (untyped)', () => {
+describe('withRest({ baseUrl }) (untyped)', () => {
 	function plain() {
 		const seen: string[] = [];
 		const riva = createRiva({
-			rest: rest({
+			rest: withRest({
 				baseUrl: 'http://api.test',
 				fetch: async (r) => {
 					seen.push(
@@ -293,7 +293,7 @@ describe('types', () => {
 			MutationHandle<
 				{ json: { number: string; total: number } },
 				Invoice,
-				import('./calls').MutateCall
+				import('./calls').RestMutateCall
 			>
 		>();
 		// Never run: the errors are the compiler's.
@@ -313,7 +313,7 @@ describe('types', () => {
 	});
 
 	test('baseUrl gives an untyped get<T>', () => {
-		const riva = createRiva({ rest: rest({ baseUrl: 'http://x' }) });
+		const riva = createRiva({ rest: withRest({ baseUrl: 'http://x' }) });
 		expectTypeOf(riva.rest.get<{ a: 1 }>('/a')).toEqualTypeOf<
 			Resource<{ a: 1 }>
 		>();

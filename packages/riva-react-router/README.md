@@ -16,13 +16,13 @@ Peers: `@softistx/riva`, `@softistx/riva-react`, `react` ^19 and `react-router` 
 // app/riva.ts: one factory, so the request, the render and the browser build the same riva
 import { createGraphQLClient } from '@softistx/graphql-client';
 import { createRiva } from '@softistx/riva';
-import { graphql } from '@softistx/riva-graphql';
+import { withGraphQL } from '@softistx/riva-graphql';
 
 const API_URL = 'https://api.example.com/graphql'; // schematic: your API
 
 export function createAppRiva(cookie?: string) {
 	return createRiva({
-		graphql: graphql(createGraphQLClient({ url: API_URL, headers: cookie ? { cookie } : {} })),
+		graphql: withGraphQL(createGraphQLClient({ url: API_URL, headers: cookie ? { cookie } : {} })),
 		defaults: { staleTime: '30s' }, // fresh server data is not fetched again at hydration
 	});
 }
@@ -128,7 +128,7 @@ import { PATIENTS_QUERY, RENAME_PATIENT_MUTATION } from './graphql'; // schemati
 
 export default function Patients({ params }: { params: { school: string } }) {
 	const patients = useGraphQL(PATIENTS_QUERY, { school: params.school });
-	const rename = useGraphQLMutation(RENAME_PATIENT_MUTATION);
+	const { run: rename } = useGraphQLMutation(RENAME_PATIENT_MUTATION);
 	if (patients.status !== 'success') return null;
 	return (
 		<ul>

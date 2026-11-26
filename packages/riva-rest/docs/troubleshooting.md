@@ -6,7 +6,7 @@ Each entry is headed by the message you will see.
 
 Code: `RIVA_SCOPE` (`RivaScopeError`).
 
-**When:** a definition (`query()`, `mutation()`) ran on a `Riva` that was never given a transport. A riva made with `createRiva({ rest: rest(...) })` has one already.
+**When:** a definition (`query()`, `mutation()`) ran on a `Riva` that was never given a transport. A riva made with `createRiva({ rest: withRest(...) })` has one already.
 
 **Why:** the transport lives on the riva, not on the definition, so two server requests never share one.
 
@@ -16,11 +16,11 @@ Code: `RIVA_SCOPE` (`RivaScopeError`).
 import { createHttpClient } from '@softistx/httpyz';
 import { createOpenApiClient } from '@softistx/openapi-httpyz';
 import { createRiva } from '@softistx/riva';
-import { rest } from '@softistx/riva-rest';
+import { withRest } from '@softistx/riva-rest';
 import { operations } from './generated/openapi/operations'; // from `nxgt-openapi generate`
 
 const http = createHttpClient({ baseUrl: 'https://api.example.com' });
-const riva = createRiva({ rest: rest(createOpenApiClient(http, operations)) });
+const riva = createRiva({ rest: withRest(createOpenApiClient(http, operations)) });
 ```
 
 A riva made with `createRiva()` takes its transport with `provideRest(riva, httpyzTransport(http, api))`, but has no `riva.rest`.
@@ -188,13 +188,13 @@ Code: `RIVA_DEFINITION` (`RivaError`), thrown when the definition is created, fo
 
 ## `riva-rest: POST /x is not a mutation; riva.rest.mutation takes post, put, patch or delete.`
 
-Code: `RIVA_DEFINITION` (`RivaError`), thrown by `riva.rest.mutation(method, path)` on an untyped `rest({ baseUrl })` riva given `'get'`, `'head'` or `'options'` (the method in the message is the one you passed).
+Code: `RIVA_DEFINITION` (`RivaError`), thrown by `riva.rest.mutation(method, path)` on an untyped `withRest({ baseUrl })` riva given `'get'`, `'head'` or `'options'` (the method in the message is the one you passed).
 
 **Fix:** read with `riva.rest.get(path)`; keep `mutation` for `post`, `put`, `patch` and `delete`. With a spec, the same mistake is a compile error and, at runtime, `riva-rest: GET /x only reads; define it with query(), not mutation().`
 
 ## `riva-rest: /things/{id} needs param.id.`
 
-Code: `RIVA_VALIDATION` (`RivaRequestError`, not retryable), thrown by the `rest({ baseUrl })` transport before any request: the path has a `{id}` placeholder and the input has no `param.id`.
+Code: `RIVA_VALIDATION` (`RivaRequestError`, not retryable), thrown by the `withRest({ baseUrl })` transport before any request: the path has a `{id}` placeholder and the input has no `param.id`.
 
 **Fix:** give it, `riva.rest.get('/things/{id}', { param: { id: '42' } })`, or write the value in the path (`'/things/42'`). With a spec, the compiler asks for `param` and httpyz validates it.
 
@@ -206,23 +206,23 @@ Code: `RIVA_VALIDATION` (`RivaRequestError`, not retryable), thrown by the `rest
 
 ## An `invalidates` path refetches nothing
 
-**Why:** a string in `invalidates` is the path of a `riva.rest.get`, as the spec writes it (`'/invoices/{id}'`, with the placeholder, for every input of it); with `rest({ baseUrl })` it is the URL path you passed to `get` (`'/invoices/42'`). A query made with `query(api, route)` has its own entries and is not reached by a string (unless the `get` was given that definition: `riva.rest.get(def, input)` reads the definition's entries).
+**Why:** a string in `invalidates` is the path of a `riva.rest.get`, as the spec writes it (`'/invoices/{id}'`, with the placeholder, for every input of it); with `withRest({ baseUrl })` it is the URL path you passed to `get` (`'/invoices/42'`). A query made with `query(api, route)` has its own entries and is not reached by a string (unless the `get` was given that definition: `riva.rest.get(def, input)` reads the definition's entries).
 
 **Fix:** pass the same path as the `get`, or the definition (`invalidates: [invoicesQuery]`) or `at(invoicesQuery, vars)` for a hand-made one. A path the spec has no `get` for throws `riva-rest: the OpenAPI client has no operation at GET /x; …` before the mutation runs.
 
 ## `GET /x: the reply is not JSON.`
 
-Code: `RIVA_INVALID_RESPONSE` (`RivaRequestError`, not retryable), from the `rest({ baseUrl })` transport on a 2xx reply whose body is not JSON (an HTML login page, a proxy error). An empty body is `undefined`, not an error.
+Code: `RIVA_INVALID_RESPONSE` (`RivaRequestError`, not retryable), from the `withRest({ baseUrl })` transport on a 2xx reply whose body is not JSON (an HTML login page, a proxy error). An empty body is `undefined`, not an error.
 
 **Fix:** check the URL and the `accept` header (`application/json` is sent unless your `headers` set another), or use a spec client, which decodes by content type.
 
 ## `riva-rest: param.id of /things/{id} must not be empty, "." or "..".`
 
-Code: `RIVA_VALIDATION` (`RivaRequestError`, not retryable), from the `rest({ baseUrl })` transport before any request: such a value (also as `%2e`) would collapse the path to another URL.
+Code: `RIVA_VALIDATION` (`RivaRequestError`, not retryable), from the `withRest({ baseUrl })` transport before any request: such a value (also as `%2e`) would collapse the path to another URL.
 
 **Fix:** pass a real identifier.
 
-## `riva-rest/react: the riva in scope has no REST: create it with createRiva({ rest: rest(api) }).`
+## `riva-rest/react: the riva in scope has no REST: create it with createRiva({ rest: withRest(api) }).`
 
 Code: `RIVA_DEFINITION` (`RivaError`).
 
@@ -231,13 +231,64 @@ Code: `RIVA_DEFINITION` (`RivaError`).
 **Fix:**
 
 ```ts
-const riva = createRiva({ rest: rest({ baseUrl: "https://api.example.com" }) });
+const riva = createRiva({ rest: withRest({ baseUrl: "https://api.example.com" }) });
 ```
 
 A hook outside any provider throws the riva-react `No Riva in scope` error instead.
 
-## A loader's `ensure` and a `useRest('get', path)` component fetch twice
+## A loader's `ensure` and a `useRest(path)` component fetch twice
 
-**Why:** `query(api, route)` and `riva.rest.get(path)` / `useRest('get', path)` are two definitions on one riva, so they use separate cache entries (`rest:<method> <path>` for the simple call).
+**Why:** `query(api, route)` and `riva.rest.get(path)` / `useRest(path)` are two definitions on one riva, so they use separate cache entries (`rest:<method> <path>` for the simple call).
 
 **Fix:** pass the definition: `const def = query(api, 'get /invoices/{id}')`, then `await def.ensure(riva, input)` in the loader and `useRest(def, input)` (or `riva.rest.get(def, input)`) in the component. The definition is used as is, so both read one entry, and `invalidates: [def]` marks it stale.
+
+## `rest` is not exported by `@softistx/riva-rest`, or `rest.query` is not a function
+
+**When:** `import { rest } from '@softistx/riva-rest'` fails to compile, resolves to `undefined`, or `rest.query(...)` / `rest.mutation(...)` throws "is not a function" (0.7.0 and later).
+
+**Why:** the extension is named `withRest`, a plain function with no members. Definitions come from the named `query` and `mutation` exports. The same release renamed `GetCall` to `RestQueryCall` and `MutateCall` to `RestMutateCall`, and dropped `InputArg` for the core's `TrackedInput`. No old name is kept as an alias.
+
+**Fix:** rename them.
+
+```ts
+import { mutation, query, withRest } from '@softistx/riva-rest';
+
+const riva = createRiva({ rest: withRest(api) });
+const invoice = query(api, 'get /invoices/{id}'); // was rest.query(api, '…')
+const save = mutation(api, 'post /invoices'); // was rest.mutation(api, '…')
+```
+
+## `riva-rest/react: useRest('get', path) is gone: call useRest(path).`
+
+Code: `RIVA_DEFINITION` (`RivaError`).
+
+**When:** a component still passes the method first, `useRest('get', '/books/{id}', input)`.
+
+**Why:** `useRest` takes the path (or a query definition) first, like `riva.rest.get`; only GETs are read, so the method says nothing. The cache keys are unchanged.
+
+**Fix:**
+
+```tsx
+const book = useRest('/books/{id}', { param: { id } });
+```
+
+## `riva-rest/react: useRest takes a path or a query definition.`
+
+Code: `RIVA_DEFINITION` (`RivaError`).
+
+**When:** the first argument of `useRest` is neither a URL path string nor a query definition (a mutation definition, a route object, `undefined`).
+
+**Why:** `useRest` reads GETs only. A mutation definition has no cache entry to read.
+
+**Fix:** pass the path, or a `query(api, route)` definition; run a mutation definition with `useMutation(def)` from `@softistx/riva-react`.
+
+```tsx
+const book = useRest('/books/{id}', { param: { id } });
+const { run } = useMutation(saveBook);
+```
+
+## `save` is not a function on `useRestMutation`
+
+**Why:** the hook returns `{ run, status, data, error, reset }`; `run` and `reset` are stable.
+
+**Fix:** `const { run: save } = useRestMutation('put', '/books/{id}');`

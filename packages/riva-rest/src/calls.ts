@@ -9,6 +9,7 @@ import {
 	type Riva,
 	RivaError,
 } from '@softistx/riva';
+import type { TrackedInput } from '@softistx/riva/resource';
 import {
 	callResource,
 	mutateInvalidating,
@@ -16,11 +17,10 @@ import {
 	trackedInput,
 } from '@softistx/riva/resource';
 import { callOf } from './query';
-import type { InputArg } from './resources';
 import type { Route } from './transport';
 
 /** Options of one `riva.rest.get` call. */
-export interface GetCall {
+export interface RestQueryCall {
 	/** Replaces the riva's default `staleTime` for this call: data younger than it is returned without fetching. */
 	staleTime?: Duration;
 	/** A boolean, or a function read in a tracked computed. While false the state is `idle`, the input function is not called and nothing is fetched. Default true. */
@@ -32,7 +32,7 @@ export interface GetCall {
 }
 
 /** Options of one mutation call (`riva.rest.post` and the others, or a handle's call). */
-export interface MutateCall {
+export interface RestMutateCall {
 	/**
 	 * An array (no function form) marked stale once the mutation succeeded;
 	 * observed ones refetch. A string is the path of a `riva.rest.get`, every
@@ -86,7 +86,7 @@ export function callsOf(
 		method: string,
 		path: string,
 		input?: unknown,
-		call?: MutateCall,
+		call?: RestMutateCall,
 	) =>
 		mutateInvalidating(riva, mutationOf(method, path), input, call, (t) =>
 			typeof t === 'string' ? queryOf(t) : t,
@@ -95,8 +95,8 @@ export function callsOf(
 		mutate,
 		get(
 			target: string | Query<unknown, unknown>,
-			input?: InputArg<unknown>,
-			call?: GetCall,
+			input?: TrackedInput<unknown>,
+			call?: RestQueryCall,
 		) {
 			if (typeof target !== 'string' && target?.kind !== 'query')
 				throw new RivaError(
@@ -108,7 +108,7 @@ export function callsOf(
 		},
 		mutation(method: string, path: string) {
 			mutationOf(method, path); // an unknown route throws now, not at the first save
-			return mutationHandle(riva, (input: unknown, call?: MutateCall) =>
+			return mutationHandle(riva, (input: unknown, call?: RestMutateCall) =>
 				mutate(method, path, input, call),
 			);
 		},

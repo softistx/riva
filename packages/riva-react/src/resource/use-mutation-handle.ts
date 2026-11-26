@@ -1,39 +1,57 @@
-import type { Riva, VarsArgs } from '@softistx/riva';
+import type { Riva, RunOptions, VarsArgs } from '@softistx/riva';
 import type { MutationHandle, MutationState } from '@softistx/riva/resource';
-import { useCallback, useMemo, useSyncExternalStore } from 'react';
+import {
+	useCallback,
+	useInsertionEffect,
+	useMemo,
+	useRef,
+	useSyncExternalStore,
+} from 'react';
 import { useRiva } from '../context';
 
-/** What a mutation hook returns: call it to run, read the state beside it, `reset()` goes back to idle. */
-export type MutationHook<Vars, Data, Opts = never> = ((
-	...args: VarsArgs<Vars, [opts?: Opts]>
-) => Promise<Data>) &
-	MutationState<Data> & { reset(): void };
+/**
+ * What every mutation hook returns (`useMutation`, `useGraphQLMutation`,
+ * `useRestMutation`): `run` and `reset` are stable across renders, `status`,
+ * `data` and `error` are the state of the last run (`idle` first).
+ */
+export type MutationResult<
+	Vars,
+	Data,
+	Opts = RunOptions,
+> = MutationState<Data> & {
+	/** Runs the mutation: resolves with the server data, rejects with the error (also in `error`). */
+	run: (...args: VarsArgs<Vars, [opts?: Opts]>) => Promise<Data>;
+	/** Back to `idle`; the result of a run still in flight is dropped from the state. */
+	reset: () => void;
+};
 
 /**
  * A mutation handle held by the component: `make` builds it for the riva in
- * scope (once per riva and `key`), the returned function runs it and the
- * state of its last call is read beside it. The state starts `idle` on the
- * server and the client alike; a call that outlives the component only stops
- * reporting.
+ * scope (once per riva and `key`; a definition is its own key), `run` calls
+ * it and the state of its last call is read beside it. `run` and `reset` keep
+ * their identity across renders. The state starts `idle` on the server and
+ * the client alike; a call that outlives the component only stops reporting.
  */
 export function useMutationHandle<Vars, Data, Opts = never>(
-	key: string,
+	key: unknown,
 	make: (riva: Riva) => MutationHandle<Vars, Data, Opts>,
-): MutationHook<Vars, Data, Opts> {
+): MutationResult<Vars, Data, Opts> {
 	const riva = useRiva();
 	const handle = useMemo(() => make(riva), [riva, key]);
+	const current = useRef(handle);
+	// Written before layout effects and never during render (the useEvent pattern).
+	useInsertionEffect(() => {
+		current.current = handle;
+	});
 	const state = useSyncExternalStore(
 		useCallback((notify: () => void) => handle.subscribe(notify), [handle]),
 		() => handle.state,
 		() => handle.state,
 	);
-	return useMemo(
-		() =>
-			Object.assign(
-				(...args: VarsArgs<Vars, [opts?: Opts]>) => handle(...args),
-				state,
-				{ reset: () => handle.reset() },
-			) as MutationHook<Vars, Data, Opts>,
-		[handle, state],
+	const run = useCallback(
+		(...args: VarsArgs<Vars, [opts?: Opts]>) => current.current(...args),
+		[],
 	);
+	const reset = useCallback(() => current.current.reset(), []);
+	return useMemo(() => ({ ...state, run, reset }), [state, run, reset]);
 }

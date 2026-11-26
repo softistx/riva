@@ -1,6 +1,6 @@
 # @softistx/riva-rest
 
-REST for [riva](https://github.com/softistx/riva/blob/develop/packages/riva/README.md): `createRiva({ rest: rest(api) })` gives `riva.rest.get`, `mutation`, `post`, `put`, `patch` and `delete`, typed from an OpenAPI spec through [`@softistx/openapi-httpyz`](https://github.com/softistx/nxgt-http/tree/develop/packages/openapi-httpyz) (path parameters, query, body and reply, never annotated) and returning reactive, awaitable resources, with React hooks over them. `rest({ baseUrl })` serves an API with no schema, and httpyz's errors are mapped to riva's. `query()` and `mutation()` definitions stay for settings several call sites share.
+REST for [riva](https://github.com/softistx/riva/blob/develop/packages/riva/README.md): `createRiva({ rest: withRest(api) })` gives `riva.rest.get`, `mutation`, `post`, `put`, `patch` and `delete`, typed from an OpenAPI spec through [`@softistx/openapi-httpyz`](https://github.com/softistx/nxgt-http/tree/develop/packages/openapi-httpyz) (path parameters, query, body and reply, never annotated) and returning reactive, awaitable resources, with React hooks over them. `withRest({ baseUrl })` serves an API with no schema, and httpyz's errors are mapped to riva's. `query()` and `mutation()` definitions stay for settings several call sites share.
 
 Guides and fixes: [docs](./docs/README.md). Work in progress, see the [spec](https://github.com/softistx/riva/blob/develop/docs/spec.md).
 
@@ -32,12 +32,12 @@ Install the extension once, then call REST like a function: no definition, no ke
 import { createHttpClient } from '@softistx/httpyz';
 import { createOpenApiClient } from '@softistx/openapi-httpyz';
 import { createRiva, signal } from '@softistx/riva';
-import { rest } from '@softistx/riva-rest';
+import { withRest } from '@softistx/riva-rest';
 import { operations } from './generated/openapi/operations'; // from `nxgt-openapi generate`
 
 const http = createHttpClient({ baseUrl: 'https://api.example.com' });
 const riva = createRiva({
-	rest: rest(createOpenApiClient(http, operations)),
+	rest: withRest(createOpenApiClient(http, operations)),
 	defaults: { staleTime: '30s' }, // for every query that sets none
 });
 
@@ -59,12 +59,12 @@ await save({ json: { number: 'F-1', total: 10 } }, { invalidates: ['/invoices'] 
 await riva.rest.delete('/invoices/{id}', { param: { id: '1' } }); // one-shot, no handle
 ```
 
-With no spec, `rest({ baseUrl, fetch?, headers? })` gives the untyped calls over `fetch`: `riva.rest.get<Invoice>('/invoices/42')`.
+With no spec, `withRest({ baseUrl, fetch?, headers? })` gives the untyped calls over `fetch`: `riva.rest.get<Invoice>('/invoices/42')`.
 
 - The input is httpyz's `{ param, query, json }`, typed by the operations table and optional when the operation takes none. It is a plain value, a riva signal or computed, or a function that reads signals (tracked: when what it reads changes, the key is derived again).
 - `get` returns a `Resource` (`@softistx/riva/resource`): `state`, `subscribe` and awaitable. Options: `staleTime` (this call only), `enabled` (a boolean or tracked function; while false the input function is not called), `keepPrevious` (default true) and `signal` (stops the wait of `await`). It is lazy: it fetches from its first subscriber or observed reader, never on a server, where `await` is the way to load.
 - `mutation(method, path)` makes a new handle at each call (`post`, `put`, `patch`, `delete`); `post / put / patch / delete(path, input, opts)` run once. Both take `invalidates` (paths of a `get`, hand-made definitions or `at(query, vars)`, marked stale once it succeeded) and `signal`; it is an array, checked before the call runs.
-- `cache` (`RestSimpleOptions`, also read from `rest({ baseUrl, cache })`): how the data of every simple call is stored. Default: as is, a keyed cache (no entities). Pass `restEntities(...)` from `@softistx/riva-rest/entities` to share entities. `staleTime` defaults to the riva's `defaults.staleTime` (0 when unset): data older than it is refetched by the next read; a per-call `staleTime` overrides it.
+- `cache` (`RestSimpleOptions`, also read from `withRest({ baseUrl, cache })`): how the data of every simple call is stored. Default: as is, a keyed cache (no entities). Pass `restEntities(...)` from `@softistx/riva-rest/entities` to share entities. `staleTime` defaults to the riva's `defaults.staleTime` (0 when unset): data older than it is refetched by the next read; a per-call `staleTime` overrides it.
 - The definitions behind the calls are made once per riva, per method and path, under the id `rest:<method> <path>`: a hand-made `query(api, route)` on the same riva keeps its own entries. To share them, pass the definition itself (it is also what `invalidates: [def]` reaches): `riva.rest.get(def, input)` and `useRest(def, input?, options?)` use it as is, so a loader's `def.ensure(riva, input)` and the component read one entry. [Guide](./docs/guide/simple-api.md).
 - Server rendering: `await riva.rest.get(...)` in a loader fills the request's riva, and `useRest` reads it in the component ([React Router loaders](https://github.com/softistx/riva/blob/develop/packages/riva-react-router/docs/guide/loader.md)). Give the riva `defaults: { staleTime }` so the browser does not fetch it again.
 
@@ -87,13 +87,14 @@ declare module '@softistx/riva-rest/react' {
 import { useRest, useRestMutation } from '@softistx/riva-rest/react';
 
 function Book({ id }: { id: string }) {
-	const book = useRest('get', '/books/{id}', { param: { id } });
-	const save = useRestMutation('put', '/books/{id}');
+	const book = useRest('/books/{id}', { param: { id } });
+	const { run: save } = useRestMutation('put', '/books/{id}');
 	if (book.status !== 'success') return null;
 	return <button onClick={() => save({ param: { id }, json: { title: 'Dune' } })}>{book.data.title}</button>;
 }
 // useRest(def, input) takes a query(api, route) definition: it shares its entry with a loader's def.ensure(riva, input).
-// useRest('get', path, input, { suspense: true }) suspends and returns the success state.
+// useRest(path, input, { suspense: true }) suspends and returns the success state.
+// The query hooks take a path or a definition; a mutation definition goes through useMutation(def) from @softistx/riva-react.
 ```
 
 Without `Register` the hooks are untyped (`useRest<T>`). How they behave:
@@ -104,16 +105,14 @@ Without `Register` the hooks are untyped (`useRest<T>`). How they behave:
 - While `enabled` is false the status is `idle`, the input function is not called and nothing is fetched.
 - `suspense: true` suspends until data, types the state as `success` and sends any error to the nearest error boundary. `enabled` cannot be combined with `suspense` (a type error): a suspending hook is never idle. Its fetch uses a `staleTime` of at least 1000 ms (yours, else the riva's default, whichever is longer).
 
-The mutation hooks return a callable with the state fields and `reset`. The callable (and `reset`) change identity with the state, so call them from handlers and never list them in an effect's dependencies; to react to a result, read `status` and `data`:
+`useRest` takes the path first (`useRest('get', path)` is gone and throws `RIVA_DEFINITION`). The mutation hook returns `{ run, status, data, error, reset }`, the same shape as `useMutation` and `useGraphQLMutation` (type `MutationResult`). `run` and `reset` keep their identity across renders; to react to a result, read `status` and `data`:
 
 ```tsx
-const add = useRestMutation('post', '/books');
-// Handler: fine.
-<button onClick={() => add({ json: { title: 'Dune' } })}>Add</button>;
-// Effect: depend on the state, not on `add`.
+const { run, status } = useRestMutation('post', '/books');
+<button onClick={() => run({ json: { title: 'Dune' } })}>Add</button>;
 useEffect(() => {
-	if (add.status === 'success') close();
-}, [add.status]);
+	if (status === 'success') close();
+}, [status]);
 ```
 
 ## Errors
@@ -138,7 +137,7 @@ A definition is a query or a mutation written once at module level, for what the
 
 ```ts
 import { mutation, query } from '@softistx/riva-rest';
-import { api } from './api'; // the OpenAPI client given to `rest(api)`
+import { api } from './api'; // the OpenAPI client given to `withRest(api)`
 
 export const invoice = query(api, 'get /invoices/{id}', { staleTime: '30s' });
 export const invoices = query(api, 'get /invoices');
@@ -174,8 +173,8 @@ export default function Root() {
 
 ## Entry points
 
-- `@softistx/riva-rest`: `query`, `mutation`, `rest` (the extension; also `{ query, mutation }`), `provideRest`, `httpyzTransport`, `toRivaError`, `operationOf` (reads a route into `{ id, method, path, operationId, hasInput }`) and the types: `RestTransport`, `RestContext`, `Route`, `Operation`, the simple API (`RestApi`, `UntypedRestApi`, `GetCall`, `MutateCall`, `RestSimpleOptions`, `RestBaseOptions`, `PathsOf`, `MutationMethod`, `InputArg`, `RestInput`), the options (`RestQueryOptions`, `RestMutationOptions`, `FreeQueryOptions`, `FreeMutationOptions`), the routes (`RouteOf`, `QueryRoute`, `MutationRoute`) and `InputOf`, `DataOf`, `SpecOf`, `ClientOf`, `DecodedOf`.
-- `@softistx/riva-rest/react`: `useRest`, `useRestMutation` and the types `Register`, `UseRest`, `UseRestMutation`, `UseRestOptions` (optional peers `react` and `@softistx/riva-react`).
+- `@softistx/riva-rest`: `query`, `mutation`, `withRest` (the extension), `provideRest`, `httpyzTransport`, `toRivaError`, `operationOf` (reads a route into `{ id, method, path, operationId, hasInput }`) and the types: `RestTransport`, `RestContext`, `Route`, `Operation`, the simple API (`RestApi`, `UntypedRestApi`, `RestQueryCall`, `RestMutateCall`, `TrackedInput` (re-exported from the core), `RestSimpleOptions`, `RestBaseOptions`, `PathsOf`, `MutationMethod`, `RestInput`), the options (`RestQueryOptions`, `RestMutationOptions`, `FreeQueryOptions`, `FreeMutationOptions`), the routes (`RouteOf`, `QueryRoute`, `MutationRoute`) and `InputOf`, `DataOf`, `SpecOf`, `ClientOf`, `DecodedOf`.
+- `@softistx/riva-rest/react`: `useRest`, `useRestMutation` and the types `Register`, `UseRest`, `UseRestMutation`, `UseRestOptions`, `MutationResult` (re-exported from `@softistx/riva-react/resource`) (optional peers `react` and `@softistx/riva-react`).
 - `@softistx/riva-rest/entities`: `restEntities` and the types `RestEntity`, `RestEntities`.
 - `@softistx/riva-rest/server`: `operations(api)` (a `DataSource` for `dataRoute`), the constant `PREFIX` (`'rest:'`, the prefix of every id the route serves: `rest:<operationId>`) and the types `DataSource`, `DataOperation`, `OperationsOf`.
 - `@softistx/riva-rest/bff`: `bffTransport(opts)` and the type `BffTransportOptions`.

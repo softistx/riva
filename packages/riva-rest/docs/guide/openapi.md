@@ -37,8 +37,6 @@ riva.get(invoices); // an operation whose input is all optional takes no variabl
 
 `ensure(riva, vars, { signal })`: the signal reaches the request, and an abort is a `RivaAbortError`.
 
-`rest.query` and `rest.mutation` are the same functions, for the `rest.query(api, 'get /invoices/{id}')` spelling.
-
 ## Traps
 
 - **The id is the route**; the cache key is the id plus the stable-serialized input, never hand-written.

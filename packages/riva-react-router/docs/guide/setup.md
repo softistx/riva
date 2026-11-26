@@ -12,13 +12,13 @@ One `Riva` per request on the server, hydrated in the browser. The middleware cr
 // app/riva.ts: one factory, so the request, the render and the browser build the same riva
 import { createGraphQLClient } from '@softistx/graphql-client';
 import { createRiva } from '@softistx/riva';
-import { graphql } from '@softistx/riva-graphql';
+import { withGraphQL } from '@softistx/riva-graphql';
 
 const API_URL = 'https://api.example.com/graphql'; // schematic: your API
 
 export function createAppRiva(cookie?: string) {
 	return createRiva({
-		graphql: graphql(createGraphQLClient({ url: API_URL, headers: cookie ? { cookie } : {} })),
+		graphql: withGraphQL(createGraphQLClient({ url: API_URL, headers: cookie ? { cookie } : {} })),
 		defaults: { staleTime: '30s' }, // fresh server data is not fetched again at hydration
 	});
 }
@@ -65,7 +65,7 @@ export default function Root() {
 }
 ```
 
-The `graphql` extension installs the transport itself: no `provideGraphQL` call. For REST, add `rest: rest(api)` to the same `createRiva` ([REST transport](https://github.com/softistx/riva/blob/develop/packages/riva-rest/docs/guide/transport.md)). A riva without extensions wires its transport in `setup` instead: [transport](https://github.com/softistx/riva/blob/develop/packages/riva-graphql/docs/guide/transport.md).
+The `graphql` extension installs the transport itself: no `provideGraphQL` call. For REST, add `rest: withRest(api)` to the same `createRiva` ([REST transport](https://github.com/softistx/riva/blob/develop/packages/riva-rest/docs/guide/transport.md)). A riva without extensions wires its transport in `setup` instead: [transport](https://github.com/softistx/riva/blob/develop/packages/riva-graphql/docs/guide/transport.md).
 
 ## Keep `/server` out of the browser
 

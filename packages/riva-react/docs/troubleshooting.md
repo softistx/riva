@@ -86,6 +86,32 @@ function Rename({ id, name }: { id: string; name: string }) {
 }
 ```
 
+## `isPending` is gone: read `status`
+
+**When:** `useMutation` (or `useGraphQLMutation`, `useRestMutation`) no longer returns `isPending`, and `disabled={isPending}` is `undefined` or a type error.
+
+**Why:** `status` is the one source of truth; `isPending` only repeated `status === 'loading'`.
+
+**Fix:**
+
+```tsx
+const { run, status } = useMutation(rename);
+<button disabled={status === 'loading'} onClick={() => run({ id, name }).catch(() => {})}>Rename</button>;
+```
+
+## `save` is now `run`, and it is stable
+
+**When:** a mutation hook result is no longer callable (`add(vars)` is not a function).
+
+**Why:** `useGraphQLMutation`, `useRestMutation` and `useMutation` all return `{ run, status, data, error, reset }`. `run` and `reset` keep their identity across renders, so they are safe in effect and memo dependencies. The handle of `riva.graphql.mutation()` and `riva.rest.mutation()` stays callable.
+
+**Fix:**
+
+```tsx
+const { run: save, status } = useGraphQLMutation(ADD_BOOK_MUTATION);
+await save({ title: 'Dune' }, { invalidates: [BOOKS_QUERY] });
+```
+
 ## `Store "<name>": "<key>" is read-only here; write it in an action.`
 
 Code: `RIVA_STORE` (`RivaError`).
