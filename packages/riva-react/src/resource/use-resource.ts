@@ -7,6 +7,7 @@ import {
 } from '@softistx/riva/resource';
 import { useCallback, useMemo, useRef, useSyncExternalStore } from 'react';
 import { useRiva } from '../context';
+import { retryOnReset } from '../suspend';
 
 export interface UseResourceOptions {
 	/** Suspends while there is no data and throws an error to the nearest error boundary. Needs an awaitable resource. Default false. */
@@ -58,7 +59,8 @@ function suspendOn(riva: Riva, key: string, res: PromiseLike<unknown>) {
 	if (!promise) {
 		const entries = map;
 		const done = () => void entries.delete(key);
-		promise = Promise.resolve(res).then(done, done);
+		// `then` runs now, so the fetch has started when React renders again.
+		promise = new Promise((ok, no) => res.then(ok, no)).then(done, done);
 		entries.set(key, promise);
 	}
 	return promise;
@@ -117,8 +119,9 @@ export function useResource<D>(
 		[raw, kept, opts.keepPrevious],
 	);
 	if (opts.suspense && state.status !== 'idle') {
-		if (state.status === 'error') throw state.error;
-		if (state.status === 'loading') {
+		const retry = state.status === 'error' && retryOnReset(riva, state.error);
+		if (state.status === 'error' && !retry) throw state.error;
+		if (state.status === 'loading' || retry) {
 			if (!('then' in res))
 				throw new TypeError(
 					'useResource: `suspense` needs an awaitable resource, not a stream.',

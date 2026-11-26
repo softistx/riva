@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { query } from '@softistx/riva';
 import { deferred, newRiva } from '../test/render';
-import { suspend } from './suspend';
+import { retryOnReset, suspend } from './suspend';
 
 test('the same riva and key get the same promise until it settles', async () => {
 	const gate = deferred<number>();
@@ -43,4 +43,15 @@ test('a failed fetch resolves the promise: the error is read from the state', as
 	const riva = newRiva();
 	await suspend(riva, q, 'k', undefined);
 	expect(riva.get(q).status).toBe('error');
+});
+
+test('retryOnReset throws an error once, then retries after a later task, once', async () => {
+	const riva = newRiva();
+	const err = new Error('x');
+	expect(retryOnReset(riva, err)).toBe(false);
+	expect(retryOnReset(riva, err)).toBe(false); // the synchronous render retry
+	await new Promise((r) => setTimeout(r, 0));
+	expect(retryOnReset(riva, err)).toBe(true); // a reset
+	expect(retryOnReset(riva, err)).toBe(false); // recorded afresh
+	expect(retryOnReset(riva, new Error('y'))).toBe(false); // a new error starts over
 });

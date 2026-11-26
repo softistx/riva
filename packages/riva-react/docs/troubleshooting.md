@@ -39,38 +39,6 @@ This is not the core's "No Riva in scope: read through riva.get(def)…" error, 
 const patients = query({ id: 'patients', staleTime: '30s', fetch });
 ```
 
-## The error boundary shows the error again after a reset
-
-**When:** a `suspense: true` query failed, the boundary shows its fallback, and resetting the boundary shows the same error at once.
-
-**Why:** the error is the query's state, and nothing refetches it: the component that would observe it was never mounted.
-
-**Fix:** start the fetch again before resetting the boundary. The component then suspends and renders the new result.
-
-```tsx
-import { Suspense } from 'react';
-import { ErrorBoundary } from 'react-error-boundary';
-import { useRiva } from '@softistx/riva-react';
-
-export function Page({ school }: { school: string }) {
-	const riva = useRiva();
-	return (
-		<ErrorBoundary
-			onReset={() => patients.prefetch(riva, { school })}
-			fallbackRender={({ resetErrorBoundary }) => (
-				<button onClick={resetErrorBoundary}>Retry</button>
-			)}
-		>
-			<Suspense fallback={<p>Loading…</p>}>
-				<PatientList school={school} />
-			</Suspense>
-		</ErrorBoundary>
-	);
-}
-```
-
-`ErrorBoundary` is the one of [react-error-boundary](https://www.npmjs.com/package/react-error-boundary).
-
 ## Unhandled rejection from `run`
 
 **When:** `useMutation`'s `run(vars)` fails and the console reports an unhandled promise rejection.

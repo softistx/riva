@@ -1,7 +1,7 @@
 import type { Query, QueryState } from '@softistx/riva';
 import { useMemo } from 'react';
 import { type AnyQuery, useQueryState } from './query-state';
-import { suspend } from './suspend';
+import { retryOnReset, suspend } from './suspend';
 
 export interface UseQueryOptions {
 	/** `false` observes nothing and reads `idle`. Default true. */
@@ -65,7 +65,10 @@ export function useQuery(
 				q.vars,
 			);
 		}
-		if (state.status === 'error') throw state.error;
+		if (state.status === 'error') {
+			if (!retryOnReset(q.riva, state.error)) throw state.error;
+			throw suspend(q.riva, def, q.key, q.vars);
+		}
 		if (state.status !== 'success' || state.isFetching)
 			throw suspend(q.riva, def, q.key, q.vars);
 	}

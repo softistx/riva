@@ -32,3 +32,29 @@ export function suspend(
 	}
 	return promise;
 }
+
+// The errors a suspense hook threw, per riva: false until a later task arms them.
+const ERRORS = {};
+
+/**
+ * Whether a suspense hook that reads `error` should refetch instead of
+ * throwing it. The first read throws it and arms it on a later task, so React's
+ * synchronous render retry (dev, StrictMode) throws the same error again; a
+ * read of an armed error is a boundary reset, and the caller suspends on a
+ * fresh fetch. A new failure is a new error object, so the cycle restarts.
+ * The server always throws.
+ */
+export function retryOnReset(riva: Riva, error: unknown): boolean {
+	if (!('document' in globalThis)) return false;
+	const seen: Map<unknown, boolean> =
+		(riva.slots.get(ERRORS) as Map<unknown, boolean> | undefined) ?? new Map();
+	riva.slots.set(ERRORS, seen);
+	const armed = seen.get(error);
+	if (armed) return seen.delete(error);
+	if (armed === undefined) {
+		const errors = seen;
+		errors.set(error, false);
+		setTimeout(() => errors.has(error) && errors.set(error, true), 0);
+	}
+	return false;
+}
