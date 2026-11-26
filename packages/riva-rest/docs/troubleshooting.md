@@ -153,20 +153,27 @@ Code: `RIVA_CACHE`.
 **Fix:** create the policy once and share that very object between the riva's definitions.
 
 ```ts
-export const cache = restEntities({ Invoice: { is: (o) => 'number' in o, key: (o) => o['id'] as string } });
+export const cache = restEntities({ Invoice: (o) => o['id'] as string });
 ```
 
 ## An entity does not update the other queries
 
-**Why:** only an object `is` recognises is stored as an entity, and it needs the `key` to return a string or number. An object that already has a `__typename` keeps it.
+**Why:** only an object `is` recognises (in the shorthand, one whose key function returns a value) is stored as an entity, and it needs the `key` to return a string or number. An object that already has a `__typename` keeps it.
 
-**Fix:** check `is` against a real response object, and that the queries share the same `restEntities()` policy.
+**Fix:** check `is` (or, in the shorthand, the key function: it must return a string or number) against a real response object, and that the queries share the same `restEntities()` policy.
 
 ## A recognised object is the wrong type
 
 **Why:** the first type whose `is` matches wins, so a loose check (`'id' in o`) tags every resource as the first type.
 
-**Fix:** make `is` discriminate on something only that resource has.
+**Fix:** make `is` discriminate on something only that resource has. The same goes for the shorthand `{ Invoice: (o) => o['id'] }`: a bare key function matches every object with an id, so every object is tagged as the first type. Return `undefined` for what is not that type, or use the full form:
+
+```ts
+restEntities({
+	Invoice: (o) => ('invoiceNo' in o ? (o['id'] as string) : undefined),
+	Customer: { is: (o) => 'email' in o, key: (o) => o['id'] as string },
+});
+```
 
 ## A request refuses a field called `__typename`
 
