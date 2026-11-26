@@ -1,3 +1,4 @@
+export { toMs } from '../duration';
 export { abortable } from './abortable';
 export { type CallOptions, callResource, mutateInvalidating } from './call';
 export { GraphQLError, type GraphQLErrorEntry } from './graphql-error';

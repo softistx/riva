@@ -337,6 +337,34 @@ test('a Suspense mount fetches once at the default staleTime', async () => {
 	await m.unmount();
 });
 
+test("a Suspense mount trusts the definition's own staleTime", async () => {
+	const def = query<{ school: string }, string>({
+		id: 'uq/suspense-def-stale',
+		retry: 0,
+		staleTime: '5m',
+		fetch: async () => 'x',
+	});
+	const riva = newRiva();
+	const sub = spyOn(riva, 'subscribe');
+	function C() {
+		return h(
+			'p',
+			null,
+			useQuery(def, { school: 's' }, { suspense: true }).data,
+		);
+	}
+	const m = await mount(
+		h(Suspense, { fallback: h('p', null, 'loading') }, h(C)),
+		riva,
+	);
+	await flush();
+	await flush();
+	expect(m.text()).toBe('x');
+	const opts = (sub.mock.calls as unknown[][]).map((c) => c[3]);
+	expect(opts).toContainEqual({ staleTime: 300_000 });
+	await m.unmount();
+});
+
 test('a suspense query that resolves undefined fetches once, with no loop', async () => {
 	const riva = newRiva();
 	let calls = 0;

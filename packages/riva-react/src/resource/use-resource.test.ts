@@ -262,6 +262,24 @@ test('suspenseStaleTime is the longer of the call or riva default and 1000 ms', 
 	expect(suspenseStaleTime(slow)).toBe(300_000);
 });
 
+test("suspenseStaleTime reads the definition's staleTime, under the call's and over the riva default", () => {
+	const riva = newRiva();
+	const def = query<{ school: string }, string>({
+		id: 'ur/def-stale',
+		staleTime: '5m',
+		fetch: async () => 'x',
+	});
+	expect(suspenseStaleTime(riva, undefined, def)).toBe(300_000);
+	expect(suspenseStaleTime(riva, '30s', def)).toBe(30_000);
+	expect(suspenseStaleTime(riva, 200, def)).toBe(1000);
+});
+
+test('suspenseStaleTime throws RIVA_DURATION on an invalid duration', () => {
+	expect(() => suspenseStaleTime(newRiva(), 'soon' as never)).toThrow(
+		/RIVA_DURATION|Invalid duration/,
+	);
+});
+
 test('suspense throws an error to the boundary and skips a disabled resource', async () => {
 	const def = users('ur/suspense-err', () => Promise.reject(new Error('bad')));
 	function C({ enabled }: { enabled: boolean }) {

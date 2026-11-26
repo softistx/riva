@@ -6,14 +6,12 @@ import {
 } from '@softistx/riva';
 import { useCallback, useRef, useSyncExternalStore } from 'react';
 import { useRiva } from './context';
+import { suspenseStaleTime } from './resource/use-resource';
 
 // biome-ignore lint/suspicious/noExplicitAny: any query definition
 export type AnyQuery = Query<any, any, any>;
 
 const NOOP = () => {};
-
-/** How long (ms) a mount trusts what a Suspense render fetched. */
-const SUSPENSE_FRESH = 1000;
 
 /** What a disabled query reads: idle, with no entry created. */
 const DISABLED: QueryState<never> = Object.freeze({
@@ -61,7 +59,9 @@ export function useQueryState<S extends QueryState<unknown>>(
 						stable.vars,
 						notify,
 						// What a Suspense render just fetched is not fetched again on mount.
-						suspense ? { staleTime: SUSPENSE_FRESH } : undefined,
+						suspense
+							? { staleTime: suspenseStaleTime(riva, undefined, def) }
+							: undefined,
 					)
 				: NOOP,
 		[riva, def, stable, enabled, suspense],
