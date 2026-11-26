@@ -1,5 +1,13 @@
 # @softistx/riva-react-router
 
+## 0.6.0
+
+### Patch Changes
+
+- Updated dependencies [[`45849d3`](https://github.com/softistx/riva/commit/45849d31ba3d245d22ef014bc79ab07f4a017fc6)]:
+  - @softistx/riva@0.6.0
+  - @softistx/riva-react@0.6.0
+
 ## 0.5.0
 
 ### Patch Changes

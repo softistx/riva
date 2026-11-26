@@ -1,6 +1,6 @@
 {
 	"name": "@softistx/riva",
-	"version": "0.5.0",
+	"version": "0.6.0",
 	"description": "Core: signals, Riva, query and mutation engine, normalized and keyed cache, pagination, optimistic layer, dehydrate and hydrate. Pure TypeScript, no DOM, no React.",
 	"license": "MIT",
 	"type": "module",

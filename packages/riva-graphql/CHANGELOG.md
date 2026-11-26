@@ -1,5 +1,17 @@
 # @softistx/riva-graphql
 
+## 0.6.0
+
+### Minor Changes
+
+- [#92](https://github.com/softistx/riva/pull/92) [`c864331`](https://github.com/softistx/riva/commit/c86433103aab3ad349a4f8002095e158f535dc25) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `riva.graphql.query`, `useGraphQL`, `riva.rest.get` and `useRest` also take a query definition (from `query(DOC)` or `query(api, route)`), used as is: a loader's `ensure` and the call or hook share one cache entry, and `invalidates: [def]` reaches it.
+
+### Patch Changes
+
+- Updated dependencies [[`45849d3`](https://github.com/softistx/riva/commit/45849d31ba3d245d22ef014bc79ab07f4a017fc6)]:
+  - @softistx/riva@0.6.0
+  - @softistx/riva-react@0.6.0
+
 ## 0.5.0
 
 ### Patch Changes
