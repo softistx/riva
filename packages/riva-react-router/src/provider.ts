@@ -56,7 +56,10 @@ export function RivaRouterProvider({
 	const riva = given;
 	const [own] = useState(() => {
 		const c = riva ?? createRiva();
-		setup?.(c, { server: typeof document === 'undefined' });
+		setup?.(c, {
+			// Mirrors the core's isBrowser().
+			server: !('document' in globalThis),
+		});
 		return c;
 	});
 	const active = riva ?? own;

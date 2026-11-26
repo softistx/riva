@@ -76,6 +76,27 @@ describe('instance', () => {
 		}
 	});
 
+	test('documented limit: a never-held older definition takes the name back once', () => {
+		const a = make('i5');
+		const b = make('i5');
+		const d = make('i5');
+		const c = createRiva();
+		const g = globalThis as { document?: unknown };
+		g.document = {};
+		try {
+			instance(b, c);
+			instance(d, c);
+			// `a` was never the holder: it is taken for a newer module and takes over.
+			const ia = instance(a, c);
+			expect(c.slots.get('name:i5')).toBe(a);
+			// From then on `d` is a former holder and resolves to `a`.
+			expect(instance(d, c)).toBe(ia);
+			expect(c.slots.get('name:i5')).toBe(a);
+		} finally {
+			delete g.document;
+		}
+	});
+
 	test('on the server a definition other than the holder is still refused', () => {
 		const a = make('i4');
 		const c = createRiva();

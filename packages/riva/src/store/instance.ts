@@ -16,7 +16,13 @@ export type Instance = readonly [
  * claims the store's name on the riva: a second store with that name is
  * refused on the server, and takes over in a browser (a hot-reloaded module).
  * A replaced definition is remembered (`was:<name>`): a component still holding
- * it resolves to the current instance and does not take the name back.
+ * it resolves to the current instance and does not take the name back. The
+ * record is weak, so a replaced definition can be collected.
+ *
+ * Documented limit: only former holders are remembered. A definition that was
+ * never the holder (first read only after two newer ones exist) cannot be told
+ * from a newer hot-reloaded module without an ordering, so it takes the name
+ * back once; after that it is a remembered holder like the others.
  */
 export function instance(def: StoreDef, riva: Riva): Instance {
 	const cached = riva.slots.get(def) as Instance | undefined;
@@ -24,7 +30,7 @@ export function instance(def: StoreDef, riva: Riva): Instance {
 	const { name, sigs, members, actions } = def;
 	const claim = `name:${name}`;
 	const holder = riva.slots.get(claim) as StoreDef | undefined;
-	const was = riva.slots.get(`was:${name}`) as Set<StoreDef> | undefined;
+	const was = riva.slots.get(`was:${name}`) as WeakSet<StoreDef> | undefined;
 	if (holder !== undefined && was?.has(def)) return instance(holder, riva);
 	if (holder !== undefined) {
 		if (!isBrowser())
@@ -32,7 +38,7 @@ export function instance(def: StoreDef, riva: Riva): Instance {
 				`Store "${name}": two stores are named "${name}" on this riva: give each store a unique name.`,
 			);
 		riva.slots.delete(holder);
-		riva.slots.set(`was:${name}`, (was ?? new Set()).add(holder));
+		riva.slots.set(`was:${name}`, (was ?? new WeakSet<StoreDef>()).add(holder));
 		for (const sig of Object.values(holder.sigs))
 			if (sig.name) riva.graph.named.delete(sig.name);
 	}
