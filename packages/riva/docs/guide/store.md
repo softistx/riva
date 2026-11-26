@@ -73,7 +73,7 @@ They receive `(s, get)`: `s` holds the state only (no other computed), `get(def)
 
 ## Names
 
-`name` is required. A state, computed or action key cannot repeat, nor be `kind`, `name`, `reset`, `bind` or `then` (refused at definition, and a type error). Two stores with one name on a riva are refused with `RIVA_STORE` on the server when the second is first used; in a browser the newer definition takes over (hot reload) and the older one is dropped from that riva.
+`name` is required. A state, computed or action key cannot repeat, nor be `kind`, `name`, `reset`, `bind` or `then` (refused at definition, and a type error). Two stores with one name on a riva are refused with `RIVA_STORE` on the server when the second is first used; in a browser the newer definition takes over (hot reload) and the older one is dropped from that riva. Only former holders are remembered: a definition that was never the holder (first read after two newer ones exist) cannot be told from a newer module and takes the name back once.
 
 ## `reset` and SSR
 
