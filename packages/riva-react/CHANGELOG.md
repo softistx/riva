@@ -1,5 +1,16 @@
 # @softistx/riva-react
 
+## 0.8.0
+
+### Minor Changes
+
+- [#107](https://github.com/softistx/riva/pull/107) [`afa8bc9`](https://github.com/softistx/riva/commit/afa8bc94aa29319cd5788612f0416c8f38b61256) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Resetting the error boundary of a Suspense query or resource that failed now retries it by itself: `useQuery` and `useResource` with `suspense` throw the error once, then refetch and suspend when the boundary renders them again, and a new failure reaches the boundary again. The `onReset={() => def.prefetch(…)}` workaround is no longer needed. React's synchronous render retry never refetches, and the server still throws. The error is armed one task after its first throw, so React's synchronous retry never refetches; any later read of the same error object counts as a reset and costs one extra fetch.
+
+### Patch Changes
+
+- Updated dependencies []:
+  - @softistx/riva@0.8.0
+
 ## 0.7.2
 
 ### Patch Changes
