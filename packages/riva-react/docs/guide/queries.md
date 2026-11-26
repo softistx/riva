@@ -26,7 +26,7 @@ function PatientList({ school }: { school: string }) {
 | Option | Default | Effect |
 | --- | --- | --- |
 | `enabled` | `true` | `false` observes nothing, creates no entry and reads `idle`. Use it for a query that waits on another value. |
-| `suspense` | `false` | The component suspends while there is no data (see [suspense](./suspense.md)). |
+| `suspense` | `false` | The component suspends while there is no data (see [suspense](./suspense.md)); the mount then honours the definition's `staleTime`, at least 1000 ms. |
 
 ## Result
 

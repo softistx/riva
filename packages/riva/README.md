@@ -92,6 +92,7 @@ For adapter authors and wrappers, also from `@softistx/riva/resource`:
 - `trackedInput(riva, input)`: reads a plain value, a signal or computed, or a tracked function (type `TrackedInput`); `isReactive(x)` tells a signal or computed.
 - `abortable(resource, signal)`: `await` rejects with a `RivaAbortError` on abort.
 - `callResource(riva, def, read, call)`: the resource of one query call, from its `enabled`, `keepPrevious`, `staleTime` (type `CallOptions`) and `signal`.
+- `toMs(duration)`: a duration (`'30s'`, `'1.5m'` or a number) as milliseconds; an invalid string throws `RIVA_DURATION`.
 - `mutateInvalidating(riva, def, vars, call, target)`: runs a mutation, then marks stale what `call.invalidates` names.
 
 ## Signals

@@ -9,7 +9,7 @@ export interface CallResourceOptions {
 	suspense?: boolean;
 	/** While new variables load, show the previous ones' data (`placeholder: true`). Default true. */
 	keepPrevious?: boolean;
-	/** Replaces the riva's default `staleTime` for this hook (at least 1000 ms while it suspends). */
+	/** Replaces the riva's default `staleTime` for this hook (never below 1000 ms under Suspense). */
 	staleTime?: Duration;
 	/** A boolean, or a function read in a tracked computed. While false the state is `idle` and nothing is fetched. Default true. */
 	enabled?: boolean | (() => boolean);

@@ -11,6 +11,7 @@ test('the subpath exports the resource builders and nothing else at runtime', ()
 		'mutationHandle',
 		'resource',
 		'streamResource',
+		'toMs',
 		'trackedInput',
 	]);
 });

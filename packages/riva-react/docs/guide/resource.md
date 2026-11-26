@@ -12,7 +12,7 @@ const state = useResource(key, (riva) => riva.graphql.query(BOOKS_QUERY, vars), 
 - `state` is the resource state: `idle | loading | success | error`, with `isFetching` and `placeholder`. A fetch that settles with `undefined` is `success` with `data: undefined`.
 - `keepPrevious` (default true) keeps the data of the previous key as a placeholder while the new one loads. It never carries data across a disabled gap: after the resource was `idle` (`enabled` false), a new key shows `loading`, not the old key's data.
 - `suspense: true` suspends until data and types the state as success. Any error, a partial GraphQL one included, is thrown to the error boundary. A disabled (idle) resource does not suspend.
-- Under suspense, give the call `staleTime: suspenseStaleTime(riva, yourStaleTime)`: at least 1000 ms (your value, else the riva's default, whichever is longer), so what the render just fetched is not fetched again at mount.
+- Under suspense, give the call `staleTime: suspenseStaleTime(riva, yourStaleTime, def)` (pass the query definition so its own `staleTime` counts): at least 1000 ms (the call's value, else the definition's, else the riva's default; an invalid duration string throws `RIVA_DURATION`), so what the render just fetched is not fetched again at mount.
 
 ## useMutationHandle
 
@@ -39,7 +39,7 @@ const state = useResource(input.key, (riva) =>
 
 ## For adapter authors: useCallResource
 
-`useCallResource(id, input, options, make)` is `useStableInput` and `useResource` together, what `useGraphQL` and `useRest` share. `id` names the operation, `options` are `{ suspense, keepPrevious, staleTime, enabled }`, and `make(riva, input, call)` builds the resource from the stabilised input and the call options (`enabled`, `keepPrevious`, and a `staleTime` raised to at least 1000 ms under Suspense).
+`useCallResource(id, input, options, make)` is `useStableInput` and `useResource` together, what `useGraphQL` and `useRest` share. `id` names the operation, `options` are `{ suspense, keepPrevious, staleTime, enabled }`, and `make(riva, input, call)` builds the resource from the stabilised input and the call options (`enabled`, `keepPrevious`, and a `staleTime` raised to at least 1000 ms under Suspense: the call's, else the riva's default).
 
 - `CallResourceOptions`: what an adapter hook takes (`suspense`, `keepPrevious`, `staleTime`, `enabled`).
 - `ResourceCall`: what `make` receives as `call` (`enabled`, and `keepPrevious` and `staleTime` when set).
