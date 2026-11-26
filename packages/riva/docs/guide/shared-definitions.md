@@ -33,9 +33,9 @@ export const renamePatient = mutation(RENAME_PATIENT_MUTATION, {
 	invalidates: [patients], // observed lists refetch once it succeeded
 });
 
-// `graphql(client)` also gives the riva its transport: no `provideGraphQL` needed.
+// `withGraphQL(client)` also gives the riva its transport: no `provideGraphQL` needed.
 const riva = createRiva({
-	graphql: graphql(createGraphQLClient({ url: 'https://api.example.com/graphql' })),
+	graphql: withGraphQL(createGraphQLClient({ url: 'https://api.example.com/graphql' })),
 });
 
 await patients.ensure(riva, { school: 'north' }); // fetch if missing or stale, else the cache
@@ -115,7 +115,7 @@ The component can read the same entry through the simple API's hook: `const pati
 
 ## Entities
 
-For GraphQL and REST, the simple API takes the entity policy once for the whole riva: `graphql(client, { cache: normalized() })` and `rest(api, { cache: restEntities(...) })`. A definition takes `cache` per query or mutation, which is the way for a core `query()` and for a riva that mixes policies. Entities written by either are read by both:
+For GraphQL and REST, the simple API takes the entity policy once for the whole riva: `withGraphQL(client, { cache: normalized() })` and `withRest(api, { cache: restEntities(...) })`. A definition takes `cache` per query or mutation, which is the way for a core `query()` and for a riva that mixes policies. Entities written by either are read by both:
 
 ```ts
 import { createRiva, query } from '@softistx/riva';

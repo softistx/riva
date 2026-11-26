@@ -1,7 +1,18 @@
 import { expectTypeOf, test } from 'bun:test';
 import { createRiva, type Riva } from '@softistx/riva';
-import { graphql } from '@softistx/riva-graphql';
-import { rest } from '@softistx/riva-rest';
+import {
+	type GraphQLMutateCall,
+	type GraphQLQueryCall,
+	type GraphQLSubscribeCall,
+	type TrackedInput as GraphQLTracked,
+	withGraphQL,
+} from '@softistx/riva-graphql';
+import {
+	type RestMutateCall,
+	type RestQueryCall,
+	type TrackedInput as RestTracked,
+	withRest,
+} from '@softistx/riva-rest';
 import { RouterContextProvider } from 'react-router';
 import {
 	type RegisteredRiva,
@@ -12,8 +23,8 @@ import {
 
 const createAppRiva = () =>
 	createRiva({
-		graphql: graphql({ request: async () => ({ data: {} }) } as never),
-		rest: rest({ baseUrl: 'https://api.example.com' }),
+		graphql: withGraphQL({ request: async () => ({ data: {} }) } as never),
+		rest: withRest({ baseUrl: 'https://api.example.com' }),
 	});
 type AppRiva = ReturnType<typeof createAppRiva>;
 
@@ -38,4 +49,13 @@ test('registered, rivaOf is typed by the app riva', () => {
 	expectTypeOf(riva.graphql.query).toBeFunction();
 	expectTypeOf(riva.rest.get).toBeFunction();
 	expectTypeOf<RivaFrom<{ riva: AppRiva }>>().toEqualTypeOf<AppRiva>();
+});
+
+test('both adapters share the core TrackedInput and each call type carries its protocol', () => {
+	expectTypeOf<GraphQLTracked<number>>().toEqualTypeOf<RestTracked<number>>();
+	expectTypeOf<GraphQLQueryCall>().toBeObject();
+	expectTypeOf<RestQueryCall>().toBeObject();
+	expectTypeOf<GraphQLMutateCall>().toBeObject();
+	expectTypeOf<RestMutateCall>().toBeObject();
+	expectTypeOf<GraphQLSubscribeCall<number>>().toBeObject();
 });

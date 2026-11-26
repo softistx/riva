@@ -23,7 +23,7 @@ import { graphql } from '@softistx/riva-graphql';
 import { RivaProvider } from '@softistx/riva-react';
 
 const riva = createRiva({
-	graphql: graphql(createGraphQLClient({ url: 'https://api.example.com/graphql' })), // per request on the server
+	graphql: withGraphQL(createGraphQLClient({ url: 'https://api.example.com/graphql' })), // per request on the server
 	defaults: { staleTime: '30s' },
 });
 
@@ -218,7 +218,7 @@ function PatientList({ school }: { school: string }) {
 
 export async function handle(school: string): Promise<Response> {
 	const riva = createRiva({
-		graphql: graphql(createGraphQLClient({ url: 'https://api.example.com/graphql' })),
+		graphql: withGraphQL(createGraphQLClient({ url: 'https://api.example.com/graphql' })),
 		defaults: { staleTime: '30s' },
 	}); // one per request
 	await riva.graphql.query(PATIENTS_QUERY, { school }); // so the first render has data

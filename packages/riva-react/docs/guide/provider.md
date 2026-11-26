@@ -10,7 +10,7 @@ import { RivaProvider, useRiva } from '@softistx/riva-react';
 import { PATIENTS_QUERY, RENAME_PATIENT_MUTATION } from './graphql'; // typed documents
 
 const riva = createRiva({
-	graphql: graphql(createGraphQLClient({ url: 'https://api.example.com/graphql' })), // per request on the server
+	graphql: withGraphQL(createGraphQLClient({ url: 'https://api.example.com/graphql' })), // per request on the server
 	defaults: { staleTime: '30s' },
 });
 

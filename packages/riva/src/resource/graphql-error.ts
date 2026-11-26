@@ -18,7 +18,7 @@ const describe = (e: GraphQLErrorEntry): string =>
  * `cause` is the client's error. A `RivaRequestError`, so `instanceof` and the
  * retry policy hold. Thrown by `@softistx/riva-graphql`.
  */
-export class GraphQLError extends RivaRequestError {
+export class RivaGraphQLError extends RivaRequestError {
 	readonly errors: readonly GraphQLErrorEntry[];
 	readonly data: unknown;
 	constructor(
@@ -28,7 +28,7 @@ export class GraphQLError extends RivaRequestError {
 		options: { retryable: boolean; status?: number; cause?: unknown },
 	) {
 		super(code, errors.map(describe).join('; '), options);
-		this.name = 'GraphQLError';
+		this.name = 'RivaGraphQLError';
 		this.errors = errors;
 		this.data = data;
 	}

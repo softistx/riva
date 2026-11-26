@@ -21,7 +21,7 @@ import { graphql } from '@softistx/riva-graphql';
 import { BOOKS_QUERY } from './graphql'; // a typed document
 
 const riva = createRiva({
-	graphql: graphql(createGraphQLClient({ url: 'https://api.example.com/graphql' })),
+	graphql: withGraphQL(createGraphQLClient({ url: 'https://api.example.com/graphql' })),
 	defaults: { staleTime: '30s' }, // every query that sets none of its own
 });
 

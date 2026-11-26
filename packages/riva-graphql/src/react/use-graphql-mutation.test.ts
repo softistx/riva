@@ -9,8 +9,8 @@ import {
 	VIEWER_QUERY,
 } from '../../test/fixtures';
 import { flush, h, mount } from '../../test/render';
-import type { MutateCall } from '../calls';
-import { graphql } from '../simple';
+import type { GraphQLMutateCall } from '../calls';
+import { withGraphQL } from '../simple';
 import { useGraphQL } from './use-graphql';
 import { useGraphQLMutation } from './use-graphql-mutation';
 
@@ -21,7 +21,7 @@ test('idle, loading, success, reset; a call invalidates the observed query', asy
 			? { renamePatient: { id: '1', name: 'Z' } }
 			: { viewer: { id: String(++n) } },
 	);
-	const riva = createRiva({ graphql: graphql(t) });
+	const riva = createRiva({ graphql: withGraphQL(t) });
 	let rename!: { status: string; reset(): void };
 	let shown = '';
 	function C() {
@@ -49,7 +49,7 @@ test('idle, loading, success, reset; a call invalidates the observed query', asy
 
 test('a failure rejects the call and lands in the state', async () => {
 	const riva = createRiva({
-		graphql: graphql(
+		graphql: withGraphQL(
 			fakeTransport(() => {
 				throw new Error('no');
 			}),
@@ -82,7 +82,7 @@ test('types: variables and data come from the document', () => {
 		MutationHook<
 			{ id: string; name: string },
 			{ renamePatient: { id: string; name: string } },
-			MutateCall
+			GraphQLMutateCall
 		>
 	>();
 });

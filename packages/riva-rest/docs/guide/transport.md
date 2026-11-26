@@ -2,7 +2,7 @@
 
 ## What it is for
 
-The transport lives on the `Riva` that runs the calls. `rest(api)` installs it when you create the riva (on the server, one riva per request).
+The transport lives on the `Riva` that runs the calls. `withRest(api)` installs it when you create the riva (on the server, one riva per request).
 
 ## OpenAPI mode wiring
 
@@ -23,10 +23,10 @@ import { operations } from './generated/openapi/operations'; // from `nxgt-opena
 const http = createHttpClient({ baseUrl: 'https://api.example.com', timeout: 10_000 });
 export const api = createOpenApiClient(http, operations); // the client the definitions take too
 
-export const riva = createRiva({ rest: rest(api) });
+export const riva = createRiva({ rest: withRest(api) });
 ```
 
-With no spec, `rest({ baseUrl, headers? })` gives the untyped calls over `fetch` ([simple API](./simple-api.md)).
+With no spec, `withRest({ baseUrl, headers? })` gives the untyped calls over `fetch` ([simple API](./simple-api.md)).
 
 ## `provideRest` and `httpyzTransport(http, api?)`
 
@@ -49,7 +49,7 @@ provideRest(riva, httpyzTransport(http)); // no spec: free fetchers only
 
 ## Traps
 
-- A read on a riva with no transport throws `RivaScopeError` (the SSR leak guard): there is no module-level riva. Create the riva with `rest(...)`, or `provideRest` it where you create it.
+- A read on a riva with no transport throws `RivaScopeError` (the SSR leak guard): there is no module-level riva. Create the riva with `withRest(...)`, or `provideRest` it where you create it.
 - A transport with no OpenAPI client cannot run an OpenAPI definition: it fails with `RIVA_REST_UNWIRED`.
 - On the server, create the `http` client inside the request, so its headers (a cookie) belong to that request.
 

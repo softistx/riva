@@ -22,7 +22,7 @@ const API_URL = 'https://api.example.com/graphql'; // schematic: your API
 
 export function createAppRiva(cookie?: string) {
 	return createRiva({
-		graphql: graphql(createGraphQLClient({ url: API_URL, headers: cookie ? { cookie } : {} })),
+		graphql: withGraphQL(createGraphQLClient({ url: API_URL, headers: cookie ? { cookie } : {} })),
 		defaults: { staleTime: '30s' }, // fresh server data is not fetched again at hydration
 	});
 }

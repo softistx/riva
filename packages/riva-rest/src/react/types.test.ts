@@ -6,7 +6,7 @@ import type {
 	SuspendedState,
 } from '@softistx/riva-react/resource';
 import type { ClientOperations, Invoice } from '../../test/fixtures';
-import type { MutateCall } from '../calls';
+import type { RestMutateCall } from '../calls';
 import type {
 	UntypedUseRest,
 	UseRest,
@@ -45,7 +45,7 @@ test('Register types useRestMutation by the spec', () => {
 		MutationHook<
 			{ json: { number: string; total: number } },
 			Invoice,
-			MutateCall
+			RestMutateCall
 		>
 	>();
 });
