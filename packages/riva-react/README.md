@@ -46,14 +46,14 @@ import { BOOKS_QUERY, ADD_BOOK_MUTATION } from './graphql'; // typed documents
 
 function Books({ first }: { first: number }) {
 	const books = useGraphQL(BOOKS_QUERY, { first }); // typed from the document
-	const add = useGraphQLMutation(ADD_BOOK_MUTATION);
+	const { run: add } = useGraphQLMutation(ADD_BOOK_MUTATION);
 	if (books.status === 'loading') return <Spinner />;
 	if (books.status === 'error') return <Failure error={books.error} />;
 	return <button onClick={() => add({ title: 'Dune' }, { invalidates: [BOOKS_QUERY] })}>{books.data.books.length}</button>;
 }
 ```
 
-The REST equivalents are `useRest('get', path, input)` and `useRestMutation(method, path)`. Their guides: [GraphQL README](https://github.com/softistx/riva/blob/develop/packages/riva-graphql/README.md#react-hooks), [REST README](https://github.com/softistx/riva/blob/develop/packages/riva-rest/README.md#react-hooks).
+The REST equivalents are `useRest(path, input)` and `useRestMutation(method, path)`. Their guides: [GraphQL README](https://github.com/softistx/riva/blob/develop/packages/riva-graphql/README.md#react-hooks), [REST README](https://github.com/softistx/riva/blob/develop/packages/riva-rest/README.md#react-hooks).
 
 ## Resource hooks
 
@@ -71,13 +71,13 @@ function Books({ first }: { first: number }) {
 	const state = useResource(input.key, (riva) =>
 		riva.graphql.query(BOOKS_QUERY, input.input as { first: number }, { enabled: input.enabled }),
 	);
-	// useMutationHandle(key, make): a callable with the mutation state fields and reset().
-	const save = useMutationHandle('add-book', (riva) => riva.graphql.mutation(ADD_BOOK_MUTATION));
+	// useMutationHandle(key, make): { run, status, data, error, reset }, run and reset stable.
+	const { run: save } = useMutationHandle('add-book', (riva) => riva.graphql.mutation(ADD_BOOK_MUTATION));
 	return null;
 }
 ```
 
-`useResource(key, make, { suspense?, keepPrevious? })` makes one resource per riva and key, as a discriminated state; `suspense: true` suspends and types it as success, and `suspenseStaleTime(riva, staleTime?, def?)` is the `staleTime` such a fetch should use (the call's, else the definition's `def`, else the riva's default, at least 1000 ms; an invalid duration string throws `RIVA_DURATION`). `useStableInput` returns `{ key, input, enabled }`; a function input is evaluated at each render (untracked) to derive the key, so it follows props, and the resource still tracks the signals it reads. A disabled hook never calls it. The callable of `useMutationHandle` and its `reset` change identity with the state: call them from handlers, never list them in effect dependencies. For adapter authors: `useCallResource(id, input, options, make)` is what `useGraphQL` and `useRest` share (stable key, `enabled`, `keepPrevious`, Suspense `staleTime`). [Guide](./docs/guide/resource.md).
+`useResource(key, make, { suspense?, keepPrevious? })` makes one resource per riva and key, as a discriminated state; `suspense: true` suspends and types it as success, and `suspenseStaleTime(riva, staleTime?, def?)` is the `staleTime` such a fetch should use (the call's, else the definition's `def`, else the riva's default, at least 1000 ms; an invalid duration string throws `RIVA_DURATION`). `useStableInput` returns `{ key, input, enabled }`; a function input is evaluated at each render (untracked) to derive the key, so it follows props, and the resource still tracks the signals it reads. A disabled hook never calls it. `useMutationHandle` returns the same `{ run, status, data, error, reset }` as every mutation hook; `run` and `reset` keep their identity across renders, so they are safe in effect dependencies. For adapter authors: `useCallResource(id, input, options, make)` is what `useGraphQL` and `useRest` share (stable key, `enabled`, `keepPrevious`, Suspense `staleTime`). [Guide](./docs/guide/resource.md).
 
 ## Signals and computeds
 
@@ -118,13 +118,13 @@ const rename = mutation({
 
 function PatientList({ school }: { school: string }) {
 	const { data, status, error, refetch } = useQuery(patients, { school });
-	const { run, isPending } = useMutation(rename); // `run` rejects with the error, also in `error`
+	const { run, status: saving } = useMutation(rename); // `run` rejects with the error, also in `error`
 	if (status === 'error') return <button onClick={refetch}>Retry: {String(error)}</button>;
 	return (
 		<ul>
 			{data?.map((p) => (
 				<li key={p.id}>
-					{p.name} <button disabled={isPending} onClick={() => run({ id: p.id, name: 'New name' }).catch(() => {})}>Rename</button>
+					{p.name} <button disabled={saving === 'loading'} onClick={() => run({ id: p.id, name: 'New name' }).catch(() => {})}>Rename</button>
 				</li>
 			))}
 		</ul>
@@ -243,7 +243,7 @@ A hook never starts a fetch during a server render, except through `suspense: tr
 | `@softistx/riva-react/store` | `useStore` |
 | `@softistx/riva-react/resource` | `useResource`, `useCallResource`, `useMutationHandle`, `useStableInput`, `suspenseStaleTime` (the blocks the adapters' hooks are built on) |
 
-Types: `MutationResult` (what `useMutation` returns), `RivaProviderProps`, `SuspendedState` and `UseQueryOptions` (main entry), `InfiniteResult` and `UseInfiniteQueryOptions` (`/infinite`), `UseResourceOptions`, `CallResourceOptions`, `ResourceCall`, `StableInput`, `MutationHook` and `SuspendedState` (`/resource`).
+Types: `MutationResult` (what every mutation hook returns), `RivaProviderProps`, `SuspendedState` and `UseQueryOptions` (main entry), `InfiniteResult` and `UseInfiniteQueryOptions` (`/infinite`), `UseResourceOptions`, `CallResourceOptions`, `ResourceCall`, `StableInput` and `SuspendedState` (`/resource`; `MutationResult` is exported there too).
 
 Core plus the main entry stays under 9 kB gzipped; the subpaths cost nothing until imported.
 

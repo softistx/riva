@@ -69,7 +69,8 @@ The peers each package adds, with their ranges, are in
    without `await` for a reactive resource, `riva.graphql.mutate(DOC, vars,
    { invalidates: [PATIENTS_QUERY] })` for a write, `riva.rest.get(path, input)`
    for REST. In components use `useGraphQL`, `useGraphQLMutation`,
-   `useRest`.
+   `useRest(path, input)`; every mutation hook returns
+   `{ run, status, data, error, reset }` (`status === 'loading'`, no `isPending`).
 4. In a React Router 8 app, add `rivaMiddleware({ create })` on the root
    route and `RivaRouterProvider riva={...}` in the root component; loaders
    `await riva.graphql.query(...)` or `riva.rest.get(...)` and return

@@ -1,6 +1,6 @@
 import '../../test/happydom';
 import { expect, expectTypeOf, test } from 'bun:test';
-import { createRiva, signal } from '@softistx/riva';
+import { createRiva, RivaError, signal } from '@softistx/riva';
 import type { ResourceState } from '@softistx/riva/resource';
 import { dehydrate, hydrate } from '@softistx/riva/ssr';
 import { RivaProvider } from '@softistx/riva-react';
@@ -62,11 +62,7 @@ test('goes loading then success, and an error lands in the state', async () => {
 	const gates = new Map<string, () => void>();
 	const { riva, seen } = server(gates);
 	function C({ id }: { id: string }) {
-		return h(
-			'p',
-			null,
-			show(useRest('get', '/invoices/{id}', { param: { id } })),
-		);
+		return h('p', null, show(useRest('/invoices/{id}', { param: { id } })));
 	}
 	const m = await mount(h(C, { id: '1' }), riva);
 	expect(m.text()).toStartWith('loading');
@@ -92,7 +88,7 @@ test('a new input refetches and keeps the previous data as a placeholder', async
 		return h(
 			'p',
 			null,
-			show(useRest('get', '/invoices/{id}', { param: { id } }, opts)),
+			show(useRest('/invoices/{id}', { param: { id } }, opts)),
 		);
 	}
 	const m = await mount(h(C, { id: '1' }), riva);
@@ -110,7 +106,6 @@ test('enabled false is idle with no request and no input function call', async (
 	let evaluated = 0;
 	function C({ on }: { on: boolean }) {
 		const s = useRest(
-			'get',
 			'/invoices/{id}',
 			() => {
 				evaluated++;
@@ -138,7 +133,7 @@ test('a signal as input re-derives the key', async () => {
 			'p',
 			null,
 			show(
-				useRest('get', '/invoices/{id}', () => ({
+				useRest('/invoices/{id}', () => ({
 					param: { id: riva.get(id) },
 				})),
 			),
@@ -156,12 +151,7 @@ test('suspense waits, then shows success; an error goes to the boundary', async 
 	const gates = new Map<string, () => void>();
 	const { riva, seen } = server(gates);
 	function C({ id }: { id: string }) {
-		const s = useRest(
-			'get',
-			'/invoices/{id}',
-			{ param: { id } },
-			{ suspense: true },
-		);
+		const s = useRest('/invoices/{id}', { param: { id } }, { suspense: true });
 		expectTypeOf(s.data).toEqualTypeOf<Invoice>();
 		return h('p', null, s.data.id);
 	}
@@ -200,9 +190,7 @@ test('SSR: renders what a loader fetched, and fetches during the render with sus
 		return h(
 			'p',
 			null,
-			show(
-				useRest('get', '/invoices/{id}', { param: { id } }, { suspense: true }),
-			),
+			show(useRest('/invoices/{id}', { param: { id } }, { suspense: true })),
 		);
 	}
 	const html = async (r: typeof riva, id: string) => {
@@ -236,7 +224,7 @@ test('SSR: renders what a loader fetched, and fetches during the render with sus
 
 test('without a rest extension it throws a RIVA_DEFINITION error saying how to install it', async () => {
 	function C() {
-		useRest('get', '/health');
+		useRest('/health');
 		return null;
 	}
 	const spy = console.error;
@@ -266,7 +254,7 @@ test('SSR lifecycle: a server fetch, dehydrate and hydrate leave the client moun
 		return h(
 			'p',
 			null,
-			show(useRest('get', '/invoices/{id}', { param: { id: '1' } })),
+			show(useRest('/invoices/{id}', { param: { id: '1' } })),
 		);
 	}
 	const m = await mount(h(C), client.riva);
@@ -292,7 +280,7 @@ test('a definition shares its entry with a loader ensure', async () => {
 	await m.unmount();
 });
 
-test('a first argument that is neither get nor a definition throws a clear error', async () => {
+test('a first argument that is neither a path nor a definition throws a clear error', async () => {
 	const { riva } = server();
 	function C() {
 		return h(
@@ -303,5 +291,57 @@ test('a first argument that is neither get nor a definition throws a clear error
 	}
 	const m = await mount(h(Boundary, null, h(C)), riva);
 	expect(m.text()).toBe('caught');
+	await m.unmount();
+});
+
+test("useRest('get', path) throws a RIVA_DEFINITION error saying to call useRest(path)", async () => {
+	const { riva } = server();
+	let caught: unknown;
+	function C() {
+		try {
+			(useRest as unknown as (...a: unknown[]) => unknown)('get', '/health');
+		} catch (e) {
+			caught = e;
+		}
+		return null;
+	}
+	const m = await mount(h(C), riva);
+	expect(caught).toBeInstanceOf(RivaError);
+	expect((caught as RivaError).code).toBe('RIVA_DEFINITION');
+	expect((caught as RivaError).message).toContain('call useRest(path)');
+	await m.unmount();
+});
+
+test('the cache keys are unchanged: a path is `rest:get <path>`, a definition keeps its own id', async () => {
+	const { riva, api } = server(undefined, { staleTime: '1m' });
+	const def = query(api, 'get /invoices/{id}');
+	function C() {
+		useRest('/invoices/{id}', { param: { id: '1' } });
+		useRest(def, { param: { id: '2' } });
+		return null;
+	}
+	const m = await mount(h(C), riva);
+	await flush();
+	const ids = dehydrate(riva).q.map((e) => e.k);
+	expect(ids).toEqual([
+		'rest:get /invoices/{id}:{"param":{"id":"1"}}',
+		`${def.id}:{"param":{"id":"2"}}`,
+	]);
+	await m.unmount();
+});
+
+test("useRest('get') alone throws RIVA_DEFINITION too", async () => {
+	const { riva } = server();
+	let caught: unknown;
+	function C() {
+		try {
+			(useRest as unknown as (...a: unknown[]) => unknown)('get');
+		} catch (e) {
+			caught = e;
+		}
+		return null;
+	}
+	const m = await mount(h(C), riva);
+	expect((caught as RivaError).code).toBe('RIVA_DEFINITION');
 	await m.unmount();
 });

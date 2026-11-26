@@ -80,7 +80,7 @@ Definitions made with `query()` and `mutation()` keep working on the same riva, 
 
 ## In components and loaders
 
-In a component, `useRest` and `useRestMutation` call the same API on the riva of the nearest provider ([React hooks](../../README.md#react-hooks)). In a React Router loader, `await riva.rest.get(path, input)` fills the request's riva, and the component reads it with `useRest('get', path, input)` ([loader pattern](https://github.com/softistx/riva/blob/develop/packages/riva-react-router/docs/guide/loader.md)). Give the riva a `defaults: { staleTime }` so the browser does not fetch again what the server sent.
+In a component, `useRest` and `useRestMutation` call the same API on the riva of the nearest provider ([React hooks](../../README.md#react-hooks)); `useRestMutation` returns `{ run, status, data, error, reset }` where the core handle is callable. In a React Router loader, `await riva.rest.get(path, input)` fills the request's riva, and the component reads it with `useRest(path, input)` ([loader pattern](https://github.com/softistx/riva/blob/develop/packages/riva-react-router/docs/guide/loader.md)). Give the riva a `defaults: { staleTime }` so the browser does not fetch again what the server sent.
 
 A loader can also use a definition (`const def = query(api, 'get /invoices/{id}')`): `await def.ensure(riva, input)`, then `riva.rest.get(def, input)` or `useRest(def, input)` read the same cache entry, and `invalidates: [def]` marks it stale. The definition is used as is, with its own id and options.
 

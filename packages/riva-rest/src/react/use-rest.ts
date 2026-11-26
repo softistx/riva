@@ -6,20 +6,23 @@ import { restOf } from './rest-of';
 import type { UseRest, UseRestOptions } from './types';
 
 function useRestImpl(
-	first: 'get' | Query<unknown, unknown>,
+	target: string | Query<unknown, unknown>,
 	...rest: unknown[]
 ): ResourceState<unknown> {
-	const def = first !== 'get';
-	if (def && (first as { kind?: unknown } | null)?.kind !== 'query')
+	if (target === 'get')
 		throw new RivaError(
 			'RIVA_DEFINITION',
-			"riva-rest/react: useRest takes 'get' and a path, or a query definition.",
+			`riva-rest/react: useRest('get', path) is gone: call useRest(path).`,
 		);
-	const [target, input, options = {}] = (def ? [first, ...rest] : rest) as [
-		string | Query<unknown, unknown>,
-		unknown,
-		UseRestOptions?,
-	];
+	if (
+		typeof target !== 'string' &&
+		(target as { kind?: unknown } | null)?.kind !== 'query'
+	)
+		throw new RivaError(
+			'RIVA_DEFINITION',
+			'riva-rest/react: useRest takes a path or a query definition.',
+		);
+	const [input, options = {}] = rest as [unknown, UseRestOptions?];
 	return useCallResource(
 		typeof target === 'string' ? `get ${target}` : `def:${target.id}`,
 		input,

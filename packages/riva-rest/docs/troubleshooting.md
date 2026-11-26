@@ -236,9 +236,9 @@ const riva = createRiva({ rest: withRest({ baseUrl: "https://api.example.com" })
 
 A hook outside any provider throws the riva-react `No Riva in scope` error instead.
 
-## A loader's `ensure` and a `useRest('get', path)` component fetch twice
+## A loader's `ensure` and a `useRest(path)` component fetch twice
 
-**Why:** `query(api, route)` and `riva.rest.get(path)` / `useRest('get', path)` are two definitions on one riva, so they use separate cache entries (`rest:<method> <path>` for the simple call).
+**Why:** `query(api, route)` and `riva.rest.get(path)` / `useRest(path)` are two definitions on one riva, so they use separate cache entries (`rest:<method> <path>` for the simple call).
 
 **Fix:** pass the definition: `const def = query(api, 'get /invoices/{id}')`, then `await def.ensure(riva, input)` in the loader and `useRest(def, input)` (or `riva.rest.get(def, input)`) in the component. The definition is used as is, so both read one entry, and `invalidates: [def]` marks it stale.
 
@@ -257,3 +257,23 @@ const riva = createRiva({ rest: withRest(api) });
 const invoice = query(api, 'get /invoices/{id}'); // was rest.query(api, '…')
 const save = mutation(api, 'post /invoices'); // was rest.mutation(api, '…')
 ```
+
+## `useRest('get', path) is gone: call useRest(path)`
+
+Code: `RIVA_DEFINITION` (`RivaError`).
+
+**When:** a component still passes the method first, `useRest('get', '/books/{id}', input)`.
+
+**Why:** `useRest` takes the path (or a query definition) first, like `riva.rest.get`; only GETs are read, so the method says nothing. The cache keys are unchanged.
+
+**Fix:**
+
+```tsx
+const book = useRest('/books/{id}', { param: { id } });
+```
+
+## `save` is not a function on `useRestMutation`
+
+**Why:** the hook returns `{ run, status, data, error, reset }`; `run` and `reset` are stable.
+
+**Fix:** `const { run: save } = useRestMutation('put', '/books/{id}');`

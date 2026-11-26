@@ -37,17 +37,22 @@ export type PathsOf<Ops extends OperationsShape<Ops>, Method extends string> =
 			: never
 		: never;
 
-type Route<Ops extends OperationsShape<Ops>, M extends string, P> = Extract<
-	`${M} ${P & string}`,
-	RouteOf<Ops>
->;
+export type Route<
+	Ops extends OperationsShape<Ops>,
+	M extends string,
+	P,
+> = Extract<`${M} ${P & string}`, RouteOf<Ops>>;
 
 /** The input a typed `get` takes: a definition's own, or the route's. */
-type GetInput<Ops extends OperationsShape<Ops>, T> =
+export type GetInput<Ops extends OperationsShape<Ops>, T> =
 	// biome-ignore lint/suspicious/noExplicitAny: matches any definition
 	T extends Query<infer I, any> ? I : InputOf<Ops, Route<Ops, 'get', T>>;
 /** The data a typed `get` resolves with. */
-type GetData<Ops extends OperationsShape<Ops>, T, Decoded extends boolean> =
+export type GetData<
+	Ops extends OperationsShape<Ops>,
+	T,
+	Decoded extends boolean,
+> =
 	// biome-ignore lint/suspicious/noExplicitAny: matches any definition
 	T extends Query<any, infer D>
 		? D
@@ -105,11 +110,11 @@ export interface RestApi<
 }
 
 /** The input an untyped `get` takes: a definition's own, or any httpyz input. */
-type UntypedInput<T> =
+export type UntypedInput<T> =
 	// biome-ignore lint/suspicious/noExplicitAny: matches any definition
 	T extends Query<infer I, any> ? I : RestInput;
 /** The data an untyped `get` resolves with: a definition's own, or the `Data` the caller expects. */
-type UntypedData<T, Data> =
+export type UntypedData<T, Data> =
 	// biome-ignore lint/suspicious/noExplicitAny: matches any definition
 	T extends Query<any, infer D> ? D : Data;
 

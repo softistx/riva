@@ -1,7 +1,7 @@
 import '../../test/happydom';
 import { expect, expectTypeOf, test } from 'bun:test';
 import { createRiva } from '@softistx/riva';
-import type { MutationHook } from '@softistx/riva-react/resource';
+import type { MutationResult } from '@softistx/riva-react/resource';
 import {
 	apiOver,
 	type Handler,
@@ -42,8 +42,8 @@ test('idle, loading, success, reset; invalidates refetches the observed GET', as
 	function C() {
 		const r = useRestMutation('post', '/invoices');
 		hook = r as never;
-		create = r as never;
-		const list = useRest('get', '/invoices', {});
+		create = r.run as never;
+		const list = useRest('/invoices', {});
 		return h(
 			'p',
 			null,
@@ -76,7 +76,7 @@ test('a failure rejects the call and lands in the state', async () => {
 	let status = '';
 	function C() {
 		const r = useRestMutation('post', '/invoices');
-		create = r as never;
+		create = r.run as never;
 		status = r.status;
 		return null;
 	}
@@ -91,7 +91,7 @@ test('a failure rejects the call and lands in the state', async () => {
 test('types: input and data come from the operations table', () => {
 	const hook = {} as ReturnType<typeof useRestMutation<'post', '/invoices'>>;
 	expectTypeOf(hook).toEqualTypeOf<
-		MutationHook<
+		MutationResult<
 			{ json: { number: string; total: number } },
 			Invoice,
 			RestMutateCall

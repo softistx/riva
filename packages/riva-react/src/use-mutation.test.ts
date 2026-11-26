@@ -16,7 +16,7 @@ function setup(run: (v: { id: string; name: string }) => Promise<string>) {
 		const m = useMutation(def);
 		box.m = m;
 		box.renders++;
-		return h('p', null, `${m.status}:${m.data ?? '-'}:${m.isPending}`);
+		return h('p', null, `${m.status}:${m.data ?? '-'}`);
 	}
 	return [box, C] as const;
 }
@@ -25,17 +25,17 @@ test('status flows idle, loading, success with the data', async () => {
 	const gate = deferred<string>();
 	const [box, C] = setup(() => gate.promise);
 	const m = await mount(h(C), newRiva());
-	expect(m.text()).toBe('idle:-:false');
+	expect(m.text()).toBe('idle:-');
 	let result!: Promise<string>;
 	await act(async () => {
 		result = box.m?.run({ id: '1', name: 'a' }) as Promise<string>;
 	});
-	expect(m.text()).toBe('loading:-:true');
+	expect(m.text()).toBe('loading:-');
 	await act(async () => gate.resolve('done'));
 	expect(await result).toBe('done');
-	expect(m.text()).toBe('success:done:false');
+	expect(m.text()).toBe('success:done');
 	await act(async () => box.m?.reset());
-	expect(m.text()).toBe('idle:-:false');
+	expect(m.text()).toBe('idle:-');
 	await m.unmount();
 });
 
@@ -67,7 +67,7 @@ test('the latest run owns the state', async () => {
 	});
 	await act(async () => gates[1]?.resolve('second'));
 	await act(async () => gates[0]?.resolve('first'));
-	expect(m.text()).toBe('success:second:false');
+	expect(m.text()).toBe('success:second');
 	await m.unmount();
 });
 

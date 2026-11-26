@@ -156,7 +156,7 @@ Name the cursor variables with `cursor: { after: 'afterCursor' }` when the docum
 
 ## Definitions in components
 
-`useQuery`, `useMutation` and `useInfiniteQuery` of `@softistx/riva-react` read definitions; `useGraphQL` and `useRest` read the simple API. See the [React guides](https://github.com/softistx/riva/blob/develop/packages/riva-react/docs/README.md).
+`useQuery`, `useMutation` and `useInfiniteQuery` of `@softistx/riva-react` read definitions; `useGraphQL` and `useRest(path | definition, input)` read the simple API; the mutation hooks return `{ run, status, data, error, reset }`. See the [React guides](https://github.com/softistx/riva/blob/develop/packages/riva-react/docs/README.md).
 
 ## One riva, two kinds of entry
 

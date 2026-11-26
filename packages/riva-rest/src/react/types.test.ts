@@ -2,7 +2,7 @@ import { expect, expectTypeOf, test } from 'bun:test';
 import type { Query } from '@softistx/riva';
 import type { ResourceState } from '@softistx/riva/resource';
 import type {
-	MutationHook,
+	MutationResult,
 	SuspendedState,
 } from '@softistx/riva-react/resource';
 import type { ClientOperations, Invoice } from '../../test/fixtures';
@@ -42,7 +42,7 @@ test('Register types useRestMutation by the spec', () => {
 	const useRestMutation = {} as UseRestMutation;
 	const hook = {} as ReturnType<typeof useRestMutation<'post', '/invoices'>>;
 	expectTypeOf(hook).toEqualTypeOf<
-		MutationHook<
+		MutationResult<
 			{ json: { number: string; total: number } },
 			Invoice,
 			RestMutateCall
@@ -53,13 +53,17 @@ test('Register types useRestMutation by the spec', () => {
 test('types: a wrong path or input is inferred from the arguments and refused', () => {
 	const never = () => {
 		// @ts-expect-error not a path of the spec
-		useRest('get', '/nope');
+		useRest('/nope');
+		// @ts-expect-error the method is gone
+		useRest('get', '/invoices/{id}');
+		// @ts-expect-error the method is gone
+		useRest('get', '/health');
 		// @ts-expect-error `id` is a string
-		useRest('get', '/invoices/{id}', { param: { id: 1 } });
+		useRest('/invoices/{id}', { param: { id: 1 } });
 		// @ts-expect-error the error is on the wrong param, not on the whole call
-		useRest('get', '/invoices/{id}', { param: { nope: '1' } });
+		useRest('/invoices/{id}', { param: { nope: '1' } });
 		// @ts-expect-error `enabled` is not available with `suspense`
-		useRest('get', '/health', undefined, { suspense: true, enabled: false });
+		useRest('/health', undefined, { suspense: true, enabled: false });
 		// @ts-expect-error not a path of the spec
 		useRestMutation('post', '/nope');
 		const create = useRestMutation('post', '/invoices');
@@ -87,4 +91,13 @@ test('useRest over a definition: typed untyped-form and suspense', () => {
 	const typedSuspended = () =>
 		typed(def, { param: { id: '1' } }, { suspense: true });
 	expectTypeOf(typedSuspended).returns.toEqualTypeOf<SuspendedState<Invoice>>();
+});
+
+test('types: the untyped form refuses a leading method', () => {
+	const untyped = {} as UntypedUseRest;
+	const never = () => {
+		// @ts-expect-error the method is gone
+		untyped('get', '/x');
+	};
+	expect(typeof never).toBe('function');
 });
