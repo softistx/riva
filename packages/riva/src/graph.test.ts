@@ -61,6 +61,21 @@ test('links are ref-counted across listeners and chained computeds', () => {
 	expect(nodeOf(g, d).refs).toBe(0);
 });
 
+test('edge fires when the first observer comes and when the last goes, not between', () => {
+	const a = signal(1);
+	const d = computed((get) => get(a));
+	const { graph: g } = createRiva();
+	let edge = 0;
+	nodeOf(g, d).edge = () => edge++;
+	const off1 = subscribe(g, d, () => {});
+	const off2 = subscribe(g, d, () => {});
+	expect(edge).toBe(1);
+	off1();
+	expect(edge).toBe(1);
+	off2();
+	expect(edge).toBe(2);
+});
+
 test('a cycle throws RIVA_CYCLE and leaves the node usable', () => {
 	const flag = signal(true);
 	const box: { d?: ReturnType<typeof computed<number>> } = {};

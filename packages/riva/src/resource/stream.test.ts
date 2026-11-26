@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, test } from 'bun:test';
 import { createRiva } from '../client';
+import { computed } from '../computed';
 import { signal } from '../signal';
 import { streamResource } from './stream';
 
@@ -106,6 +107,25 @@ describe('streamResource', () => {
 		await tick();
 		expect(opened[0]?.signal.aborted).toBe(true);
 		expect(opened[0]?.returned).toBe(1);
+	});
+
+	test('a dropped computed reader closes the stream, and a new read restarts it', async () => {
+		const riva = createRiva();
+		const { opened, factory } = feed();
+		const s = streamResource(riva, () => factory);
+		const label = computed(() => s.state.status);
+		const off = riva.subscribe(label, () => {});
+		await tick();
+		expect(opened).toHaveLength(1);
+		off();
+		await tick();
+		expect(opened[0]?.signal.aborted).toBe(true);
+		const again = riva.subscribe(label, () => {});
+		await tick();
+		expect(opened).toHaveLength(2);
+		again();
+		await tick();
+		expect(opened[1]?.signal.aborted).toBe(true);
 	});
 
 	test('a change of what the source reads restarts the stream', async () => {

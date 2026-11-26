@@ -47,3 +47,29 @@ test('an untracked read opens nothing', async () => {
 	await Promise.resolve();
 	expect(log).toEqual([]);
 });
+
+test('a dropped computed reader closes at the next microtask, with no change', async () => {
+	const { riva, w, log } = setup();
+	const reader = computed(() => w.read());
+	const off = riva.subscribe(reader, () => {});
+	await Promise.resolve();
+	expect(log).toEqual(['open 1']);
+	off();
+	await Promise.resolve();
+	expect(log).toEqual(['open 1', 'close 1']);
+});
+
+test('a reader dropped and re-added in the same tick keeps one open work', async () => {
+	const { riva, w, log } = setup();
+	const reader = computed(() => w.read());
+	const off = riva.subscribe(reader, () => {});
+	await Promise.resolve();
+	off();
+	const again = riva.subscribe(reader, () => {});
+	await Promise.resolve();
+	await Promise.resolve();
+	expect(log).toEqual(['open 1']);
+	again();
+	await Promise.resolve();
+	expect(log).toEqual(['open 1', 'close 1']);
+});
