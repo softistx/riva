@@ -101,15 +101,24 @@ export interface RestApi<
 	): Promise<DataOf<Ops, Route<Ops, 'delete', P>, Decoded>>;
 }
 
+/** The input an untyped `get` takes: a definition's own, or any httpyz input. */
+type UntypedInput<T> =
+	// biome-ignore lint/suspicious/noExplicitAny: matches any definition
+	T extends Query<infer I, any> ? I : RestInput;
+/** The data an untyped `get` resolves with: a definition's own, or the `Data` the caller expects. */
+type UntypedData<T, Data> =
+	// biome-ignore lint/suspicious/noExplicitAny: matches any definition
+	T extends Query<any, infer D> ? D : Data;
+
 /** What `createRiva({ rest: rest({ baseUrl }) })` puts on `riva.rest`: no spec, so the data type is yours. */
 export interface UntypedRestApi {
-	/** As the typed `get`, over a URL path (`'/invoices/42'`, or `'/invoices/{id}'` with `param`); `Data` is what you expect back. */
+	/** As the typed `get`, over a URL path (`'/invoices/42'`, or `'/invoices/{id}'` with `param`); `Data` is what you expect back. With a definition, `Data` is the definition's: type the definition rather than the call. */
 	// biome-ignore lint/suspicious/noExplicitAny: matches any definition
 	get<Data = unknown, T extends string | Query<any, any> = string>(
 		target: T,
-		input?: InputArg<T extends Query<infer I, any> ? I : RestInput>,
+		input?: InputArg<UntypedInput<T>>,
 		call?: GetCall,
-	): Resource<T extends Query<any, infer D> ? D : Data>;
+	): Resource<UntypedData<T, Data>>;
 	mutation<Data = unknown, Input = RestInput>(
 		method: MutationMethod,
 		path: string,

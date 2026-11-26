@@ -56,6 +56,8 @@ test('types: a wrong path or input is inferred from the arguments and refused', 
 		useRest('get', '/nope');
 		// @ts-expect-error `id` is a string
 		useRest('get', '/invoices/{id}', { param: { id: 1 } });
+		// @ts-expect-error the error is on the wrong param, not on the whole call
+		useRest('get', '/invoices/{id}', { param: { nope: '1' } });
 		// @ts-expect-error `enabled` is not available with `suspense`
 		useRest('get', '/health', undefined, { suspense: true, enabled: false });
 		// @ts-expect-error not a path of the spec
