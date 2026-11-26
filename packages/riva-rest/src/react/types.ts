@@ -1,4 +1,5 @@
 import type { OperationsShape } from '@softistx/openapi-httpyz';
+import type { Query } from '@softistx/riva';
 import type { ResourceState } from '@softistx/riva/resource';
 import type {
 	MutationHook,
@@ -50,21 +51,34 @@ type SuspenseArgs<I, O> =
 		? [input: InputArg<NonNullable<I>> | undefined, options: O]
 		: [input: InputArg<I>, options: O];
 
-/** `useRest` over the registered spec. */
+/**
+ * `useRest` over the registered spec. The path overloads come last, with
+ * `method` a type parameter: TypeScript moves overloads with a literal
+ * parameter first, and a bad input is only named (`'nope' does not exist`)
+ * when the path overload is the last one tried.
+ */
 export interface TypedUseRest<
 	Ops extends OperationsShape<Ops>,
 	Decoded extends boolean,
 > {
-	<P extends PathsOf<Ops, 'get'>>(
-		method: 'get',
+	<I, Data>(
+		definition: Query<I, Data>,
+		...args: SuspenseArgs<I, Suspending<UseRestOptions>>
+	): SuspendedState<Data>;
+	<I, Data>(
+		definition: Query<I, Data>,
+		...args: Args<I, UseRestOptions & { suspense?: false }>
+	): ResourceState<Data>;
+	<P extends PathsOf<Ops, 'get'>, M extends 'get' = 'get'>(
+		method: M,
 		path: P,
 		...args: SuspenseArgs<
 			InputOf<Ops, Route<Ops, 'get', P>>,
 			Suspending<UseRestOptions>
 		>
 	): SuspendedState<DataOf<Ops, Route<Ops, 'get', P>, Decoded>>;
-	<P extends PathsOf<Ops, 'get'>>(
-		method: 'get',
+	<P extends PathsOf<Ops, 'get'>, M extends 'get' = 'get'>(
+		method: M,
 		path: P,
 		...args: Args<
 			InputOf<Ops, Route<Ops, 'get', P>>,
@@ -88,6 +102,15 @@ export type TypedUseRestMutation<
 
 /** `useRest` with no spec: `Data` is what you expect back. */
 export interface UntypedUseRest {
+	<Data, Input = unknown>(
+		definition: Query<Input, Data>,
+		input: InputArg<Input> | undefined,
+		options: Suspending<UseRestOptions>,
+	): SuspendedState<Data>;
+	<Data, Input = unknown>(
+		definition: Query<Input, Data>,
+		...args: Args<Input, UseRestOptions & { suspense?: false }>
+	): ResourceState<Data>;
 	<Data = unknown>(
 		method: 'get',
 		path: string,

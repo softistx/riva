@@ -7,6 +7,7 @@ import {
 	type Mutation,
 	type Query,
 	type Riva,
+	RivaError,
 } from '@softistx/riva';
 import {
 	callResource,
@@ -92,8 +93,17 @@ export function callsOf(
 		);
 	return {
 		mutate,
-		get(path: string, input?: InputArg<unknown>, call?: GetCall) {
-			const def = queryOf(path);
+		get(
+			target: string | Query<unknown, unknown>,
+			input?: InputArg<unknown>,
+			call?: GetCall,
+		) {
+			if (typeof target !== 'string' && target?.kind !== 'query')
+				throw new RivaError(
+					'RIVA_DEFINITION',
+					'riva-rest: get takes a path or a query definition (from query(api, route)).',
+				);
+			const def = typeof target === 'string' ? queryOf(target) : target;
 			return callResource(riva, def, trackedInput(riva, input), call);
 		},
 		mutation(method: string, path: string) {

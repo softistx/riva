@@ -1,4 +1,4 @@
-import type { VarsArgs } from '@softistx/riva';
+import type { Query, VarsArgs } from '@softistx/riva';
 import type { ResourceState } from '@softistx/riva/resource';
 import {
 	type SuspendedState,
@@ -7,7 +7,7 @@ import {
 import type { Doc, QueryCall } from '../calls';
 import { operationOf } from '../operation';
 import type { VarsInput } from '../resources';
-import type { VarsOf } from '../types';
+import type { TargetData, TargetVars } from '../types';
 import { graphqlOf } from './graphql-of';
 
 export interface UseGraphQLOptions extends Omit<QueryCall, 'signal'> {
@@ -31,29 +31,33 @@ type SuspenseArgs<V, O> = [V] extends [Void]
  * variables function is not called and nothing is fetched. A response with
  * data and errors is the `error` state with the partial `data`.
  */
-export function useGraphQL<Data, Vars>(
-	document: Doc<Data, Vars>,
-	...args: SuspenseArgs<VarsInput<VarsOf<Vars>>, Suspending<UseGraphQLOptions>>
-): SuspendedState<Data>;
-export function useGraphQL<Data, Vars>(
-	document: Doc<Data, Vars>,
+// biome-ignore lint/suspicious/noExplicitAny: matches any document or definition
+export function useGraphQL<T extends Doc<any, any> | Query<any, any>>(
+	target: T,
+	...args: SuspenseArgs<VarsInput<TargetVars<T>>, Suspending<UseGraphQLOptions>>
+): SuspendedState<TargetData<T>>;
+// biome-ignore lint/suspicious/noExplicitAny: matches any document or definition
+export function useGraphQL<T extends Doc<any, any> | Query<any, any>>(
+	target: T,
 	...args: VarsArgs<
-		VarsInput<VarsOf<Vars>>,
+		VarsInput<TargetVars<T>>,
 		[options?: UseGraphQLOptions & { suspense?: false }]
 	>
-): ResourceState<Data>;
+): ResourceState<TargetData<T>>;
 export function useGraphQL(
-	document: Doc<unknown, never>,
+	document: Doc<unknown, never> | Query<unknown, unknown>,
 	vars?: unknown,
 	options: UseGraphQLOptions = {},
 ): ResourceState<unknown> {
 	return useCallResource(
-		operationOf(document).id,
+		(document as { kind?: unknown }).kind === 'query'
+			? `def:${(document as Query<unknown, unknown>).id}`
+			: operationOf(document as Doc<unknown, never>).id,
 		vars,
 		options,
 		(riva, input, call) =>
 			graphqlOf(riva).query(
-				document,
+				document as never,
 				input as never,
 				call as QueryCall,
 			) as never,

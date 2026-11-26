@@ -106,10 +106,13 @@ The peers each package adds, with their ranges, are in
 - `staleTime` defaults to 0: data a loader awaited is refetched at once in the
   browser unless the riva has `defaults: { staleTime }` (or the call a
   `staleTime`).
-- The simple API and a definition are separate cache entries: a loader and its
-  component use the same kind (`riva.graphql.query(DOC)` with `useGraphQL(DOC)`,
-  `def.ensure` with `useQuery(def)`), and a mutation's `invalidates` names the
-  kind it means (`[DOC]` or `[def]`).
+- A document passed to the simple API and a definition are separate cache
+  entries: a loader and its component use the same kind
+  (`riva.graphql.query(DOC)` with `useGraphQL(DOC)`, `def.ensure` with
+  `useQuery(def)`), or pass the definition to the simple API
+  (`riva.graphql.query(def, vars)`, `useGraphQL(def, vars)`,
+  `riva.rest.get(def, input)`, `useRest(def, input)`) so both share one
+  entry. A mutation's `invalidates` names the kind it means (`[DOC]` or `[def]`).
 - `rivaOf(context)` returns the base `Riva`: cast it once to the app's riva
   type to get `riva.graphql` typed.
 - Name GraphQL documents as SCREAMING_SNAKE constants with their kind as a

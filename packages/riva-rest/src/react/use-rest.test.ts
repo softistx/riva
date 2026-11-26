@@ -14,6 +14,7 @@ import {
 	json,
 } from '../../test/fixtures';
 import { flush, h, mount } from '../../test/render';
+import { query } from '../query';
 import { rest } from '../simple';
 import type { UseRestOptions } from './types';
 import { useRest } from './use-rest';
@@ -36,6 +37,7 @@ function server(
 	const api = apiOver(httpWith(handle));
 	return {
 		seen,
+		api,
 		riva: createRiva({ ...(defaults ? { defaults } : {}), rest: rest(api) }),
 	};
 }
@@ -269,5 +271,34 @@ test('SSR lifecycle: a server fetch, dehydrate and hydrate leave the client moun
 	expect(m.text()).toBe('success:1:false');
 	expect(origin.seen).toEqual(['GET /invoices/1']);
 	expect(client.seen).toEqual([]);
+	await m.unmount();
+});
+
+test('a definition shares its entry with a loader ensure', async () => {
+	const { riva, seen, api } = server(undefined, { staleTime: '1m' });
+	const def = query(api, 'get /invoices/{id}');
+	function C() {
+		const s = useRest(def, { param: { id: '1' } });
+		expectTypeOf(s).toEqualTypeOf<ResourceState<Invoice>>();
+		return h('p', null, show(s));
+	}
+	await def.ensure(riva, { param: { id: '1' } });
+	const m = await mount(h(C), riva);
+	expect(m.text()).toBe('success:1:false');
+	expect(seen).toEqual(['GET /invoices/1']);
+	await m.unmount();
+});
+
+test('a first argument that is neither get nor a definition throws a clear error', async () => {
+	const { riva } = server();
+	function C() {
+		return h(
+			'p',
+			null,
+			show((useRest as (x: unknown) => ResourceState<Invoice>)({})),
+		);
+	}
+	const m = await mount(h(Boundary, null, h(C)), riva);
+	expect(m.text()).toBe('caught');
 	await m.unmount();
 });

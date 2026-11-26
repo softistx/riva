@@ -754,6 +754,10 @@ const types = async () => {
 	);
 	// @ts-expect-error a function must return the variables
 	riva.graphql.query(PATIENTS_QUERY, () => ({ school: 1 }));
+	// @ts-expect-error the error is on `school`, whichever form the target takes
+	riva.graphql.query(PATIENTS_QUERY, { school: 1 });
+	// @ts-expect-error the same over a definition
+	riva.graphql.query(query(PATIENTS_QUERY), { school: 1 });
 	// The handle.
 	const save = riva.graphql.mutation(RENAME_PATIENT_MUTATION);
 	expectTypeOf(save.state).toEqualTypeOf<MutationState<typeof renamed>>();
@@ -772,3 +776,24 @@ const types = async () => {
 	feed.then;
 };
 void types;
+
+describe('riva.graphql.query over a definition', () => {
+	test('shares its entry with a loader ensure, and types come from the definition', async () => {
+		const t = fakeTransport(() => ({ viewer: { id: '1' } }));
+		const riva = createRiva({ graphql: graphql(t) });
+		const def = query(VIEWER_QUERY);
+		await def.ensure(riva);
+		const r = riva.graphql.query(def, undefined, { staleTime: '1m' });
+		expect(await r).toEqual({ viewer: { id: '1' } });
+		expect(t.calls).toHaveLength(1);
+		expectTypeOf(r).toEqualTypeOf<Resource<{ viewer: { id: string } }>>();
+	});
+
+	test('a definition with variables is typed by them', () => {
+		const t = fakeTransport(() => ({}));
+		const riva = createRiva({ graphql: graphql(t) });
+		const def = query(PATIENTS_QUERY);
+		// @ts-expect-error the variables are required by the definition
+		riva.graphql.query(def);
+	});
+});

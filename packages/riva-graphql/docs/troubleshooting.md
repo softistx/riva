@@ -279,3 +279,9 @@ const riva = createRiva({ graphql: graphql(client) });
 ```
 
 A hook outside any provider throws the riva-react `No Riva in scope` error instead (see [riva-react's troubleshooting](https://github.com/softistx/riva/blob/develop/packages/riva-react/docs/troubleshooting.md)).
+
+## A loader's `ensure` and a `useGraphQL(DOC)` component fetch twice
+
+**Why:** `query(DOC)` and `riva.graphql.query(DOC)` / `useGraphQL(DOC)` are two definitions on one riva, so they use separate cache entries (`graphql:<operation id>` for the simple call), and `invalidates: [DOC]` misses the hand-made one.
+
+**Fix:** pass the definition: `const def = query(DOC)`, then `await def.ensure(riva, vars)` in the loader and `useGraphQL(def, vars)` (or `riva.graphql.query(def, vars)`) in the component. The definition is used as is, so both read one entry, and `invalidates: [def]` marks it stale.

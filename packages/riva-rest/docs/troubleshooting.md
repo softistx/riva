@@ -206,7 +206,7 @@ Code: `RIVA_VALIDATION` (`RivaRequestError`, not retryable), thrown by the `rest
 
 ## An `invalidates` path refetches nothing
 
-**Why:** a string in `invalidates` is the path of a `riva.rest.get`, as the spec writes it (`'/invoices/{id}'`, with the placeholder, for every input of it); with `rest({ baseUrl })` it is the URL path you passed to `get` (`'/invoices/42'`). A query made with `query(api, route)` has its own entries and is not reached by a string.
+**Why:** a string in `invalidates` is the path of a `riva.rest.get`, as the spec writes it (`'/invoices/{id}'`, with the placeholder, for every input of it); with `rest({ baseUrl })` it is the URL path you passed to `get` (`'/invoices/42'`). A query made with `query(api, route)` has its own entries and is not reached by a string (unless the `get` was given that definition: `riva.rest.get(def, input)` reads the definition's entries).
 
 **Fix:** pass the same path as the `get`, or the definition (`invalidates: [invoicesQuery]`) or `at(invoicesQuery, vars)` for a hand-made one. A path the spec has no `get` for throws `riva-rest: the OpenAPI client has no operation at GET /x; …` before the mutation runs.
 
@@ -235,3 +235,9 @@ const riva = createRiva({ rest: rest({ baseUrl: "https://api.example.com" }) });
 ```
 
 A hook outside any provider throws the riva-react `No Riva in scope` error instead.
+
+## A loader's `ensure` and a `useRest('get', path)` component fetch twice
+
+**Why:** `query(api, route)` and `riva.rest.get(path)` / `useRest('get', path)` are two definitions on one riva, so they use separate cache entries (`rest:<method> <path>` for the simple call).
+
+**Fix:** pass the definition: `const def = query(api, 'get /invoices/{id}')`, then `await def.ensure(riva, input)` in the loader and `useRest(def, input)` (or `riva.rest.get(def, input)`) in the component. The definition is used as is, so both read one entry, and `invalidates: [def]` marks it stale.

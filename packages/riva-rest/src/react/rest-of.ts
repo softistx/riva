@@ -2,7 +2,7 @@ import { type Riva, RivaError } from '@softistx/riva';
 
 /** The members of `riva.rest` the hooks call, untyped: the hooks' own signatures carry the types. */
 export interface RestNamespace {
-	get(path: string, input?: unknown, call?: unknown): never;
+	get(target: unknown, input?: unknown, call?: unknown): never;
 	mutation(method: string, path: string): never;
 }
 

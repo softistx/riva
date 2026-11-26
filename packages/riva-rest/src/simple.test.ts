@@ -302,6 +302,8 @@ describe('types', () => {
 			riva.rest.get('/nope');
 			// @ts-expect-error a post is not a get path
 			riva.rest.get('/invoices/{id}', { param: { id: 1 } });
+			// @ts-expect-error the error is on the wrong param, not on the whole call
+			riva.rest.get('/invoices/{id}', { param: { idd: '1' } });
 			// @ts-expect-error the input is required
 			riva.rest.get('/invoices/{id}');
 			// @ts-expect-error a GET path is not a mutation
@@ -319,5 +321,34 @@ describe('types', () => {
 		// Never run: it would fetch.
 		const _post = () => riva.rest.post<number>('/a');
 		expectTypeOf(_post).returns.toEqualTypeOf<Promise<number>>();
+	});
+});
+
+describe('riva.rest.get over a definition', () => {
+	test('shares its entry with a loader ensure, typed by the definition', async () => {
+		const { riva, seen, api } = server();
+		const def = query(api, 'get /invoices/{id}');
+		await def.ensure(riva, { param: { id: '1' } });
+		const r = riva.rest.get(def, { param: { id: '1' } }, { staleTime: '1m' });
+		expect(await r).toEqual(inv('1'));
+		expect(seen).toEqual(['GET /invoices/1']);
+		expectTypeOf(r).toEqualTypeOf<Resource<Invoice>>();
+		// @ts-expect-error the input is required by the definition
+		riva.rest.get(def);
+	});
+
+	test('invalidates: [def] marks the entry stale', async () => {
+		const { riva, seen, api } = server();
+		const def = query(api, 'get /health');
+		await riva.rest.get(def, undefined, { staleTime: '1h' });
+		await riva.rest.post(
+			'/invoices',
+			{ json: { number: 'N', total: 1 } },
+			{
+				invalidates: [def],
+			},
+		);
+		await riva.rest.get(def, undefined, { staleTime: '1h' });
+		expect(seen.filter((s) => s === 'GET /health')).toHaveLength(2);
 	});
 });
