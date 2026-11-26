@@ -153,7 +153,7 @@ Code: `RIVA_CACHE`.
 **Fix:** create the policy once and share that very object between the riva's definitions.
 
 ```ts
-export const cache = restEntities({ Invoice: { is: (o) => 'number' in o, key: (o) => o['id'] as string } });
+export const cache = restEntities({ Invoice: (o) => o['id'] as string });
 ```
 
 ## An entity does not update the other queries
@@ -166,7 +166,14 @@ export const cache = restEntities({ Invoice: { is: (o) => 'number' in o, key: (o
 
 **Why:** the first type whose `is` matches wins, so a loose check (`'id' in o`) tags every resource as the first type.
 
-**Fix:** make `is` discriminate on something only that resource has.
+**Fix:** make `is` discriminate on something only that resource has. The same goes for the shorthand `{ Invoice: (o) => o['id'] }`: a bare key function matches every object with an id, so every object is tagged as the first type. Return `undefined` for what is not that type, or use the full form:
+
+```ts
+restEntities({
+	Invoice: (o) => ('invoiceNo' in o ? (o['id'] as string) : undefined),
+	Customer: { is: (o) => 'email' in o, key: (o) => o['id'] as string },
+});
+```
 
 ## A request refuses a field called `__typename`
 

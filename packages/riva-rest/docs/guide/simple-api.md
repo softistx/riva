@@ -70,7 +70,7 @@ await riva.rest.delete('/invoices/{id}', { param: { id: '1' } }, { invalidates: 
 
 ## Cache and staleTime
 
-`withRest(api, { cache })` and `withRest({ baseUrl, cache })` set how the data of every simple call is stored. Default: as is, a keyed cache with no entities; pass `restEntities(...)` from `@softistx/riva-rest/entities` to share entities between calls. `staleTime` defaults to the riva's `defaults.staleTime` (0 when unset), so data is refetched by the next read once it is older; a per-call `staleTime` overrides it.
+`withRest(api, { cache })` and `withRest({ baseUrl, cache })` set how the data of every simple call is stored. Default: as is, a keyed cache with no entities; pass `restEntities(...)` from `@softistx/riva-rest/entities` to share entities between calls (`restEntities({ Invoice: (o) => o['id'] as string })`; the [cache guide](./cache.md) shows the full `{ is, key }` form). `staleTime` defaults to the riva's `defaults.staleTime` (0 when unset), so data is refetched by the next read once it is older; a per-call `staleTime` overrides it.
 
 ## Errors
 

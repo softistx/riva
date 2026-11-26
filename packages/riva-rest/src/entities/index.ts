@@ -14,8 +14,27 @@ export interface RestEntity {
 	key(obj: Fields): string | number | undefined;
 }
 
-/** The entity types of an API, by name: `{ Invoice: { is, key } }`. */
-export type RestEntities = Record<string, RestEntity>;
+/**
+ * A key function alone, the shorthand of a type: an object is of the type
+ * when it returns an id (not `undefined` or `null`), so it must discriminate
+ * when several types are declared.
+ */
+export type RestEntityKey = (obj: Fields) => string | number | undefined;
+
+/** The entity types of an API, by name: `{ Invoice: { is, key } }`, or `{ Invoice: keyFn }`. */
+export type RestEntities = Record<string, RestEntity | RestEntityKey>;
+
+/** The full form of a type: a key function alone `k` is a type whose `is` is "`k` gives an id". */
+function normalise(type: RestEntity | RestEntityKey): RestEntity {
+	if (typeof type !== 'function') return type;
+	return {
+		is: (obj) => {
+			const id = type(obj);
+			return id !== undefined && id !== null;
+		},
+		key: type,
+	};
+}
 
 /** Tags every object `types` recognises with its `__typename`, on a copy: the response is never mutated. */
 function tag(types: [string, RestEntity][], value: unknown): unknown {
@@ -35,19 +54,27 @@ function tag(types: [string, RestEntity][], value: unknown): unknown {
  *
  * ```ts
  * const cache = restEntities({
+ *   // the full form: `is` recognises the type, `key` gives its id
  *   Invoice: { is: (o) => 'number' in o, key: (o) => o['id'] as string },
+ *   // the shorthand: a key function alone; an object is a Customer when it returns an id
+ *   Customer: (o) => ('email' in o ? (o['id'] as string) : undefined),
  * });
  * query(api, 'get /invoices/{id}', { cache });
  * ```
  *
- * Objects `is` recognises get a `__typename`, so the data a reader sees
- * carries it. Share one policy between the queries of a riva.
+ * Objects a type recognises get a `__typename`, so the data a reader sees
+ * carries it. The first type that matches wins (declaration order): with
+ * several types, a bare `(o) => o['id']` matches every object with an id, so
+ * each key function must discriminate, or use the full form. Share one
+ * policy between the queries of a riva.
  */
 export function restEntities(
 	types: RestEntities,
 	options?: Pick<EntitiesOptions, 'identify'>,
 ): EntityPolicy {
-	const list = Object.entries(types);
+	const list: [string, RestEntity][] = Object.entries(types).map(
+		([name, type]) => [name, normalise(type)],
+	);
 	const policy = entities({
 		...options,
 		keys: Object.fromEntries(list.map(([name, e]) => [name, e.key])),
