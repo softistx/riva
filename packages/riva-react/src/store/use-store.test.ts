@@ -245,6 +245,9 @@ test('a memoised child that alone reads a new key is not watched for it (documen
 	await m.unmount();
 });
 
+// Why a memoised child's reads are not committed (see the limit above): reads
+// are recorded as they happen, so committing them from a child would also
+// commit the keys of a render React discards, as this one reads and drops.
 test('a render that is discarded leaves its keys uncommitted until the next commit', async () => {
 	const riva = newRiva();
 	let renders = 0;
