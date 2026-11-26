@@ -209,7 +209,7 @@ When to prefer one, and how both live on one riva: [Advanced: shared definitions
 | `@softistx/riva-graphql/infinite` | `infinite` | Imports `@softistx/riva/infinite`. |
 | `@softistx/riva-graphql/cache` | `normalized` | Imports `@softistx/riva/entities`; no `graphql` value import. |
 | `@softistx/riva-graphql/bff` | `bffTransport` | Browser; imports `@softistx/riva/ssr` only. |
-| `@softistx/riva-graphql/react` | `useGraphQL`, `useGraphQLMutation`, `useGraphQLSubscription` (type `UseGraphQLOptions`) | Optional peers `react` and `@softistx/riva-react`. |
+| `@softistx/riva-graphql/react` | `useGraphQL`, `useGraphQLMutation`, `useGraphQLSubscription` (types `UseGraphQLOptions`, `MutationResult` re-exported from `@softistx/riva-react/resource`) | Optional peers `react` and `@softistx/riva-react`. |
 | `@softistx/riva-graphql/server` | `allowlist` | Server only; needs `graphql`. |
 | `@softistx/riva-graphql/codegen` | `buildAllowlist`, `writeAllowlist` | Node and codegen only; needs `graphql`. |
 

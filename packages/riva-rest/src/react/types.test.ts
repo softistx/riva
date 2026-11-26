@@ -5,9 +5,9 @@ import type {
 	MutationResult,
 	SuspendedState,
 } from '@softistx/riva-react/resource';
-import type { RestInput } from '../simple';
 import type { ClientOperations, Invoice } from '../../test/fixtures';
 import type { RestMutateCall } from '../calls';
+import type { RestInput } from '../simple';
 import type { MutationResult as ReexportedMutationResult } from './index';
 import type {
 	UntypedUseRest,
