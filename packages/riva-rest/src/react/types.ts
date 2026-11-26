@@ -11,6 +11,7 @@ import type {
 	GetInput,
 	MutationMethod,
 	PathsOf,
+	RestInput,
 	Route,
 	UntypedData,
 	UntypedInput,
@@ -111,7 +112,7 @@ export interface UntypedUseRest {
 }
 
 /** `useRestMutation` with no spec. */
-export type UntypedUseRestMutation = <Data = unknown, Input = unknown>(
+export type UntypedUseRestMutation = <Data = unknown, Input = RestInput>(
 	method: MutationMethod,
 	path: string,
 ) => MutationResult<Input, Data, RestMutateCall>;

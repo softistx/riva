@@ -11,6 +11,7 @@ import {
 import { flush, h, mount } from '../../test/render';
 import type { GraphQLMutateCall } from '../calls';
 import { withGraphQL } from '../simple';
+import type { MutationResult as ReexportedMutationResult } from './index';
 import { useGraphQL } from './use-graphql';
 import { useGraphQLMutation } from './use-graphql-mutation';
 
@@ -101,4 +102,10 @@ test('types: the input is inferred from the document', () => {
 		void rename({ id: '1', name: 'Z' });
 	};
 	expect(typeof never).toBe('function');
+});
+
+test('MutationResult is re-exported from the react entry', () => {
+	expectTypeOf<ReexportedMutationResult<{ a: 1 }, 2>>().toEqualTypeOf<
+		MutationResult<{ a: 1 }, 2>
+	>();
 });

@@ -94,6 +94,7 @@ For adapter authors and wrappers, also from `@softistx/riva/resource`:
 - `callResource(riva, def, read, call)`: the resource of one query call, from its `enabled`, `keepPrevious`, `staleTime` (type `CallOptions`) and `signal`.
 - `toMs(duration)`: a duration (`'30s'`, `'1.5m'` or a number) as milliseconds; an invalid string throws `RIVA_DURATION`.
 - `mutateInvalidating(riva, def, vars, call, target)`: runs a mutation, then marks stale what `call.invalidates` names.
+- `RivaGraphQLError` and its entry type `GraphQLErrorEntry`: the error a GraphQL adapter throws for a response with `errors` (the data it kept is on the error).
 
 ## Signals
 
@@ -180,7 +181,7 @@ The snapshot is an opaque format: pass on what `dehydrate` returned. A fresh ent
 
 ## Errors
 
-`RivaError` (with a `code`) is the base class, defined once here so `instanceof` holds. `RivaScopeError` (`RIVA_SCOPE`), `RivaRequestError` (`status?`, `retryable`), `RivaHttpError` (`HTTP_<status>`), `RivaNetworkError` (`RIVA_NETWORK`), `RivaAbortError` (`RIVA_ABORT`); `isRetryableStatus(status)` tells whether an HTTP status is worth retrying (5xx, 408, 429); `RIVA_CYCLE`, `RIVA_LOOP`, `RIVA_DURATION`, `RIVA_KEY`, `RIVA_CACHE`, `RIVA_STORE` and `RIVA_SSR` are plain `RivaError`s. [errors](./docs/guide/errors.md), [troubleshooting](./docs/troubleshooting.md).
+`RivaError` (with a `code`) is the base class, defined once here so `instanceof` holds. `RivaScopeError` (`RIVA_SCOPE`), `RivaRequestError` (`status?`, `retryable`), `RivaHttpError` (`HTTP_<status>`), `RivaNetworkError` (`RIVA_NETWORK`), `RivaAbortError` (`RIVA_ABORT`); `RivaGraphQLError` (with its `GraphQLErrorEntry` type, both from `@softistx/riva/resource`) for a GraphQL response with `errors`; `isRetryableStatus(status)` tells whether an HTTP status is worth retrying (5xx, 408, 429); `RIVA_CYCLE`, `RIVA_LOOP`, `RIVA_DURATION`, `RIVA_KEY`, `RIVA_CACHE`, `RIVA_STORE` and `RIVA_SSR` are plain `RivaError`s. [errors](./docs/guide/errors.md), [troubleshooting](./docs/troubleshooting.md).
 
 ## Data route riva
 

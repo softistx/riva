@@ -18,5 +18,8 @@ One mutation-hook shape and a path-first `useRest`. No old name is kept as an al
 | `isPending` (`useMutation`) | `status === 'loading'` |
 | `useRest('get', path, input?, options?)` | `useRest(path, input?, options?)` (the old form throws `RIVA_DEFINITION`) |
 | `MutationHook` (`@softistx/riva-react/resource`) | `MutationResult` (also exported by `@softistx/riva-react`) |
+| `UntypedUseRestMutation` input default `unknown` | `RestInput`, as `riva.rest.mutation` |
+
+New: `MutationResult` is re-exported (type) from `@softistx/riva-graphql/react` and `@softistx/riva-rest/react`.
 
 The handle of `riva.graphql.mutation()` and `riva.rest.mutation()` stays callable.

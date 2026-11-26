@@ -94,6 +94,7 @@ function Book({ id }: { id: string }) {
 }
 // useRest(def, input) takes a query(api, route) definition: it shares its entry with a loader's def.ensure(riva, input).
 // useRest(path, input, { suspense: true }) suspends and returns the success state.
+// The query hooks take a path or a definition; a mutation definition goes through useMutation(def) from @softistx/riva-react.
 ```
 
 Without `Register` the hooks are untyped (`useRest<T>`). How they behave:
@@ -104,7 +105,7 @@ Without `Register` the hooks are untyped (`useRest<T>`). How they behave:
 - While `enabled` is false the status is `idle`, the input function is not called and nothing is fetched.
 - `suspense: true` suspends until data, types the state as `success` and sends any error to the nearest error boundary. `enabled` cannot be combined with `suspense` (a type error): a suspending hook is never idle. Its fetch uses a `staleTime` of at least 1000 ms (yours, else the riva's default, whichever is longer).
 
-`useRest` takes the path first (`useRest('get', path)` is gone and throws `RIVA_DEFINITION`). The mutation hook returns `{ run, status, data, error, reset }`, the same shape as `useMutation` and `useGraphQLMutation`. `run` and `reset` keep their identity across renders; to react to a result, read `status` and `data`:
+`useRest` takes the path first (`useRest('get', path)` is gone and throws `RIVA_DEFINITION`). The mutation hook returns `{ run, status, data, error, reset }`, the same shape as `useMutation` and `useGraphQLMutation` (type `MutationResult`). `run` and `reset` keep their identity across renders; to react to a result, read `status` and `data`:
 
 ```tsx
 const { run, status } = useRestMutation('post', '/books');
@@ -172,8 +173,8 @@ export default function Root() {
 
 ## Entry points
 
-- `@softistx/riva-rest`: `query`, `mutation`, `withRest` (the extension), `provideRest`, `httpyzTransport`, `toRivaError`, `operationOf` (reads a route into `{ id, method, path, operationId, hasInput }`) and the types: `RestTransport`, `RestContext`, `Route`, `Operation`, the simple API (`RestApi`, `UntypedRestApi`, `RestQueryCall`, `RestMutateCall`, `TrackedInput` (re-exported from the core), `RestSimpleOptions`, `RestBaseOptions`, `PathsOf`, `MutationMethod`, `InputArg`, `RestInput`), the options (`RestQueryOptions`, `RestMutationOptions`, `FreeQueryOptions`, `FreeMutationOptions`), the routes (`RouteOf`, `QueryRoute`, `MutationRoute`) and `InputOf`, `DataOf`, `SpecOf`, `ClientOf`, `DecodedOf`.
-- `@softistx/riva-rest/react`: `useRest`, `useRestMutation` and the types `Register`, `UseRest`, `UseRestMutation`, `UseRestOptions` (optional peers `react` and `@softistx/riva-react`).
+- `@softistx/riva-rest`: `query`, `mutation`, `withRest` (the extension), `provideRest`, `httpyzTransport`, `toRivaError`, `operationOf` (reads a route into `{ id, method, path, operationId, hasInput }`) and the types: `RestTransport`, `RestContext`, `Route`, `Operation`, the simple API (`RestApi`, `UntypedRestApi`, `RestQueryCall`, `RestMutateCall`, `TrackedInput` (re-exported from the core), `RestSimpleOptions`, `RestBaseOptions`, `PathsOf`, `MutationMethod`, `RestInput`), the options (`RestQueryOptions`, `RestMutationOptions`, `FreeQueryOptions`, `FreeMutationOptions`), the routes (`RouteOf`, `QueryRoute`, `MutationRoute`) and `InputOf`, `DataOf`, `SpecOf`, `ClientOf`, `DecodedOf`.
+- `@softistx/riva-rest/react`: `useRest`, `useRestMutation` and the types `Register`, `UseRest`, `UseRestMutation`, `UseRestOptions`, `MutationResult` (re-exported from `@softistx/riva-react/resource`) (optional peers `react` and `@softistx/riva-react`).
 - `@softistx/riva-rest/entities`: `restEntities` and the types `RestEntity`, `RestEntities`.
 - `@softistx/riva-rest/server`: `operations(api)` (a `DataSource` for `dataRoute`), the constant `PREFIX` (`'rest:'`, the prefix of every id the route serves: `rest:<operationId>`) and the types `DataSource`, `DataOperation`, `OperationsOf`.
 - `@softistx/riva-rest/bff`: `bffTransport(opts)` and the type `BffTransportOptions`.

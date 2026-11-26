@@ -1,6 +1,12 @@
 import type { Riva, RunOptions, VarsArgs } from '@softistx/riva';
 import type { MutationHandle, MutationState } from '@softistx/riva/resource';
-import { useCallback, useMemo, useRef, useSyncExternalStore } from 'react';
+import {
+	useCallback,
+	useInsertionEffect,
+	useMemo,
+	useRef,
+	useSyncExternalStore,
+} from 'react';
 import { useRiva } from '../context';
 
 /**
@@ -33,7 +39,10 @@ export function useMutationHandle<Vars, Data, Opts = never>(
 	const riva = useRiva();
 	const handle = useMemo(() => make(riva), [riva, key]);
 	const current = useRef(handle);
-	current.current = handle;
+	// Written before layout effects and never during render (the useEvent pattern).
+	useInsertionEffect(() => {
+		current.current = handle;
+	});
 	const state = useSyncExternalStore(
 		useCallback((notify: () => void) => handle.subscribe(notify), [handle]),
 		() => handle.state,
