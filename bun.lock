@@ -28,11 +28,11 @@
         "@graphql-codegen/client-preset": "^7.0.0",
         "@graphql-typed-document-node/core": "^3.2.0",
         "@happy-dom/global-registrator": "^20.0.0",
-        "@softistx/graphql-client": "^0.10.0",
+        "@softistx/graphql-client": "^0.12.0",
         "@softistx/riva": "workspace:*",
         "@softistx/riva-react": "workspace:*",
         "@types/bun": "^1.4.5",
-        "@types/react": "^19.3.2",
+        "@types/react": "^19.3.3",
         "@types/react-dom": "^19.0.0",
         "graphql": "^17.0.0",
         "react": "^19.0.0",
@@ -40,7 +40,7 @@
       },
       "peerDependencies": {
         "@graphql-typed-document-node/core": "^3.2.0",
-        "@softistx/graphql-client": "^0.9.0 || ^0.10.0 || ^0.11.0",
+        "@softistx/graphql-client": "^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0",
         "@softistx/riva": "^0.7.0",
         "@softistx/riva-react": "^0.7.0",
         "graphql": "^16.11.0 || ^17.0.0",
@@ -60,7 +60,7 @@
         "@happy-dom/global-registrator": "^20.0.0",
         "@softistx/riva": "workspace:*",
         "@types/bun": "^1.4.5",
-        "@types/react": "^19.3.2",
+        "@types/react": "^19.3.3",
         "@types/react-dom": "^19.0.0",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
@@ -81,7 +81,7 @@
         "@softistx/riva-react": "workspace:*",
         "@softistx/riva-rest": "workspace:*",
         "@types/bun": "^1.4.5",
-        "@types/react": "^19.3.2",
+        "@types/react": "^19.3.3",
         "@types/react-dom": "^19.0.0",
         "graphql": "^17.0.0",
         "react": "^19.0.0",
@@ -109,7 +109,7 @@
         "@softistx/riva": "workspace:*",
         "@softistx/riva-react": "workspace:*",
         "@types/bun": "^1.4.5",
-        "@types/react": "^19.3.2",
+        "@types/react": "^19.3.3",
         "@types/react-dom": "^19.0.0",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
@@ -366,7 +366,7 @@
 
     "@repeaterjs/repeater": ["@repeaterjs/repeater@3.1.0", "", {}, "sha512-TaoVksZRSx2KWYYpyLQtMQXXeS98VsgZImzW65xmiVgbYhXLk+aEsmzPLirqVuE4/XuUapH2iMtxUzaBNDzdSQ=="],
 
-    "@softistx/graphql-client": ["@softistx/graphql-client@0.10.0", "", { "dependencies": { "@graphql-typed-document-node/core": "^3.2.0", "@nxgt/httpyz": "^0.5.0" }, "peerDependencies": { "@types/react": "^19.0.0", "graphql": "^16.11.0 || ^17.0.0", "react": "^19.0.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["@types/react", "react"] }, "sha512-Dg0/n8I7xkFWm0N52vhA3rF0XE4JEzgiOx4lY+8qSxZmRrIsNMiIZ8Dl6+/vS7Y/GD7OzUo62eDPkZezCICKaA=="],
+    "@softistx/graphql-client": ["@softistx/graphql-client@0.12.0", "", { "dependencies": { "@graphql-typed-document-node/core": "^3.2.0", "@nxgt/httpyz": "^0.5.0" }, "peerDependencies": { "@types/react": "^19.0.0", "graphql": "^16.11.0 || ^17.0.0", "react": "^19.0.0", "typescript": "^6.0.3 || ^7.0.0" }, "optionalPeers": ["@types/react", "react"] }, "sha512-lceVKjmO34rq72dnHTb3dl0dwR22+003pHXmH/wnpHHyyRcIwBTO7kWjDR1ofnSqUWmZ/oJiFe/7oBxJkmw0mw=="],
 
     "@softistx/httpyz": ["@softistx/httpyz@0.6.1", "", { "peerDependencies": { "typescript": "^6.0.3 || ^7.0.0" } }, "sha512-rGEJ1z5V0rgc7jceZkO3NoGtJdR8+675NhBr7t9WeN4hKPfBtpEJ/fa+gzR1w8knT2DVQ0U5Tfc8UXp/+sg5Aw=="],
 
@@ -392,7 +392,7 @@
 
     "@types/node": ["@types/node@26.6.6", "", { "dependencies": { "undici-types": "~8.9.0" } }, "sha512-MzQj+8Kx3XI40OmUAE6Qoh58ZMNstNNMwn2nfd3qWsfe7nDNSqJNzes4njhz6AHwrSHOffSLwXU6yb474Q4aog=="],
 
-    "@types/react": ["@types/react@19.3.2", "", { "dependencies": { "csstype": "^3.2.2" } }, "sha512-0QJbb58RxWJL3VAa5tvk7QhJamz0S+MpFL2xDuF/+THRR+kldyhPjRZ1iwvK45AEHZ1BVGS3otPsl7QlNVRizQ=="],
+    "@types/react": ["@types/react@19.3.3", "", { "dependencies": { "csstype": "^3.2.2" } }, "sha512-K8uWpJc4teiuOPdiP1umjeA9rGMgVPiXuoL66fcS1QlwBT1WMqY8PORmub9FadopIs+RCW6siYEs7Lpq+vDlog=="],
 
     "@types/react-dom": ["@types/react-dom@19.3.0", "", { "peerDependencies": { "@types/react": "^19.3.0" } }, "sha512-ZI7bU42mZXXKHn/qNLEw2IrbiINU7X5+vfgdixBHkCNpYWXjKgfQ/P+uyGb5CjOLB9UcnTeg3rylQtV2hym44Q=="],
 
