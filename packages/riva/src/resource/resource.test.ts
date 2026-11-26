@@ -246,7 +246,7 @@ describe('lazy', () => {
 		stop();
 	});
 
-	test('a dropped computed reader stops the observation at the next change', async () => {
+	test('a computed reader dropped before the data lands stops the observation', async () => {
 		const { q, calls, riva } = setup();
 		const r = resource(riva, () => [q, { n: 1 }] as const);
 		const label = computed(() => r.state.status);
@@ -272,6 +272,26 @@ describe('lazy', () => {
 		riva.queries.invalidate(q, { n: 1 });
 		await tick();
 		expect(calls).toHaveLength(1); // not observed any more: no refetch
+	});
+
+	test('a resource stopped by a dropped reader starts again at the next tracked read', async () => {
+		const { q, calls, riva } = setup();
+		const r = resource(riva, () => [q, { n: 1 }] as const);
+		const label = computed(() => r.state.status);
+		const off = riva.subscribe(label, () => {});
+		await tick();
+		calls[0]?.ok('x');
+		await tick();
+		off();
+		await tick();
+		const again = riva.subscribe(label, () => {});
+		await tick();
+		const started = calls.length; // observed again: stale data refetches on mount
+		riva.queries.invalidate(q, { n: 1 });
+		await tick();
+		expect(started).toBe(2);
+		expect(calls).toHaveLength(3); // and the invalidation refetches
+		again();
 	});
 
 	test('on the server nothing is observed', async () => {

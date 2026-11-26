@@ -23,8 +23,8 @@ export interface Node {
 	listeners: Set<Listener<unknown>>;
 	seen?: number;
 	busy?: boolean;
-	/** Called when refs drop to 0: a subpath stops work it started for this node. @internal */
-	idle?: () => void;
+	/** Called when refs goes to or from 0: a subpath starts or stops work for this node. It may fire during a recompute. @internal */
+	edge?: () => void;
 	init: boolean;
 }
 
@@ -82,11 +82,12 @@ export function nodeOf(g: Graph, def: Def): Node {
 }
 
 function retain(n: Node): void {
-	if (n.refs++ === 0)
-		for (const d of n.deps.keys()) {
-			d.observers.add(n);
-			retain(d);
-		}
+	if (n.refs++) return;
+	for (const d of n.deps.keys()) {
+		d.observers.add(n);
+		retain(d);
+	}
+	n.edge?.();
 }
 
 function release(n: Node): void {
@@ -95,7 +96,7 @@ function release(n: Node): void {
 		d.observers.delete(n);
 		release(d);
 	}
-	n.idle?.();
+	n.edge?.();
 }
 
 export function untracked<R>(g: Graph, fn: () => R): R {
