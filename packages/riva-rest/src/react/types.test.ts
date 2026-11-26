@@ -1,4 +1,5 @@
 import { expect, expectTypeOf, test } from 'bun:test';
+import type { Query } from '@softistx/riva';
 import type { ResourceState } from '@softistx/riva/resource';
 import type {
 	MutationHook,
@@ -6,7 +7,12 @@ import type {
 } from '@softistx/riva-react/resource';
 import type { ClientOperations, Invoice } from '../../test/fixtures';
 import type { MutateCall } from '../calls';
-import type { UseRest, UseRestMutation, UseRestOptions } from './types';
+import type {
+	UntypedUseRest,
+	UseRest,
+	UseRestMutation,
+	UseRestOptions,
+} from './types';
 import { useRest } from './use-rest';
 import { useRestMutation } from './use-rest-mutation';
 
@@ -61,4 +67,22 @@ test('types: a wrong path or input is inferred from the arguments and refused', 
 		create({});
 	};
 	expect(typeof never).toBe('function');
+});
+
+test('useRest over a definition: typed untyped-form and suspense', () => {
+	const def = {} as Query<{ param: { id: string } }, Invoice>;
+	const untyped = {} as UntypedUseRest;
+	const read = () => untyped(def, { param: { id: '1' } });
+	expectTypeOf(read).returns.toEqualTypeOf<ResourceState<Invoice>>();
+	const wrong = () =>
+		// @ts-expect-error the input is required by the definition
+		untyped(def);
+	expectTypeOf(wrong).toBeFunction();
+	const suspended = () =>
+		untyped(def, { param: { id: '1' } }, { suspense: true });
+	expectTypeOf(suspended).returns.toEqualTypeOf<SuspendedState<Invoice>>();
+	const typed = {} as UseRest;
+	const typedSuspended = () =>
+		typed(def, { param: { id: '1' } }, { suspense: true });
+	expectTypeOf(typedSuspended).returns.toEqualTypeOf<SuspendedState<Invoice>>();
 });

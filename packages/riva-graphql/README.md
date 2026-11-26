@@ -98,6 +98,7 @@ function Books({ first }: { first: number }) {
 	if (books.status === 'error') return <Failure error={books.error} />; // books.data keeps a partial result
 	return <button onClick={() => add({ title: 'Dune' }, { invalidates: [BOOKS_QUERY] })}>{books.data.books.length}</button>;
 }
+// useGraphQL(def, vars) takes a query(DOC) definition: it shares its entry with a loader's def.ensure(riva, vars).
 // useGraphQL(DOC, vars, { suspense: true }) suspends and returns the success state.
 // useGraphQLSubscription(BOOK_ADDED_SUBSCRIPTION, {}, { next(added) {} }) is loading, then the last message.
 ```

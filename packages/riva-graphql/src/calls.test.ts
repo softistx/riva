@@ -63,3 +63,12 @@ test('a definition is used as is: a loader ensure and the call share one entry, 
 	await calls.query(def, undefined, { staleTime: '1h' });
 	expect(t.calls.filter((c) => c.kind === 'query')).toHaveLength(2);
 });
+
+test('a string-mode document or a plain string is refused as RIVA_DEFINITION', () => {
+	const { calls } = setup();
+	class TypedDocumentString extends String {}
+	for (const bad of [new TypedDocumentString('query A { a }'), 'query A { a }'])
+		expect(() => calls.query(bad as never)).toThrow(
+			expect.objectContaining({ code: 'RIVA_DEFINITION' }),
+		);
+});

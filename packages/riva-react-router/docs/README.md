@@ -7,7 +7,7 @@ The package's [README](../README.md) is the short path. These pages go deeper.
 | Page | Read it when |
 |---|---|
 | [Setup](./guide/setup.md) | You wire the riva factory, the middleware and the provider in the root route. |
-| [The loader pattern](./guide/loader.md) | You await data in a loader and read it in a component, and need to know how hydration works. |
+| [The loader pattern](./guide/loader.md) | You await data in a loader and read it in a component (a document or a shared definition), and need to know how hydration works. |
 | [The `/_data` route](./guide/data-route.md) | The browser must run operations through your server (BFF). |
 | [After a write](./guide/after-a-write.md) | An action or a mutation must refresh what is on screen. |
 

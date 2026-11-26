@@ -90,7 +90,7 @@ Trap: after success the optimistic layer is dropped, so give the mutation `updat
 
 ## Server rendering in a loader
 
-A loader fills the request riva before the first render. With a definition, `ensure` does it; with the simple API, `await riva.graphql.query(...)` does the same ([loader pattern](https://github.com/softistx/riva/blob/develop/packages/riva-react-router/docs/guide/loader.md)).
+A loader fills the request riva before the first render. With a definition, `ensure` does it; with the simple API, `await riva.graphql.query(...)` does the same, and it also takes the definition (`riva.graphql.query(patients, vars)`, read by `useGraphQL(patients, vars)`) ([loader pattern](https://github.com/softistx/riva/blob/develop/packages/riva-react-router/docs/guide/loader.md)).
 
 ```tsx
 import { useQuery } from '@softistx/riva-react';
@@ -110,6 +110,8 @@ export default function Patients({ params }: Route.ComponentProps) {
 ```
 
 A fresh entry is not fetched again at hydration, so give the definition a `staleTime`.
+
+The component can read the same entry through the simple API's hook: `const patientsState = useGraphQL(patients, { school: params.school })` (from `@softistx/riva-graphql/react`).
 
 ## Entities
 
@@ -158,10 +160,10 @@ Name the cursor variables with `cursor: { after: 'afterCursor' }` when the docum
 
 ## One riva, two kinds of entry
 
-A definition and the simple call for the same document are different cache entries: the simple API stores its data under the id `graphql:<operation id>` (REST: `rest:<method> <path>`), a definition under its own `id`. They never overwrite each other, which has two consequences:
+A document passed to the simple API and a definition made from it are different cache entries: the simple API stores its data under the id `graphql:<operation id>` (REST: `rest:<method> <path>`), a definition under its own `id`. They never overwrite each other, which has two consequences:
 
-- A loader and the component that reads its data use the same kind. A loader that `ensure`s a definition and a component that calls `useGraphQL` for the same document fetch twice.
-- A mutation's `invalidates` targets what it names: `[PATIENTS_QUERY]` marks the simple call's entries stale, `[patients]` the definition's only. Name both to refresh both.
+- The simple API and the hooks also take the definition itself (`riva.graphql.query(patients, vars)`, `useGraphQL(patients, vars)`, `riva.rest.get(def, input)`, `useRest(def, input)`) and use it as is, so `def.ensure` in a loader and the call or hook share one entry. A loader that `ensure`s a definition and a component that calls `useGraphQL` with the document fetch twice.
+- A mutation's `invalidates` targets what it names: `[PATIENTS_QUERY]` marks the simple call's entries stale, `[patients]` the definition's entries (the ones a definition-based call reads too). Name both to refresh both.
 
 Ids must be unique per riva: two definitions with the same `id` are refused on the server with `RIVA_KEY` ([troubleshooting](../troubleshooting.md)).
 

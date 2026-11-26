@@ -326,12 +326,10 @@ test('SSR: a render shows what the loader fetched and a client mount does not re
 });
 
 test('types: data comes from the document', () => {
-	const s = {} as ReturnType<
-		typeof useGraphQL<{ viewer: { id: string } }, { [k: string]: never }>
-	>;
-	expectTypeOf(s).toEqualTypeOf<ResourceState<{ viewer: { id: string } }>>();
-	if (s.status === 'success')
-		expectTypeOf(s.data.viewer.id).toEqualTypeOf<string>();
+	const read = () => useGraphQL(VIEWER_QUERY);
+	expectTypeOf(read).returns.toEqualTypeOf<
+		ResourceState<{ viewer: { id: string } }>
+	>();
 });
 
 test('a signal input that changes fetches the new variables exactly once, without an abort', async () => {
@@ -405,4 +403,28 @@ test('a definition shares its entry with a loader ensure', async () => {
 	expect(m.text()).toBe('success:{"viewer":{"id":"1"}}:false');
 	expect(t.calls).toHaveLength(1);
 	await m.unmount();
+});
+
+test('a definition and a document of one operation keep their own entries', async () => {
+	const t = fakeTransport(() => viewer());
+	const riva = createRiva({
+		defaults: { staleTime: '1m' },
+		graphql: graphql(t),
+	});
+	const def = query(VIEWER_QUERY);
+	await def.ensure(riva);
+	function C({ useDef }: { useDef: boolean }) {
+		return h(
+			'p',
+			null,
+			show(useDef ? useGraphQL(def) : useGraphQL(VIEWER_QUERY)),
+		);
+	}
+	const m = await mount(h(C, { useDef: false }), riva);
+	expect(t.calls).toHaveLength(2);
+	await m.unmount();
+	const m2 = await mount(h(C, { useDef: true }), riva);
+	expect(m2.text()).toBe('success:{"viewer":{"id":"1"}}:false');
+	expect(t.calls).toHaveLength(2);
+	await m2.unmount();
 });

@@ -288,3 +288,17 @@ test('a definition shares its entry with a loader ensure', async () => {
 	expect(seen).toEqual(['GET /invoices/1']);
 	await m.unmount();
 });
+
+test('a first argument that is neither get nor a definition throws a clear error', async () => {
+	const { riva } = server();
+	function C() {
+		return h(
+			'p',
+			null,
+			show((useRest as (x: unknown) => ResourceState<Invoice>)({})),
+		);
+	}
+	const m = await mount(h(Boundary, null, h(C)), riva);
+	expect(m.text()).toBe('caught');
+	await m.unmount();
+});

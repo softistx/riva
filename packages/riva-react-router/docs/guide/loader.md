@@ -27,6 +27,8 @@ export default function Patients({ params }: Route.ComponentProps) {
 }
 ```
 
+With a definition (`const patients = query(PATIENTS_QUERY)`), the loader awaits `patients.ensure(rivaOf(context), { school: params.school })` and the component calls `useGraphQL(patients, { school: params.school })`: both read one entry.
+
 With REST the loader awaits `rivaOf(context).rest.get('/patients/{id}', { param: { id: params.id } })` and the component calls `useRest` of `@softistx/riva-rest/react`.
 
 Several reads in one loader run together:

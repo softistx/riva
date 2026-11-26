@@ -92,3 +92,10 @@ test('a definition is used as is: a loader ensure and get share one entry, and i
 	await c.get(def, undefined, { staleTime: '1h' });
 	expect(calls.filter((x) => x === 'mine')).toHaveLength(2);
 });
+
+test('get refuses what is neither a path nor a definition', () => {
+	const { c } = setup();
+	expect(() => c.get({} as never)).toThrow(
+		expect.objectContaining({ code: 'RIVA_DEFINITION' }),
+	);
+});

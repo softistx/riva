@@ -93,7 +93,10 @@ export function callsOf(
 			vars?: unknown,
 			call?: QueryCall,
 		) {
-			const def = 'definitions' in target ? queryOf(target) : target;
+			const def =
+				(target as { kind?: unknown }).kind === 'query'
+					? (target as Query<unknown, unknown>)
+					: queryOf(target as Doc<unknown, never>);
 			const { signal, ...options } = call ?? {};
 			return graphqlResource(
 				callResource(riva, def, trackedInput(riva, vars), options),

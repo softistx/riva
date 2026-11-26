@@ -339,9 +339,13 @@ describe('riva.rest.get over a definition', () => {
 		const { riva, seen, api } = server();
 		const def = query(api, 'get /health');
 		await riva.rest.get(def, undefined, { staleTime: '1h' });
-		await riva.rest.post('/invoices', { json: { number: 'N', total: 1 } }, {
-			invalidates: [def],
-		} as never);
+		await riva.rest.post(
+			'/invoices',
+			{ json: { number: 'N', total: 1 } },
+			{
+				invalidates: [def],
+			},
+		);
 		await riva.rest.get(def, undefined, { staleTime: '1h' });
 		expect(seen.filter((s) => s === 'GET /health')).toHaveLength(2);
 	});

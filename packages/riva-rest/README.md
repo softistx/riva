@@ -65,7 +65,7 @@ With no spec, `rest({ baseUrl, fetch?, headers? })` gives the untyped calls over
 - `get` returns a `Resource` (`@softistx/riva/resource`): `state`, `subscribe` and awaitable. Options: `staleTime` (this call only), `enabled` (a boolean or tracked function; while false the input function is not called), `keepPrevious` (default true) and `signal` (stops the wait of `await`). It is lazy: it fetches from its first subscriber or observed reader, never on a server, where `await` is the way to load.
 - `mutation(method, path)` makes a new handle at each call (`post`, `put`, `patch`, `delete`); `post / put / patch / delete(path, input, opts)` run once. Both take `invalidates` (paths of a `get`, hand-made definitions or `at(query, vars)`, marked stale once it succeeded) and `signal`; it is an array, checked before the call runs.
 - `cache` (`RestSimpleOptions`, also read from `rest({ baseUrl, cache })`): how the data of every simple call is stored. Default: as is, a keyed cache (no entities). Pass `restEntities(...)` from `@softistx/riva-rest/entities` to share entities. `staleTime` defaults to the riva's `defaults.staleTime` (0 when unset): data older than it is refetched by the next read; a per-call `staleTime` overrides it.
-- The definitions behind the calls are made once per riva, per method and path, under the id `rest:<method> <path>`: a hand-made `query(api, route)` on the same riva keeps its own entries. To share them, pass the definition itself: `riva.rest.get(def, input)` and `useRest(def, input?, options?)` use it as is, so a loader's `def.ensure(riva, input)` and the component read one entry. [Guide](./docs/guide/simple-api.md).
+- The definitions behind the calls are made once per riva, per method and path, under the id `rest:<method> <path>`: a hand-made `query(api, route)` on the same riva keeps its own entries. To share them, pass the definition itself (it is also what `invalidates: [def]` reaches): `riva.rest.get(def, input)` and `useRest(def, input?, options?)` use it as is, so a loader's `def.ensure(riva, input)` and the component read one entry. [Guide](./docs/guide/simple-api.md).
 - Server rendering: `await riva.rest.get(...)` in a loader fills the request's riva, and `useRest` reads it in the component ([React Router loaders](https://github.com/softistx/riva/blob/develop/packages/riva-react-router/docs/guide/loader.md)). Give the riva `defaults: { staleTime }` so the browser does not fetch it again.
 
 ## React hooks
@@ -92,6 +92,7 @@ function Book({ id }: { id: string }) {
 	if (book.status !== 'success') return null;
 	return <button onClick={() => save({ param: { id }, json: { title: 'Dune' } })}>{book.data.title}</button>;
 }
+// useRest(def, input) takes a query(api, route) definition: it shares its entry with a loader's def.ensure(riva, input).
 // useRest('get', path, input, { suspense: true }) suspends and returns the success state.
 ```
 

@@ -31,17 +31,6 @@ type SuspenseArgs<V, O> = [V] extends [Void]
  * variables function is not called and nothing is fetched. A response with
  * data and errors is the `error` state with the partial `data`.
  */
-export function useGraphQL<Vars, Data>(
-	definition: Query<Vars, Data>,
-	...args: SuspenseArgs<VarsInput<Vars>, Suspending<UseGraphQLOptions>>
-): SuspendedState<Data>;
-export function useGraphQL<Vars, Data>(
-	definition: Query<Vars, Data>,
-	...args: VarsArgs<
-		VarsInput<Vars>,
-		[options?: UseGraphQLOptions & { suspense?: false }]
-	>
-): ResourceState<Data>;
 export function useGraphQL<Data, Vars>(
 	document: Doc<Data, Vars>,
 	...args: SuspenseArgs<VarsInput<VarsOf<Vars>>, Suspending<UseGraphQLOptions>>
@@ -53,13 +42,26 @@ export function useGraphQL<Data, Vars>(
 		[options?: UseGraphQLOptions & { suspense?: false }]
 	>
 ): ResourceState<Data>;
+export function useGraphQL<Data, Vars>(
+	definition: Query<Vars, Data>,
+	...args: SuspenseArgs<VarsInput<Vars>, Suspending<UseGraphQLOptions>>
+): SuspendedState<Data>;
+export function useGraphQL<Data, Vars>(
+	definition: Query<Vars, Data>,
+	...args: VarsArgs<
+		VarsInput<Vars>,
+		[options?: UseGraphQLOptions & { suspense?: false }]
+	>
+): ResourceState<Data>;
 export function useGraphQL(
 	document: Doc<unknown, never> | Query<unknown, unknown>,
 	vars?: unknown,
 	options: UseGraphQLOptions = {},
 ): ResourceState<unknown> {
 	return useCallResource(
-		'definitions' in document ? operationOf(document).id : document.id,
+		(document as { kind?: unknown }).kind === 'query'
+			? `def:${(document as Query<unknown, unknown>).id}`
+			: operationOf(document as Doc<unknown, never>).id,
 		vars,
 		options,
 		(riva, input, call) =>
