@@ -8,7 +8,6 @@
 ## Next
 
 - **REST entity shorthand** — identify REST entities with a short key function, like `(r) => r.id`, instead of spelling out `is` and `key`. [#24](https://github.com/softistx/riva/issues/24)
-- **One entity store for GraphQL and REST** — a single riva shares normalized entities across both sources. [#25](https://github.com/softistx/riva/issues/25)
 - **REST definitions from the generated operations table alone** — define OpenAPI queries without the configured client at definition time, the transport supplying it. [#26](https://github.com/softistx/riva/issues/26)
 - **SSR hydration follow-ups** — deferred hydration no longer notifies an observer twice for the same data. [#31](https://github.com/softistx/riva/issues/31)
 - **Store robustness** — hot reload keeps a store's state, stores behave the same on servers with DOM shims, and `useStore` sees a memoised child's reads. [#40](https://github.com/softistx/riva/issues/40)
@@ -28,6 +27,7 @@ Nothing yet.
 
 Landed in `develop`; released from 0.1.0 on, the simple API in the next minor release.
 
+- One entity store for GraphQL and REST: `normalized()`, `restEntities()` and `entities()` policies on one riva share its store, their `keys` merged per type. [#25](https://github.com/softistx/riva/issues/25)
 - Each snapshot key emitted once per request: every loader may return `riva(context)`, and a later call of a request carries only the entries and signals not sent yet or changed since. [#36](https://github.com/softistx/riva/issues/36)
 - Suspense error-boundary reset: resetting the error boundary of a failed Suspense query or resource retries it by itself, with no `onReset` workaround. [#19](https://github.com/softistx/riva/issues/19)
 - Settled public names for 1.0: the extensions `withGraphQL` and `withRest`, the error `RivaGraphQLError`, call types that name their protocol (`GraphQLQueryCall`, `RestQueryCall`, …), one `TrackedInput`, one mutation-hook shape (`{ run, status, data, error, reset }` with a stable `run` and `reset`) and a path-first `useRest(path)`. No deprecated aliases.

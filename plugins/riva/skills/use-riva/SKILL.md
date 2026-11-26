@@ -122,8 +122,10 @@ The peers each package adds, with their ranges, are in
   nothing in place of its optimistic layer after success.
 - A GraphQL document with `normalized()` must select `__typename` below the
   root (the client preset's `addTypenameSelectionDocumentTransform` adds it).
-- Two `entities()` or `restEntities()` calls with other identity rules on one
-  riva throw `RIVA_CACHE`: share one policy object.
+- A riva has one entity store shared by `entities()`, `restEntities()` and
+  `normalized()`; their `keys` merge per type. The same type keyed by two
+  different functions, a key added after the store holds that type, or a custom
+  `identify` beside other rules throws `RIVA_CACHE`: share the key function.
 - `rivaMiddleware` goes on the root route once; every loader that needs the
   data may return `riva(context)`. Each key is sent once per request, so later
   calls carry only what is new or changed.

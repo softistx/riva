@@ -2,16 +2,10 @@ import type { Riva } from '../client';
 import { nodeOf } from '../graph';
 import { type Signal, signal } from '../signal';
 import { fieldsOf } from './denormalize';
-import { type Identify, makeIdentify } from './identity';
+import { type EntitiesOptions, type Identify, makeIdentify } from './identity';
 import { equal, refsIn } from './json';
 
 export type Stored = Record<string, unknown>;
-
-/** The options a store's identity rules came from, compared by reference. */
-export interface Rules {
-	keys: unknown;
-	identify: unknown;
-}
 
 /** The entities of one riva: one signal per entity, kept alive by roots. */
 export class EntityStore {
@@ -28,9 +22,12 @@ export class EntityStore {
 	readonly ov = signal<Map<string, Stored>[]>([]);
 	/** Set while a committed read runs: the layers are skipped. */
 	skip = false;
-	identify: Identify = makeIdentify();
-	/** Set by the first policy that uses the store. */
-	rules: Rules | undefined;
+	/** The key function of each typename any bound policy declared; `identify` reads it. */
+	readonly keys: NonNullable<EntitiesOptions['keys']> = Object.create(null);
+	/** Identifies refs over `keys`, or is the one custom `identify` a policy brought. */
+	identify: Identify = makeIdentify({ keys: this.keys });
+	/** The custom `identify` bound to the store, which no other rule may join. */
+	custom: Identify | undefined;
 
 	constructor(readonly riva: Riva) {}
 
@@ -59,6 +56,13 @@ export class EntityStore {
 	get empty(): boolean {
 		for (const ref of this.signals.keys()) if (this.peek(ref)) return false;
 		return true;
+	}
+
+	/** Whether an entity of the typename holds fields. */
+	holds(type: string): boolean {
+		for (const ref of this.signals.keys())
+			if (ref.startsWith(`${type}:`) && this.peek(ref)) return true;
+		return false;
 	}
 
 	/** Empties an entity; its signal stays while observed, so readers are notified. */

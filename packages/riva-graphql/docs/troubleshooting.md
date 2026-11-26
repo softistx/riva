@@ -192,9 +192,9 @@ Code: `RIVA_CACHE` (`RivaError`), shown as the query's error status; `ensure` re
 
 Code: `RIVA_CACHE` (`RivaError`).
 
-**Why:** two `normalized()` (or `entities()`) policies with different `keys` or `identify` were used on one riva.
+**Why:** a custom `identify` was used beside another policy's `identify` or `keys`, or a `keys` entry was added for a type the riva's store already holds. `keys` of several policies merge per type; the same type keyed by two different functions throws `Two entity policies key "<Type>" differently on this riva…` (define the key function once and share it).
 
-**Fix:** create one `normalized(options)` and pass it to every definition. The core explains it in [its troubleshooting page](../../riva/docs/troubleshooting.md#this-riva-already-uses-other-entity-identity-rules).
+**Fix:** create the `normalized(options)` policies before the store is used, share the key functions, and prefer `keys` to `identify`. The core explains it in [its troubleshooting page](../../riva/docs/troubleshooting.md#this-riva-already-uses-other-entity-identity-rules).
 
 ## A query fetches although another query showed the same entity
 

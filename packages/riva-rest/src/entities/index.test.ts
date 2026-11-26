@@ -1,7 +1,7 @@
 /* biome-ignore-all lint/style/useNamingConvention: type names and __typename */
 import { expect, expectTypeOf, test } from 'bun:test';
 import { createRiva, mutation, query } from '@softistx/riva';
-import { evict, readEntity } from '@softistx/riva/entities';
+import { entities, evict, readEntity } from '@softistx/riva/entities';
 import { type RestEntities, restEntities } from './index';
 
 type Invoice = { id: string; number: string; total: number };
@@ -161,4 +161,23 @@ test('RestEntities accepts both forms and rejects anything else', () => {
 	// @ts-expect-error a type is a key function or an { is, key } object
 	const bad: RestEntities = { A: 'id' };
 	expect(bad).toBeDefined();
+});
+
+test('a REST policy and a core entities() policy with other types share one store', async () => {
+	const riva = createRiva();
+	const rest = query({
+		id: 'rest',
+		cache: restEntities(types),
+		fetch: async () => ({ id: '1', number: 'F-1', total: 10 }),
+	});
+	// stands in for riva-graphql's normalized(), which passes its keys to entities()
+	const other = query({
+		id: 'other',
+		cache: entities({ keys: { Patient: (o) => o['mrn'] as string } }),
+		fetch: async () => ({ __typename: 'Patient', mrn: '7', name: 'Ada' }),
+	});
+	await rest.ensure(riva);
+	await other.ensure(riva);
+	expect(readEntity(riva, 'Invoice:1')).toMatchObject({ number: 'F-1' });
+	expect(readEntity(riva, 'Patient:7')).toMatchObject({ name: 'Ada' });
 });

@@ -148,12 +148,21 @@ Entries with no message of their own, or with one the core throws.
 
 Code: `RIVA_CACHE`.
 
-**When:** two `restEntities()` calls were used on one riva, even with the same `types`: each call makes a policy of its own.
+**When:** a custom `identify` was given to `restEntities()` beside another policy's `identify` or `keys`, or a type's key was added after the riva's store already held entities of that type (a `readEntity`/`writeEntity` or another policy came first).
 
-**Fix:** create the policy once and share that very object between the riva's definitions.
+**Fix:** create the policies before the store is used, and prefer `keys` (what `restEntities()` builds from its types) to `identify`.
+
+## `Two entity policies key "<Type>" differently on this riva. Give both the same key function (share one definition).`
+
+Code: `RIVA_CACHE`.
+
+**When:** two policies on one riva (two `restEntities()`, or one beside GraphQL's `normalized()`) key the same type with different functions; two inline arrows are different functions.
+
+**Fix:** define the key function once and share it.
 
 ```ts
-export const cache = restEntities({ Invoice: (o) => o['id'] as string });
+const invoiceKey = (o: Fields) => o['id'] as string;
+restEntities({ Invoice: invoiceKey });
 ```
 
 ## An entity does not update the other queries
@@ -183,9 +192,9 @@ restEntities({
 
 ## REST and GraphQL entities on one riva
 
-**Why:** a riva holds one set of identity rules, so a REST policy and a GraphQL one cannot share its store in v1.
+**Why:** they share it: a riva has one entity store, and each policy's `keys` merge per type. It only fails when the same type is keyed by two different functions (see above).
 
-**Fix:** use the entity policy for one of them, and request-keyed caching (the default) for the other.
+**Fix:** give the type one shared key function, or distinct typenames for the two sources.
 
 ## `riva-rest: DELETE /x changes data; define it with mutation(), not query().`
 

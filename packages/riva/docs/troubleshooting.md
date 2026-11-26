@@ -205,16 +205,32 @@ fetch: async () => (await res.json()) as Plain, // not a Map, not a model instan
 
 Code: `RIVA_CACHE` (`RivaError`).
 
-**When:** two `entities()` policies with different `keys` or `identify` (compared by reference) meet on one riva, or a policy with such rules is first used after `readEntity` or `writeEntity` filled the riva's store.
+**When:** a custom `identify` meets another policy that brings its own `identify` or `keys` on one riva, or a policy with a custom `identify` or a `keys` entry for a type is first used after `readEntity` or `writeEntity` (or another policy) already filled the store with entities of that type. The message ends with the type when it is a `keys` entry.
 
-**Why:** a riva has one entity store with one identity rule, so the same object cannot be two entities.
+**Why:** a riva has one entity store, and a ref (`Type:id`) must mean one thing. `keys` merge per type, but a custom `identify` replaces the whole identity, so it cannot share the store with other rules, and a type already in the store cannot change its key.
 
-**Fix:** share one policy, or the same options objects, between the riva's queries; create it before any `readEntity`/`writeEntity`.
+**Fix:** create every `entities()` policy (with its `keys`) before the first `readEntity`/`writeEntity`; share one `identify` function, or use `keys` instead of it.
 
 ```ts
-const cache = entities({ keys }); // one, module level
+const cache = entities({ keys }); // module level, created before any write
 query({ id: 'a', cache, fetch });
 query({ id: 'b', cache, fetch });
+```
+
+## Two entity policies key "<Type>" differently on this riva. Give both the same key function (share one definition).
+
+Code: `RIVA_CACHE` (`RivaError`).
+
+**When:** two policies on one riva declare a `keys` entry for the same type with different functions (two inline arrows are different functions, even when they read the same field).
+
+**Why:** the riva's one store identifies a type with one function, so `Type:id` means the same entity for every policy.
+
+**Fix:** define the key function once and share it.
+
+```ts
+const invoiceKey = (o: Fields) => o['id'] as string; // module level
+const a = entities({ keys: { Invoice: invoiceKey } });
+const b = entities({ keys: { Invoice: invoiceKey, Patient: patientKey } });
 ```
 
 ## `The cache cannot read the query's data after a fetch.`

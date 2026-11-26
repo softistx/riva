@@ -310,6 +310,113 @@ describe('entities() as a query cache policy', () => {
 		expect(err.code).toBe('RIVA_CACHE');
 	});
 
+	describe('one store per riva, identity rules merged per type', () => {
+		const q = (id: string, cache: ReturnType<typeof entities>, data: unknown) =>
+			query<void, unknown>({ id, cache, fetch: async () => data });
+		const bookKey = (b: Record<string, unknown>) => b['isbn'] as string;
+		const penKey = (b: Record<string, unknown>) => b['sku'] as string;
+
+		test('policies with disjoint keys share the store', async () => {
+			const riva = createRiva({ scheduler: fakeScheduler() });
+			// biome-ignore lint/style/useNamingConvention: a type name
+			const a = entities({ keys: { Book: bookKey } });
+			// biome-ignore lint/style/useNamingConvention: a type name
+			const b = entities({ keys: { Pen: penKey } });
+			await q('a', a, { __typename: 'Book', isbn: 'x', title: 'old' }).ensure(
+				riva,
+			);
+			await q('b', b, { __typename: 'Pen', sku: 'p', color: 'red' }).ensure(
+				riva,
+			);
+			expect([...storeOf(riva).signals.keys()].sort()).toEqual([
+				'Book:x',
+				'Pen:p',
+			]);
+			writeEntity(riva, 'Book:x', { title: 'new' });
+			expect(readEntity(riva, 'Book:x')?.['title']).toBe('new');
+		});
+
+		test('the same key function twice is allowed, another one is refused', async () => {
+			const riva = createRiva({ scheduler: fakeScheduler() });
+			// biome-ignore lint/style/useNamingConvention: a type name
+			await q('a', entities({ keys: { Book: bookKey } }), {
+				__typename: 'Book',
+				isbn: 'x',
+			}).ensure(riva);
+			// biome-ignore lint/style/useNamingConvention: a type name
+			await q('b', entities({ keys: { Book: bookKey } }), {
+				__typename: 'Book',
+				isbn: 'y',
+			}).ensure(riva);
+			const err = (await q(
+				'c',
+				// biome-ignore lint/style/useNamingConvention: a type name
+				entities({ keys: { Book: (b) => b['isbn'] as string } }),
+				{ __typename: 'Book', isbn: 'z' },
+			)
+				.ensure(riva)
+				.catch((e) => e)) as RivaError;
+			expect(err.code).toBe('RIVA_CACHE');
+			expect(err.message).toBe(
+				'Two entity policies key "Book" differently on this riva. Give both the same key function (share one definition).',
+			);
+		});
+
+		test('a key for a type the store already holds is refused', async () => {
+			const riva = createRiva({ scheduler: fakeScheduler() });
+			writeEntity(riva, 'Pen:1', { a: 1 });
+			// biome-ignore lint/style/useNamingConvention: a type name
+			const late = entities({ keys: { Pen: penKey } });
+			const err = (await q('l', late, { __typename: 'Pen', sku: 'p' })
+				.ensure(riva)
+				.catch((e) => e)) as RivaError;
+			expect(err.code).toBe('RIVA_CACHE');
+			expect(err.message).toContain('"Pen"');
+		});
+
+		test('a custom identify stays exclusive', async () => {
+			const riva = createRiva({ scheduler: fakeScheduler() });
+			const identify = (o: Record<string, unknown>) =>
+				o['__typename'] ? `${o['__typename']}:${o['n']}` : undefined;
+			await q('a', entities({ identify }), {
+				__typename: 'Book',
+				n: 1,
+			}).ensure(riva);
+			await q('same', entities({ identify }), {
+				__typename: 'Book',
+				n: 2,
+			}).ensure(riva);
+			let n = 0;
+			for (const other of [
+				entities({ identify: (o) => `${o['__typename']}:x` }),
+				// biome-ignore lint/style/useNamingConvention: a type name
+				entities({ keys: { Pen: penKey } }),
+			]) {
+				const err = (await q(`o${n++}`, other, { __typename: 'Pen', sku: 'p' })
+					.ensure(riva)
+					.catch((e) => e)) as RivaError;
+				expect(err.code).toBe('RIVA_CACHE');
+			}
+			expect([...storeOf(riva).signals.keys()].sort()).toEqual([
+				'Book:1',
+				'Book:2',
+			]);
+		});
+
+		test('a custom identify after keys is refused', async () => {
+			const riva = createRiva({ scheduler: fakeScheduler() });
+			// biome-ignore lint/style/useNamingConvention: a type name
+			await q('a', entities({ keys: { Pen: penKey } }), {
+				__typename: 'Pen',
+				sku: 'p',
+			}).ensure(riva);
+			const err = (await q('b', entities({ identify: () => undefined }), {})
+				.ensure(riva)
+				.catch((e) => e)) as RivaError;
+			expect(err.code).toBe('RIVA_CACHE');
+		});
+	});
+
 	test('setData with an explicit undefined releases the previous entities', async () => {
 		reset();
 		const riva = createRiva({ scheduler: fakeScheduler() });

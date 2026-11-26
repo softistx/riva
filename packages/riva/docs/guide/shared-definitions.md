@@ -115,7 +115,7 @@ The component can read the same entry through the simple API's hook: `const pati
 
 ## Entities
 
-For GraphQL and REST, the simple API takes the entity policy once for the whole riva: `withGraphQL(client, { cache: normalized() })` and `withRest(api, { cache: restEntities(...) })`. A definition takes `cache` per query or mutation, which is the way for a core `query()` and for a riva that mixes policies. Entities written by either are read by both:
+For GraphQL and REST, the simple API takes the entity policy once for the whole riva: `withGraphQL(client, { cache: normalized() })` and `withRest(api, { cache: restEntities(...) })`. A definition takes `cache` per query or mutation, which is the way for a core `query()` and for a riva that mixes policies. A riva has one entity store: every policy on it (`normalized()`, `restEntities()`, `entities()`) reads and writes the same `Type:id` entities, and their `keys` merge per type. Give a type one key function (define it once and share it); two different functions for the same type, or a key added after the store holds that type, throw `RIVA_CACHE`. Entities written by either are read by both:
 
 ```ts
 import { createRiva, query } from '@softistx/riva';
