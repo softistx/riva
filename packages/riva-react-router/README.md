@@ -92,7 +92,7 @@ export default function Patients({ params }: Route.ComponentProps) {
 }
 ```
 
-For REST it is `await rivaOf(context).rest.get('/patients/{id}', { param: { id: params.id } })` and `useRest` from `@softistx/riva-rest/react`. `rivaOf` and `riva` are for server loaders and actions only; return `riva(context)` from every loader that needs it: each snapshot key is sent once per request, so a later call carries only what is new or changed. [Guide](./docs/guide/loader.md).
+For REST it is `await rivaOf(context).rest.get('/patients/{id}', { param: { id: params.id } })` and `useRest` from `@softistx/riva-rest/react`. `rivaOf` and `riva` are for server loaders and actions only; return `riva(context)` from every loader that needs it: each snapshot key is sent once per request, so a later call carries only what is new or changed. [Guide](./docs/guide/loader.md), [limits](./docs/guide/loader.md#limits).
 
 ## The `/_data` route
 
@@ -149,7 +149,7 @@ export default function Patients({ params }: { params: { school: string } }) {
 | --- | --- | --- |
 | `rivaMiddleware(opts?)` | `/server` | Root middleware: creates the riva (`create`), awaits `setup`, sets the context, runs the rest of the request in the ambient scope. |
 | `rivaOf(context)` | `.` | The request's riva, typed by `Register`; `RivaScopeError` when the middleware did not run. |
-| `riva(context)` | `.` | `{ '~riva': Snapshot }`, to spread into loader data. |
+| `riva(context)` | `.` | `{ '~riva': Snapshot }`, to spread into loader data. Each key is sent once per request: a later call holds only what is new or changed. See [Limits](./docs/guide/loader.md#limits). | |
 | `rivaContext` | `.` | The router context key. |
 | `RivaRouterProvider` | `.` | `riva?`, `setup?`, `invalidateOnAction?`, `children`. |
 | `useActionResult` | `.` | Writes an action's result into a query definition's entry. |

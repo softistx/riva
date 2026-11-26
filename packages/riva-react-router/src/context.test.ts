@@ -137,3 +137,34 @@ test('a client riva hydrated from a root and a leaf payload holds all the data',
 	expect(await item.ensure(client, { id: 2 })).toEqual({ n: 2 });
 	expect(client.get(shared)).toBe(4);
 });
+
+test('an entry whose invalidated flag changes between calls is re-emitted', async () => {
+	const { r, context } = request();
+	await item.ensure(r, { id: 1 });
+	riva(context);
+	item.invalidate(r, { id: 1 });
+	const second = riva(context);
+	expect(keys(second)).toEqual(['item:{"id":1}']);
+	expect(second['~riva'].q[0]?.i).toBe(1);
+});
+
+test('an error entry is emitted once', async () => {
+	const { r, context } = request();
+	const failing = query<void, string>({
+		id: 'failing',
+		retry: 0,
+		fetch: async () => {
+			throw new Error('x');
+		},
+	});
+	await failing.ensure(r).catch(() => {});
+	expect(keys(riva(context))).toEqual(['failing:']);
+	expect(keys(riva(context))).toEqual([]);
+});
+
+test('documented limit: an entry is sent once, so a dropped first payload is not redelivered', async () => {
+	const { r, context } = request();
+	await item.ensure(r, { id: 1 });
+	riva(context); // a payload React Router then discards (the loader threw)
+	expect(keys(riva(context))).toEqual([]);
+});

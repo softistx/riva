@@ -124,8 +124,9 @@ The peers each package adds, with their ranges, are in
   root (the client preset's `addTypenameSelectionDocumentTransform` adds it).
 - Two `entities()` or `restEntities()` calls with other identity rules on one
   riva throw `RIVA_CACHE`: share one policy object.
-- `rivaMiddleware` goes on the root route once; `riva(context)` is returned
-  from one loader per request.
+- `rivaMiddleware` goes on the root route once; every loader that needs the
+  data may return `riva(context)`. Each key is sent once per request, so later
+  calls carry only what is new or changed.
 - Free REST fetchers run on the server only; with `bffTransport` they throw.
 
 The full Traps of each package are in its README and `docs/troubleshooting.md`:
