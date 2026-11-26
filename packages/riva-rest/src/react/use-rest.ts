@@ -9,10 +9,10 @@ function useRestImpl(
 	target: string | Query<unknown, unknown>,
 	...rest: unknown[]
 ): ResourceState<unknown> {
-	if (target === 'get' && typeof rest[0] === 'string')
+	if (target === 'get')
 		throw new RivaError(
 			'RIVA_DEFINITION',
-			`riva-rest/react: useRest('get', path) is gone: call useRest(path), here useRest(${JSON.stringify(rest[0])}).`,
+			`riva-rest/react: useRest('get', path) is gone: call useRest(path).`,
 		);
 	if (
 		typeof target !== 'string' &&

@@ -329,3 +329,19 @@ test('the cache keys are unchanged: a path is `rest:get <path>`, a definition ke
 	]);
 	await m.unmount();
 });
+
+test("useRest('get') alone throws RIVA_DEFINITION too", async () => {
+	const { riva } = server();
+	let caught: unknown;
+	function C() {
+		try {
+			(useRest as unknown as (...a: unknown[]) => unknown)('get');
+		} catch (e) {
+			caught = e;
+		}
+		return null;
+	}
+	const m = await mount(h(C), riva);
+	expect((caught as RivaError).code).toBe('RIVA_DEFINITION');
+	await m.unmount();
+});

@@ -118,13 +118,13 @@ const rename = mutation({
 
 function PatientList({ school }: { school: string }) {
 	const { data, status, error, refetch } = useQuery(patients, { school });
-	const { run, status } = useMutation(rename); // `run` rejects with the error, also in `error`
+	const { run, status: saving } = useMutation(rename); // `run` rejects with the error, also in `error`
 	if (status === 'error') return <button onClick={refetch}>Retry: {String(error)}</button>;
 	return (
 		<ul>
 			{data?.map((p) => (
 				<li key={p.id}>
-					{p.name} <button disabled={status === 'loading'} onClick={() => run({ id: p.id, name: 'New name' }).catch(() => {})}>Rename</button>
+					{p.name} <button disabled={saving === 'loading'} onClick={() => run({ id: p.id, name: 'New name' }).catch(() => {})}>Rename</button>
 				</li>
 			))}
 		</ul>

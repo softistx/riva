@@ -54,6 +54,10 @@ test('types: a wrong path or input is inferred from the arguments and refused', 
 	const never = () => {
 		// @ts-expect-error not a path of the spec
 		useRest('/nope');
+		// @ts-expect-error the method is gone
+		useRest('get', '/invoices/{id}');
+		// @ts-expect-error the method is gone
+		useRest('get', '/health');
 		// @ts-expect-error `id` is a string
 		useRest('/invoices/{id}', { param: { id: 1 } });
 		// @ts-expect-error the error is on the wrong param, not on the whole call
@@ -87,4 +91,13 @@ test('useRest over a definition: typed untyped-form and suspense', () => {
 	const typedSuspended = () =>
 		typed(def, { param: { id: '1' } }, { suspense: true });
 	expectTypeOf(typedSuspended).returns.toEqualTypeOf<SuspendedState<Invoice>>();
+});
+
+test('types: the untyped form refuses a leading method', () => {
+	const untyped = {} as UntypedUseRest;
+	const never = () => {
+		// @ts-expect-error the method is gone
+		untyped('get', '/x');
+	};
+	expect(typeof never).toBe('function');
 });
