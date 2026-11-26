@@ -90,7 +90,7 @@ function bind(store: EntityStore, { keys, identify }: EntitiesOptions): void {
 				);
 		} else if (store.holds(type))
 			throw refuse(
-				`${OTHER} for "${type}". Create its entities() policy before its first readEntity or writeEntity.`,
+				`This riva's store already holds "${type}" entities identified another way (by id, by another policy, or by writeEntity). Declare the "${type}" key in every policy that sees it (share one function), before the store is used.`,
 			);
 	Object.assign(store.keys, keys);
 }

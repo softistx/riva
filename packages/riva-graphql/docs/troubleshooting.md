@@ -188,13 +188,29 @@ Code: `RIVA_CACHE` (`RivaError`), shown as the query's error status; `ensure` re
 
 **Fix:** have the API return every selected field (`null` for an empty one), or remove it from the selection. The generic explanation is on the [core page](../../riva/docs/troubleshooting.md).
 
-## `This riva already uses other entity identity rules…`
+## `This riva already uses other entity identity rules. Share one entities() (or the same identify) between its queries.`
 
 Code: `RIVA_CACHE` (`RivaError`).
 
-**Why:** a custom `identify` was used beside another policy's `identify` or `keys`, or a `keys` entry was added for a type the riva's store already holds. `keys` of several policies merge per type; the same type keyed by two different functions throws `Two entity policies key "<Type>" differently on this riva…` (define the key function once and share it).
+**Why:** a custom `identify` was used beside another policy's `identify` or `keys`.
 
-**Fix:** create the `normalized(options)` policies before the store is used, share the key functions, and prefer `keys` to `identify`. The core explains it in [its troubleshooting page](../../riva/docs/troubleshooting.md#this-riva-already-uses-other-entity-identity-rules).
+**Fix:** share one `identify`, or use `keys`. The core explains it in [its troubleshooting page](../../riva/docs/troubleshooting.md#this-riva-already-uses-other-entity-identity-rules-share-one-entities-or-the-same-identify-between-its-queries).
+
+## `This riva's store already holds "<Type>" entities identified another way (by id, by another policy, or by writeEntity). Declare the "<Type>" key in every policy that sees it (share one function), before the store is used.`
+
+Code: `RIVA_CACHE` (`RivaError`).
+
+**Why:** a `normalized({ keys })` declares a key for a type whose entities the store already holds from a policy without that key (a REST policy, `entities()`, `writeEntity`). It depends on order, also on the client where hydration seeds each definition as first used.
+
+**Fix:** declare a shared type's key in every policy that can see it, with one shared function.
+
+## `Two entity policies key "<Type>" differently on this riva. Give both the same key function (share one definition).`
+
+Code: `RIVA_CACHE` (`RivaError`).
+
+**Why:** two policies key the same type with different functions (two inline arrows differ).
+
+**Fix:** define the key function once and share it; see [the core page](../../riva/docs/troubleshooting.md).
 
 ## A query fetches although another query showed the same entity
 

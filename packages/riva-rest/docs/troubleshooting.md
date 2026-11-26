@@ -144,13 +144,21 @@ See the [error table in the README](../README.md#errors). The entries below add 
 
 Entries with no message of their own, or with one the core throws.
 
-## `This riva already uses other entity identity rules. Share one entities() (or the same options objects) between its queries.`
+## `This riva already uses other entity identity rules. Share one entities() (or the same identify) between its queries.`
 
 Code: `RIVA_CACHE`.
 
-**When:** a custom `identify` was given to `restEntities()` beside another policy's `identify` or `keys`, or a type's key was added after the riva's store already held entities of that type (a `readEntity`/`writeEntity` or another policy came first).
+**When:** a custom `identify` was given to `restEntities()` beside another policy's `identify` or `keys`.
 
-**Fix:** create the policies before the store is used, and prefer `keys` (what `restEntities()` builds from its types) to `identify`.
+**Fix:** use `keys` (what `restEntities()` builds from its types) instead of `identify`, or share the same `identify` function. The core explains it in [its troubleshooting page](../../riva/docs/troubleshooting.md).
+
+## `This riva's store already holds "<Type>" entities identified another way (by id, by another policy, or by writeEntity). Declare the "<Type>" key in every policy that sees it (share one function), before the store is used.`
+
+Code: `RIVA_CACHE`.
+
+**When:** a type's key was declared after the store already held entities of that type, put there by a policy without that key, a GraphQL policy, or `readEntity`/`writeEntity`. It depends on order, also on the client where hydration seeds each definition as first used.
+
+**Fix:** declare a shared type's key in every policy that can see it (REST and GraphQL), with one shared function.
 
 ## `Two entity policies key "<Type>" differently on this riva. Give both the same key function (share one definition).`
 

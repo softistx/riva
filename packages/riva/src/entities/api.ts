@@ -61,8 +61,14 @@ export function invalidateEntity(riva: Riva, ref: string): void {
 	});
 }
 
-/** The ref (`Type:id`) the policy gives an object, or `undefined` when it is not an entity. */
-export const identifyOf = (
-	policy: EntityPolicy,
+/**
+ * The ref (`Type:id`) of an object, or `undefined` when it is not an entity.
+ * With a policy: that policy's own rules only. With a riva: the ref its
+ * store uses, every policy's keys merged.
+ */
+export function identifyOf(
+	from: EntityPolicy | Riva,
 	obj: Fields,
-): string | undefined => policy.identify(obj);
+): string | undefined {
+	return 'slots' in from ? storeOf(from).identify(obj) : from.identify(obj);
+}

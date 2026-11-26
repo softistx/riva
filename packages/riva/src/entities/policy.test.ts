@@ -1,3 +1,4 @@
+/* biome-ignore-all lint/style/useNamingConvention: type names */
 import { describe, expect, test } from 'bun:test';
 import { createRiva } from '../client';
 import { computed } from '../computed';
@@ -273,7 +274,7 @@ describe('entities() as a query cache policy', () => {
 		const err = (await other.ensure(riva).catch((e) => e)) as RivaError;
 		expect(err).toBeInstanceOf(RivaError);
 		expect(err.code).toBe('RIVA_CACHE');
-		expect(err.message).toContain('other entity identity rules');
+		expect(err.message).toContain('already holds "Patient" entities');
 	});
 
 	test('two inline entities() with the same options objects share one riva', async () => {
@@ -401,6 +402,46 @@ describe('entities() as a query cache policy', () => {
 				'Book:1',
 				'Book:2',
 			]);
+		});
+
+		test('a default policy writing a type first refuses a later key for it, the reverse order is fine', async () => {
+			const pen = { __typename: 'Pen', id: '1', sku: 'p' };
+			const first = createRiva({ scheduler: fakeScheduler() });
+			await q('d', entities(), pen).ensure(first);
+			const err = (await q('k', entities({ keys: { Pen: penKey } }), pen)
+				.ensure(first)
+				.catch((e) => e)) as RivaError;
+			expect(err.code).toBe('RIVA_CACHE');
+			expect(err.message).toContain('already holds "Pen" entities');
+			const second = createRiva({ scheduler: fakeScheduler() });
+			await q('k', entities({ keys: { Pen: penKey } }), pen).ensure(second);
+			await q('d', entities(), pen).ensure(second);
+			expect([...storeOf(second).signals.keys()]).toEqual(['Pen:p']);
+		});
+
+		test('a policy with no rules joins after a custom identify', async () => {
+			const riva = createRiva({ scheduler: fakeScheduler() });
+			const identify = (o: Record<string, unknown>) =>
+				o['__typename'] ? `${o['__typename']}:${o['n']}` : undefined;
+			await q('a', entities({ identify }), { __typename: 'Book', n: 1 }).ensure(
+				riva,
+			);
+			await q('b', entities(), { __typename: 'Book', n: 2 }).ensure(riva);
+			expect(storeOf(riva).signals.has('Book:1')).toBe(true);
+		});
+
+		test('a refused bind registers none of its keys', async () => {
+			const riva = createRiva({ scheduler: fakeScheduler() });
+			writeEntity(riva, 'Pen:1', { a: 1 });
+			const bad = entities({
+				// biome-ignore lint/style/useNamingConvention: type names
+				keys: { Book: bookKey, Pen: penKey },
+			});
+			const err = (await q('x', bad, { __typename: 'Book', isbn: 'x' })
+				.ensure(riva)
+				.catch((e) => e)) as RivaError;
+			expect(err.code).toBe('RIVA_CACHE');
+			expect(Object.keys(storeOf(riva).keys)).toEqual([]);
 		});
 
 		test('a custom identify after keys is refused', async () => {
