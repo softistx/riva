@@ -15,7 +15,7 @@ Code: `RIVA_SCOPE` (`RivaScopeError`).
 ```ts
 import { createGraphQLClient } from '@softistx/graphql-client';
 import { createRiva } from '@softistx/riva';
-import { graphql } from '@softistx/riva-graphql';
+import { withGraphQL } from '@softistx/riva-graphql';
 
 const riva = createRiva({ graphql: withGraphQL(createGraphQLClient({ url: 'https://api.example.com/graphql' })) });
 ```

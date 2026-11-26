@@ -5,7 +5,7 @@ One `Riva` per tree: one in the browser, one per request on the server. `RivaPro
 ```tsx
 import { createGraphQLClient } from '@softistx/graphql-client';
 import { createRiva } from '@softistx/riva';
-import { graphql } from '@softistx/riva-graphql';
+import { withGraphQL } from '@softistx/riva-graphql';
 import { RivaProvider, useRiva } from '@softistx/riva-react';
 import { PATIENTS_QUERY, RENAME_PATIENT_MUTATION } from './graphql'; // typed documents
 

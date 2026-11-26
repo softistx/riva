@@ -5,7 +5,7 @@ Render each request under its own `RivaProvider` with its own riva; no hook hold
 ```tsx
 import { createGraphQLClient } from '@softistx/graphql-client';
 import { createRiva } from '@softistx/riva';
-import { graphql } from '@softistx/riva-graphql';
+import { withGraphQL } from '@softistx/riva-graphql';
 import { RivaProvider } from '@softistx/riva-react';
 import { renderToReadableStream } from 'react-dom/server';
 import { PATIENTS_QUERY } from './graphql'; // a typed document

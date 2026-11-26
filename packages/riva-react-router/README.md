@@ -16,7 +16,7 @@ Peers: `@softistx/riva`, `@softistx/riva-react`, `react` ^19 and `react-router` 
 // app/riva.ts: one factory, so the request, the render and the browser build the same riva
 import { createGraphQLClient } from '@softistx/graphql-client';
 import { createRiva } from '@softistx/riva';
-import { graphql } from '@softistx/riva-graphql';
+import { withGraphQL } from '@softistx/riva-graphql';
 
 const API_URL = 'https://api.example.com/graphql'; // schematic: your API
 

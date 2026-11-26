@@ -35,7 +35,7 @@ points, peers and the exact docs pages it ships. The tarball carries no
 ## 1. Choose the package by need
 
 Install the core and one package per need. Every adapter peers
-`@softistx/riva`. Start from the simple API: `createRiva({ graphql, rest })`,
+`@softistx/riva`. Start from the simple API: `createRiva({ graphql: withGraphQL(client), rest: withRest(api) })`,
 then `riva.graphql.query(DOC, vars)` and `riva.rest.get(path, input)`.
 
 | Need | Package and subpath |

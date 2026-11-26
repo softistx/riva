@@ -37,7 +37,7 @@ Install the extension once, then call GraphQL like a function: no definition, no
 ```ts
 import { createGraphQLClient } from '@softistx/graphql-client';
 import { createRiva, signal } from '@softistx/riva';
-import { graphql } from '@softistx/riva-graphql';
+import { withGraphQL } from '@softistx/riva-graphql';
 import { normalized } from '@softistx/riva-graphql/cache';
 import { ADD_BOOK_MUTATION, BOOK_ADDED_SUBSCRIPTION, BOOKS_QUERY } from './graphql';
 
@@ -157,7 +157,7 @@ In the browser, `bffTransport` posts `{ id, variables }` to your `dataRoute` (fr
 ```ts
 // browser: app/riva.ts
 import { createRiva } from '@softistx/riva';
-import { graphql } from '@softistx/riva-graphql';
+import { withGraphQL } from '@softistx/riva-graphql';
 import { bffTransport } from '@softistx/riva-graphql/bff';
 
 export const createBrowserRiva = () =>

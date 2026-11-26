@@ -19,7 +19,7 @@ One `Riva` per tree: one in the browser, one per request on the server. A hook w
 ```tsx
 import { createGraphQLClient } from '@softistx/graphql-client';
 import { createRiva } from '@softistx/riva';
-import { graphql } from '@softistx/riva-graphql';
+import { withGraphQL } from '@softistx/riva-graphql';
 import { RivaProvider } from '@softistx/riva-react';
 
 const riva = createRiva({
@@ -205,7 +205,7 @@ Render each request under its own `RivaProvider` with its own riva; no hook hold
 ```tsx
 import { createGraphQLClient } from '@softistx/graphql-client';
 import { createRiva } from '@softistx/riva';
-import { graphql } from '@softistx/riva-graphql';
+import { withGraphQL } from '@softistx/riva-graphql';
 import { useGraphQL } from '@softistx/riva-graphql/react';
 import { RivaProvider } from '@softistx/riva-react';
 import { renderToReadableStream } from 'react-dom/server';

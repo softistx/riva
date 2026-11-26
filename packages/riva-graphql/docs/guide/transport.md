@@ -9,7 +9,7 @@ The transport lives on the `Riva` that runs the calls. `withGraphQL(client)` ins
 ```ts
 import { createGraphQLClient } from '@softistx/graphql-client';
 import { createRiva } from '@softistx/riva';
-import { graphql } from '@softistx/riva-graphql';
+import { withGraphQL } from '@softistx/riva-graphql';
 
 const gql = createGraphQLClient({ url: 'https://api.example.com/graphql' });
 
@@ -47,7 +47,7 @@ Any object with `execute(operation, variables, { signal })` is a transport. The 
 
 ```ts
 import { createRiva } from '@softistx/riva';
-import { graphql, toRivaError, type GraphQLTransport } from '@softistx/riva-graphql';
+import { withGraphQL, toRivaError, type GraphQLTransport } from '@softistx/riva-graphql';
 
 const transport: GraphQLTransport = {
 	async execute(operation, variables, { signal }) {

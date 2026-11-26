@@ -11,7 +11,7 @@ The other snippets of this page reuse this one.
 ```ts
 import { createGraphQLClient } from '@softistx/graphql-client';
 import { createRiva, signal } from '@softistx/riva';
-import { graphql } from '@softistx/riva-graphql';
+import { withGraphQL } from '@softistx/riva-graphql';
 import {
 	BOOKS_QUERY,
 	PATIENT_RENAMED_SUBSCRIPTION,

@@ -11,7 +11,7 @@ In the browser, `bffTransport` posts `{ id, variables }` to your `dataRoute` (fr
 ```ts
 // app/riva.ts
 import { createRiva } from '@softistx/riva';
-import { graphql } from '@softistx/riva-graphql';
+import { withGraphQL } from '@softistx/riva-graphql';
 import { bffTransport } from '@softistx/riva-graphql/bff';
 
 export const createBrowserRiva = () =>

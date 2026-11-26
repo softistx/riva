@@ -12,8 +12,8 @@ hand-written keys.
 // Schematic names: PATIENTS_QUERY and the other documents, Invoice, Route
 import { createGraphQLClient } from "@softistx/graphql-client";
 import { createRiva, signal } from "@softistx/riva";
-import { graphql } from "@softistx/riva-graphql";
-import { rest } from "@softistx/riva-rest";
+import { withGraphQL } from "@softistx/riva-graphql";
+import { withRest } from "@softistx/riva-rest";
 
 export const appRiva = createRiva({
   graphql: withGraphQL(createGraphQLClient({ url: "https://api.example.com/graphql" })),

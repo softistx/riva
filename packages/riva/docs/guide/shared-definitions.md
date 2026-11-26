@@ -25,7 +25,7 @@ A definition is stateless: it holds no value until a riva reads it. This one car
 ```ts
 import { createGraphQLClient } from '@softistx/graphql-client';
 import { createRiva } from '@softistx/riva';
-import { graphql, mutation, query } from '@softistx/riva-graphql';
+import { withGraphQL, mutation, query } from '@softistx/riva-graphql';
 import { PATIENTS_QUERY, RENAME_PATIENT_MUTATION } from './graphql'; // your typed documents
 
 export const patients = query(PATIENTS_QUERY, { staleTime: '30s' });

@@ -12,7 +12,7 @@ The other snippets of this page reuse this one.
 import { createHttpClient } from '@softistx/httpyz';
 import { createOpenApiClient } from '@softistx/openapi-httpyz';
 import { createRiva, signal } from '@softistx/riva';
-import { rest } from '@softistx/riva-rest';
+import { withRest } from '@softistx/riva-rest';
 import { operations } from './generated/openapi/operations'; // from `nxgt-openapi generate`
 
 const http = createHttpClient({ baseUrl: 'https://api.example.com' });
@@ -26,7 +26,7 @@ With no spec, `withRest({ baseUrl })` installs the untyped calls over `fetch`:
 
 ```ts
 import { createRiva } from '@softistx/riva';
-import { rest } from '@softistx/riva-rest';
+import { withRest } from '@softistx/riva-rest';
 
 const plain = createRiva({
 	rest: withRest({ baseUrl: 'https://api.example.com', headers: { authorization: 'Bearer …' } }),

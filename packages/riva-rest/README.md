@@ -32,7 +32,7 @@ Install the extension once, then call REST like a function: no definition, no ke
 import { createHttpClient } from '@softistx/httpyz';
 import { createOpenApiClient } from '@softistx/openapi-httpyz';
 import { createRiva, signal } from '@softistx/riva';
-import { rest } from '@softistx/riva-rest';
+import { withRest } from '@softistx/riva-rest';
 import { operations } from './generated/openapi/operations'; // from `nxgt-openapi generate`
 
 const http = createHttpClient({ baseUrl: 'https://api.example.com' });

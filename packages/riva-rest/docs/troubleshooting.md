@@ -16,7 +16,7 @@ Code: `RIVA_SCOPE` (`RivaScopeError`).
 import { createHttpClient } from '@softistx/httpyz';
 import { createOpenApiClient } from '@softistx/openapi-httpyz';
 import { createRiva } from '@softistx/riva';
-import { rest } from '@softistx/riva-rest';
+import { withRest } from '@softistx/riva-rest';
 import { operations } from './generated/openapi/operations'; // from `nxgt-openapi generate`
 
 const http = createHttpClient({ baseUrl: 'https://api.example.com' });

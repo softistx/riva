@@ -17,7 +17,7 @@ Create a riva with the adapters you use, then call GraphQL or REST like a functi
 ```ts
 import { createGraphQLClient } from '@softistx/graphql-client';
 import { createRiva } from '@softistx/riva';
-import { graphql } from '@softistx/riva-graphql';
+import { withGraphQL } from '@softistx/riva-graphql';
 import { BOOKS_QUERY } from './graphql'; // a typed document
 
 const riva = createRiva({
