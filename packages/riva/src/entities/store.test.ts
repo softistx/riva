@@ -96,6 +96,20 @@ describe('EntityStore (ported from graphql-client store.spec, without selections
 		expect(store.empty).toBe(false);
 	});
 
+	test('holds tells whether an entity of the exact type holds fields', () => {
+		const { store } = make();
+		store.merge('Pen:1', { a: 1 });
+		store.merge('PenCase:1', { a: 1 });
+		store.merge('Cup:1', { a: 1 });
+		store.clear('Cup:1');
+		expect(store.holds('Pen')).toBe(true);
+		expect(store.holds('Cup')).toBe(false);
+		expect(store.holds('Pe')).toBe(false);
+		store.clear('Pen:1');
+		expect(store.holds('Pen')).toBe(false);
+		expect(store.holds('PenCase')).toBe(true);
+	});
+
 	test('an observed signal stays when its entity is removed', () => {
 		const { riva, store } = make();
 		store.merge('Book:1', { title: 'A' });

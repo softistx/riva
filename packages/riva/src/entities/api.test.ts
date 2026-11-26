@@ -1,4 +1,5 @@
-import { describe, expect, test } from 'bun:test';
+/* biome-ignore-all lint/style/useNamingConvention: type names */
+import { describe, expect, expectTypeOf, test } from 'bun:test';
 import { createRiva } from '../client';
 import { computed } from '../computed';
 import { RivaError } from '../errors';
@@ -176,4 +177,20 @@ describe('invalidateEntity', () => {
 test('identifyOf asks the policy', () => {
 	expect(identifyOf(entities(), { __typename: 'A', id: 1 })).toBe('A:1');
 	expect(identifyOf(entities(), { id: 1 })).toBeUndefined();
+});
+
+test('identifyOf with a riva gives the ref the store uses', async () => {
+	const riva = createRiva();
+	const pen = { __typename: 'Pen', id: '1', sku: 's' };
+	const keyed = entities({ keys: { Pen: (o) => o['sku'] as string } });
+	const plain = entities();
+	const q = (id: string, c: typeof keyed) =>
+		query<void, unknown>({ id, cache: c, fetch: async () => pen });
+	await q('k', keyed).ensure(riva);
+	await q('p', plain).ensure(riva);
+	expect(identifyOf(plain, pen)).toBe('Pen:1');
+	expect(identifyOf(riva, pen)).toBe('Pen:s');
+	expect([...storeOf(riva).signals.keys()]).toEqual(['Pen:s']);
+	expectTypeOf(identifyOf).toBeCallableWith(riva, pen);
+	expectTypeOf(identifyOf).toBeCallableWith(plain, pen);
 });

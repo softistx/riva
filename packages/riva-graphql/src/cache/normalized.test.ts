@@ -8,7 +8,12 @@ import {
 	type Riva,
 	RivaError,
 } from '@softistx/riva';
-import { evict, readEntity, writeEntity } from '@softistx/riva/entities';
+import {
+	entities,
+	evict,
+	readEntity,
+	writeEntity,
+} from '@softistx/riva/entities';
 import { parse } from 'graphql';
 import { storeOfRiva } from '../../test/cache';
 import { fakeTransport } from '../../test/fixtures';
@@ -260,6 +265,30 @@ describe('policy behaviours', () => {
 		}));
 		await query(DOC, { cache: byMrn }).ensure(riva);
 		expect(readEntity(riva, 'Patient:78')).toMatchObject({ name: 'Ada' });
+	});
+
+	test('normalized() and another entities() policy with other types share one riva', async () => {
+		const DOC = parse(
+			'query ByMrn { patient { __typename mrn name } }',
+		) as TypedDocumentNode<
+			{ patient: { mrn: string; name: string } },
+			{ [k: string]: never }
+		>;
+		const { riva } = setup(() => ({
+			patient: { __typename: 'Patient', mrn: '78', name: 'Ada' },
+		}));
+		await query(DOC, {
+			cache: normalized({
+				keys: { Patient: (o) => o['mrn'] as string | undefined },
+			}),
+		}).ensure(riva);
+		await coreQuery({
+			id: 'invoice',
+			cache: entities({ keys: { Invoice: (o) => o['no'] as string } }),
+			fetch: async () => ({ __typename: 'Invoice', no: 'F-1', total: 3 }),
+		}).ensure(riva);
+		expect(readEntity(riva, 'Patient:78')).toMatchObject({ name: 'Ada' });
+		expect(readEntity(riva, 'Invoice:F-1')).toMatchObject({ total: 3 });
 	});
 
 	test('possibleTypes decide a fragment on a union', async () => {

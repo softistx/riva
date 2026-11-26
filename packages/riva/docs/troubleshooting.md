@@ -201,20 +201,46 @@ Code: `RIVA_CACHE` (`RivaError`).
 fetch: async () => (await res.json()) as Plain, // not a Map, not a model instance
 ```
 
-## This riva already uses other entity identity rules
+## `This riva already uses other entity identity rules. Share one entities() (or the same identify) between its queries.`
 
 Code: `RIVA_CACHE` (`RivaError`).
 
-**When:** two `entities()` policies with different `keys` or `identify` (compared by reference) meet on one riva, or a policy with such rules is first used after `readEntity` or `writeEntity` filled the riva's store.
+**When:** a policy with a custom `identify` meets another policy that brings a different `identify` or any `keys` on one riva, or is first used after keys or entities were already in the store.
 
-**Why:** a riva has one entity store with one identity rule, so the same object cannot be two entities.
+**Why:** a custom `identify` replaces the whole identity, so it cannot share the store with other rules.
 
-**Fix:** share one policy, or the same options objects, between the riva's queries; create it before any `readEntity`/`writeEntity`.
+**Fix:** share one `identify` function between the policies, or use `keys` instead of `identify`.
+
+## `This riva's store already holds "<Type>" entities identified another way (by id, by another policy, or by writeEntity). Declare the "<Type>" key in every policy that sees it (share one function), before the store is used.`
+
+Code: `RIVA_CACHE` (`RivaError`).
+
+**When:** a policy declares `keys` for a type whose entities the store already holds, because another policy without that key (default `id`), or `readEntity`/`writeEntity`, put them there first. It depends on order: on the client, hydration seeds the store through each definition as it is first used, so the same code can pass in one order and fail in another.
+
+**Why:** `Type:id` must mean one thing; changing a type's key after entities exist would split them.
+
+**Fix:** declare a shared type's key in every policy that can see that type, sharing one function, and create the policies before the store is used.
 
 ```ts
-const cache = entities({ keys }); // one, module level
-query({ id: 'a', cache, fetch });
-query({ id: 'b', cache, fetch });
+const keys = { Pen: (o: Fields) => o['sku'] as string }; // one definition
+const a = entities({ keys });
+const b = entities({ keys }); // or entities({ keys: { Pen: keys.Pen } })
+```
+
+## `Two entity policies key "<Type>" differently on this riva. Give both the same key function (share one definition).`
+
+Code: `RIVA_CACHE` (`RivaError`).
+
+**When:** two policies on one riva declare a `keys` entry for the same type with different functions (two inline arrows are different functions, even when they read the same field).
+
+**Why:** the riva's one store identifies a type with one function, so `Type:id` means the same entity for every policy.
+
+**Fix:** define the key function once and share it.
+
+```ts
+const invoiceKey = (o: Fields) => o['id'] as string; // module level
+const a = entities({ keys: { Invoice: invoiceKey } });
+const b = entities({ keys: { Invoice: invoiceKey, Patient: patientKey } });
 ```
 
 ## `The cache cannot read the query's data after a fetch.`

@@ -86,7 +86,9 @@ const cache = entities(undefined, codec);
 
 ## Traps
 
-- The store follows the identity rules (`keys`, `identify`) of the first policy used on a riva. A later policy with other rules, or with rules after `readEntity` or `writeEntity` filled the store, throws `RIVA_CACHE`. Share one `entities()` (or the same options objects) between a riva's queries.
+- A riva has one entity store, shared by every policy on it (GraphQL, REST, plain). Their `keys` merge per type: a type keyed by the same function in two policies is fine, by two different functions throws `RIVA_CACHE`, and so does a `keys` entry for a type the store already holds (create policies before `readEntity`/`writeEntity`). A custom `identify` is exclusive: no other `identify` or `keys` can join it. A policy with no rules joins any store.
 - Entity refs are `Type:id` strings: `Patient:1`.
+
+`identifyOf(policy, obj)` applies that policy's own rules only; `identifyOf(riva, obj)` gives the ref the riva's store uses (every policy's keys merged).
 
 Exports: `entities`, `readEntity`, `writeEntity`, `invalidateEntity`, `evict`, `identifyOf`, `isPlain`, `isRef`; types `EntityPolicy`, `EntitiesOptions`, `Identify`, `Fields`, `EntityCodec`, `EntityReader`, `Normalized`, `Ref`.
