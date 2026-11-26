@@ -11,7 +11,6 @@
 - **One entity store for GraphQL and REST** — a single riva shares normalized entities across both sources. [#25](https://github.com/softistx/riva/issues/25)
 - **REST definitions from the generated operations table alone** — define OpenAPI queries without the configured client at definition time, the transport supplying it. [#26](https://github.com/softistx/riva/issues/26)
 - **SSR hydration follow-ups** — deferred hydration no longer notifies an observer twice for the same data. [#31](https://github.com/softistx/riva/issues/31)
-- **Each snapshot key emitted once per request** — several loaders returning the same riva no longer repeat data in the hydration payload. [#36](https://github.com/softistx/riva/issues/36)
 - **Store robustness** — hot reload keeps a store's state, stores behave the same on servers with DOM shims, and `useStore` sees a memoised child's reads. [#40](https://github.com/softistx/riva/issues/40)
 - **Server-sent events** — a stream over SSE as a resource, beside the GraphQL subscriptions of the simple API.
 - Devtools to inspect the cache, signals and requests.
@@ -29,6 +28,7 @@ Nothing yet.
 
 Landed in `develop`; released from 0.1.0 on, the simple API in the next minor release.
 
+- Each snapshot key emitted once per request: every loader may return `riva(context)`, and a later call of a request carries only the entries and signals not sent yet or changed since. [#36](https://github.com/softistx/riva/issues/36)
 - Suspense error-boundary reset: resetting the error boundary of a failed Suspense query or resource retries it by itself, with no `onReset` workaround. [#19](https://github.com/softistx/riva/issues/19)
 - Settled public names for 1.0: the extensions `withGraphQL` and `withRest`, the error `RivaGraphQLError`, call types that name their protocol (`GraphQLQueryCall`, `RestQueryCall`, …), one `TrackedInput`, one mutation-hook shape (`{ run, status, data, error, reset }` with a stable `run` and `reset`) and a path-first `useRest(path)`. No deprecated aliases.
 - The simple API: one `createRiva({ graphql: withGraphQL(client), rest: withRest(api) })`, then `riva.graphql.query / mutation / subscribe` and `riva.rest.get / mutation` with derived keys, per-call options and `invalidates`, and hooks per namespace (`useGraphQL`, `useGraphQLMutation`, `useGraphQLSubscription`, `useRest`, `useRestMutation`).

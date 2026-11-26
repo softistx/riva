@@ -39,7 +39,46 @@ export function rivaOf(context: ContextLike): RegisteredRiva {
 	return riva as RegisteredRiva;
 }
 
-/** The loader payload: the request riva's settled entries, under the `~riva` key the provider reads. */
+/** What a request riva already sent: entry key to fingerprint, signal name to encoded value. */
+interface Emitted {
+	readonly q: Map<string, string>;
+	readonly a: Map<string, string>;
+}
+
+/** The key of the per-request record, on the riva's slots: it dies with the request's riva. */
+const EMITTED = {};
+
+/**
+ * The loader payload: the request riva's settled entries, under the `~riva`
+ * key the provider reads. The first call of a request holds everything; a
+ * later call holds only what was not sent yet or changed since, so every
+ * loader may return it.
+ */
 export function riva(context: ContextLike): { readonly '~riva': Snapshot } {
-	return { '~riva': dehydrate(rivaOf(context)) };
+	const r = rivaOf(context);
+	const snap = dehydrate(r) as unknown as {
+		v: 1;
+		t: number;
+		q: Snapshot['q'][number][];
+		a: Record<string, unknown>;
+	};
+	const sent = r.slots.get(EMITTED) as Emitted | undefined;
+	const seen: Emitted = sent ?? { q: new Map(), a: new Map() };
+	r.slots.set(EMITTED, seen);
+	const q = snap.q.filter((e) => {
+		// A commit of new data within the same ms as the previous one is not re-sent.
+		const print = `${snap.t - e.u}|${e.s}|${e.i ?? 0}`;
+		if (seen.q.get(e.k) === print) return false;
+		seen.q.set(e.k, print);
+		return true;
+	});
+	const a: Record<string, unknown> = {};
+	for (const name in snap.a) {
+		// A commit of new data within the same ms as the previous one is not re-sent.
+		const print = JSON.stringify(snap.a[name]);
+		if (seen.a.get(name) === print) continue;
+		seen.a.set(name, print);
+		a[name] = snap.a[name];
+	}
+	return { '~riva': { v: 1, t: snap.t, q, a } as unknown as Snapshot };
 }
