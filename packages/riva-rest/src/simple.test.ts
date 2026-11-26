@@ -321,3 +321,28 @@ describe('types', () => {
 		expectTypeOf(_post).returns.toEqualTypeOf<Promise<number>>();
 	});
 });
+
+describe('riva.rest.get over a definition', () => {
+	test('shares its entry with a loader ensure, typed by the definition', async () => {
+		const { riva, seen, api } = server();
+		const def = query(api, 'get /invoices/{id}');
+		await def.ensure(riva, { param: { id: '1' } });
+		const r = riva.rest.get(def, { param: { id: '1' } }, { staleTime: '1m' });
+		expect(await r).toEqual(inv('1'));
+		expect(seen).toEqual(['GET /invoices/1']);
+		expectTypeOf(r).toEqualTypeOf<Resource<Invoice>>();
+		// @ts-expect-error the input is required by the definition
+		riva.rest.get(def);
+	});
+
+	test('invalidates: [def] marks the entry stale', async () => {
+		const { riva, seen, api } = server();
+		const def = query(api, 'get /health');
+		await riva.rest.get(def, undefined, { staleTime: '1h' });
+		await riva.rest.post('/invoices', { json: { number: 'N', total: 1 } }, {
+			invalidates: [def],
+		} as never);
+		await riva.rest.get(def, undefined, { staleTime: '1h' });
+		expect(seen.filter((s) => s === 'GET /health')).toHaveLength(2);
+	});
+});

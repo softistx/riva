@@ -7,6 +7,7 @@ import {
 	VIEWER_QUERY,
 } from '../test/fixtures';
 import { callsOf } from './calls';
+import { query } from './query';
 import { provideGraphQL } from './transport';
 
 const setup = () => {
@@ -46,4 +47,19 @@ test('mutation makes a handle with its own state', async () => {
 	await save({ id: '1', name: 'A' });
 	expect(save.state.status).toBe('success');
 	expect(calls.mutation(RENAME_PATIENT_MUTATION as never)).not.toBe(save);
+});
+
+test('a definition is used as is: a loader ensure and the call share one entry, and invalidates marks it stale', async () => {
+	const { t, riva, calls } = setup();
+	const def = query(VIEWER_QUERY as never) as never;
+	await (def as { ensure(r: unknown): Promise<unknown> }).ensure(riva);
+	await calls.query(def, undefined, { staleTime: '1h' });
+	expect(t.calls).toHaveLength(1);
+	await calls.mutate(
+		RENAME_PATIENT_MUTATION as never,
+		{ id: '1', name: 'A' },
+		{ invalidates: [def] },
+	);
+	await calls.query(def, undefined, { staleTime: '1h' });
+	expect(t.calls.filter((c) => c.kind === 'query')).toHaveLength(2);
 });

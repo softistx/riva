@@ -64,6 +64,6 @@ The provider hydrates each match's `~riva` once. The first render is seeded befo
 - Every `riva(context)` call dehydrates the whole request riva: return it from one loader per request (usually the root's), and let the others only await their data.
 - Only loaders that return `riva(context)` feed the provider.
 - The ambient scope (`mySignal.get()` resolving to the request's riva, also after an `await`) works only inside the `next` that `rivaMiddleware` runs: loaders, actions and the code they call. Outside it (an earlier middleware, a module scope), use `rivaOf(context)`.
-- The loader and the component use the same kind of entry: a loader that awaits `riva.graphql.query(DOC)` is read by `useGraphQL(DOC)`, not by `useQuery(def)`.
+- The loader and the component use the same kind of entry: a loader that awaits `riva.graphql.query(DOC)` is read by `useGraphQL(DOC)`, not by `useQuery(def)`. To mix them, pass the definition to the simple call or hook (`riva.graphql.query(def, vars)`, `useGraphQL(def, vars)`, `riva.rest.get(def, input)`, `useRest(def, input)`): a loader's `def.ensure(riva, vars)` and the component then share one entry.
 - Errors travel as codes: a failed query rehydrates as its class (`instanceof RivaRequestError` holds) with an empty message.
 - Data that refetches right after hydration: see [troubleshooting](../troubleshooting.md).

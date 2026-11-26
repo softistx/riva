@@ -92,8 +92,12 @@ export function callsOf(
 		);
 	return {
 		mutate,
-		get(path: string, input?: InputArg<unknown>, call?: GetCall) {
-			const def = queryOf(path);
+		get(
+			target: string | Query<unknown, unknown>,
+			input?: InputArg<unknown>,
+			call?: GetCall,
+		) {
+			const def = typeof target === 'string' ? queryOf(target) : target;
 			return callResource(riva, def, trackedInput(riva, input), call);
 		},
 		mutation(method: string, path: string) {

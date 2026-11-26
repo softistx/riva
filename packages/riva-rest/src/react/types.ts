@@ -1,4 +1,5 @@
 import type { OperationsShape } from '@softistx/openapi-httpyz';
+import type { Query } from '@softistx/riva';
 import type { ResourceState } from '@softistx/riva/resource';
 import type {
 	MutationHook,
@@ -71,6 +72,14 @@ export interface TypedUseRest<
 			UseRestOptions & { suspense?: false }
 		>
 	): ResourceState<DataOf<Ops, Route<Ops, 'get', P>, Decoded>>;
+	<I, Data>(
+		definition: Query<I, Data>,
+		...args: SuspenseArgs<I, Suspending<UseRestOptions>>
+	): SuspendedState<Data>;
+	<I, Data>(
+		definition: Query<I, Data>,
+		...args: Args<I, UseRestOptions & { suspense?: false }>
+	): ResourceState<Data>;
 }
 
 /** `useRestMutation` over the registered spec. */
@@ -99,6 +108,15 @@ export interface UntypedUseRest {
 		path: string,
 		input?: unknown,
 		options?: UseRestOptions & { suspense?: false },
+	): ResourceState<Data>;
+	<Data, Input = unknown>(
+		definition: Query<Input, Data>,
+		input: InputArg<Input> | undefined,
+		options: Suspending<UseRestOptions>,
+	): SuspendedState<Data>;
+	<Data, Input = unknown>(
+		definition: Query<Input, Data>,
+		...args: Args<Input, UseRestOptions & { suspense?: false }>
 	): ResourceState<Data>;
 }
 

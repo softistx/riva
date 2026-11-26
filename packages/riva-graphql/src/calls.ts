@@ -45,7 +45,7 @@ export interface MutateCall {
 const MEMO = {};
 
 interface Memo {
-	queries: Map<object, Query<never, unknown>>;
+	queries: Map<object, Query<unknown, unknown>>;
 	mutations: Map<object, Mutation<unknown, unknown>>;
 }
 
@@ -88,8 +88,12 @@ export function callsOf(
 		);
 	return {
 		mutate,
-		query(doc: Doc<unknown, never>, vars?: unknown, call?: QueryCall) {
-			const def = queryOf(doc);
+		query(
+			target: Doc<unknown, never> | Query<unknown, unknown>,
+			vars?: unknown,
+			call?: QueryCall,
+		) {
+			const def = 'definitions' in target ? queryOf(target) : target;
 			const { signal, ...options } = call ?? {};
 			return graphqlResource(
 				callResource(riva, def, trackedInput(riva, vars), options),

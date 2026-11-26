@@ -1,6 +1,7 @@
 import type { GraphQLClient } from '@softistx/graphql-client';
 import type {
 	CachePolicy,
+	Query,
 	Riva,
 	RivaExtension,
 	VarsArgs,
@@ -35,6 +36,14 @@ export interface GraphQLApi {
 	query<Data, Vars>(
 		document: Doc<Data, Vars>,
 		...args: VarsArgs<VarsInput<VarsOf<Vars>>, [options?: QueryCall]>
+	): Resource<Data>;
+	/**
+	 * The same over a query definition (from `query(DOC)`): it is used as is, so
+	 * a loader's `ensure(riva, def, vars)` and this call share one cache entry.
+	 */
+	query<Vars, Data>(
+		definition: Query<Vars, Data>,
+		...args: VarsArgs<VarsInput<Vars>, [options?: QueryCall]>
 	): Resource<Data>;
 	/** Runs a mutation and resolves with its data; throws after the rollback. */
 	mutate<Data, Vars>(
@@ -84,8 +93,8 @@ export function graphql(
 			provideGraphQL(riva, transport);
 			const calls = callsOf(riva, options.cache);
 			return {
-				query: (doc, vars?, call?: QueryCall) =>
-					calls.query(doc as never, vars, call) as never,
+				query: (doc: never, vars?: unknown, call?: QueryCall) =>
+					calls.query(doc, vars, call) as never,
 				mutate: calls.mutate as never,
 				mutation: (doc) => calls.mutation(doc as never) as never,
 				subscribe: (doc, vars?, on?: SubscribeCall<never>) =>

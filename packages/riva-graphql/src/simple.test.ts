@@ -772,3 +772,24 @@ const types = async () => {
 	feed.then;
 };
 void types;
+
+describe('riva.graphql.query over a definition', () => {
+	test('shares its entry with a loader ensure, and types come from the definition', async () => {
+		const t = fakeTransport(() => ({ viewer: { id: '1' } }));
+		const riva = createRiva({ graphql: graphql(t) });
+		const def = query(VIEWER_QUERY);
+		await def.ensure(riva);
+		const r = riva.graphql.query(def, undefined, { staleTime: '1m' });
+		expect(await r).toEqual({ viewer: { id: '1' } });
+		expect(t.calls).toHaveLength(1);
+		expectTypeOf(r).toEqualTypeOf<Resource<{ viewer: { id: string } }>>();
+	});
+
+	test('a definition with variables is typed by them', () => {
+		const t = fakeTransport(() => ({}));
+		const riva = createRiva({ graphql: graphql(t) });
+		const def = query(PATIENTS_QUERY);
+		// @ts-expect-error the variables are required by the definition
+		riva.graphql.query(def);
+	});
+});

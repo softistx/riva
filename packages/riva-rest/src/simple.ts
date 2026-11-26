@@ -1,6 +1,7 @@
 import type { OperationsShape } from '@softistx/openapi-httpyz';
 import {
 	type CachePolicy,
+	type Query,
 	type Riva,
 	RivaError,
 	type RivaExtension,
@@ -55,6 +56,14 @@ export interface RestApi<
 		path: P,
 		...args: RestArgs<InputOf<Ops, Route<Ops, 'get', P>>, GetCall>
 	): Resource<DataOf<Ops, Route<Ops, 'get', P>, Decoded>>;
+	/**
+	 * The same over a query definition (from `query(api, route)`): it is used as
+	 * is, so a loader's `ensure(riva, def, input)` and this call share one cache entry.
+	 */
+	get<I, Data>(
+		definition: Query<I, Data>,
+		...args: RestArgs<I, GetCall>
+	): Resource<Data>;
 	/** A callable handle over a mutation: `await save(input, { invalidates })`, a reactive `state` (idle first) and `reset()`. */
 	mutation<M extends MutationMethod, P extends PathsOf<Ops, M>>(
 		method: M,
@@ -92,6 +101,12 @@ export interface UntypedRestApi {
 	get<Data = unknown>(
 		path: string,
 		input?: InputArg<RestInput>,
+		call?: GetCall,
+	): Resource<Data>;
+	/** The same over a query definition, used as is (it shares its cache entries with `ensure`). */
+	get<Data, Input = RestInput>(
+		definition: Query<Input, Data>,
+		input?: InputArg<Input>,
 		call?: GetCall,
 	): Resource<Data>;
 	mutation<Data = unknown, Input = RestInput>(

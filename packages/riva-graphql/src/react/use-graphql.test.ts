@@ -17,6 +17,7 @@ import {
 } from '../../test/fixtures';
 import { deferred, flush, h, mount } from '../../test/render';
 import { GraphQLError, toRivaError } from '../errors';
+import { query } from '../query';
 import { graphql } from '../simple';
 import { type UseGraphQLOptions, useGraphQL } from './use-graphql';
 
@@ -385,4 +386,23 @@ test('types: wrong variables and a wrong `enabled` with suspense are errors', ()
 		).toEqualTypeOf<SuspendedState<{ viewer: { id: string } }>>();
 	};
 	expect(typeof never).toBe('function');
+});
+
+test('a definition shares its entry with a loader ensure', async () => {
+	const t = fakeTransport(() => viewer());
+	const riva = createRiva({
+		defaults: { staleTime: '1m' },
+		graphql: graphql(t),
+	});
+	const def = query(VIEWER_QUERY);
+	await def.ensure(riva);
+	function C() {
+		const s = useGraphQL(def);
+		expectTypeOf(s).toEqualTypeOf<ResourceState<{ viewer: { id: string } }>>();
+		return h('p', null, show(s));
+	}
+	const m = await mount(h(C), riva);
+	expect(m.text()).toBe('success:{"viewer":{"id":"1"}}:false');
+	expect(t.calls).toHaveLength(1);
+	await m.unmount();
 });

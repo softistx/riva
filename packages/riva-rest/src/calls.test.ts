@@ -1,5 +1,5 @@
 import { expect, test } from 'bun:test';
-import { createRiva } from '@softistx/riva';
+import { query as coreQuery, createRiva } from '@softistx/riva';
 import { fakeTransport } from '../test/fixtures';
 import { callsOf } from './calls';
 import { provideRest } from './transport';
@@ -22,7 +22,7 @@ function setup(cache?: never) {
 			return { n: calls.length };
 		}),
 	);
-	return { calls, c: callsOf(riva, resolve, cache) };
+	return { calls, riva, c: callsOf(riva, resolve, cache) };
 }
 
 test('one definition per method and path: a repeated get is cached and deduped', async () => {
@@ -74,4 +74,21 @@ test('a bad route throws before anything runs, at mutation() time for a handle',
 	);
 	expect(() => c.mutation('post', '/x')).toThrow('unknown route');
 	expect(c.mutate('post', '/x')).rejects.toThrow('unknown route');
+});
+
+test('a definition is used as is: a loader ensure and get share one entry, and invalidates marks it stale', async () => {
+	const { calls, riva, c } = setup();
+	const def = coreQuery<unknown, unknown>({
+		id: 'mine',
+		fetch: async () => {
+			calls.push('mine');
+			return {};
+		},
+	});
+	await def.ensure(riva, undefined);
+	await c.get(def, undefined, { staleTime: '1h' });
+	expect(calls).toEqual(['mine']);
+	await c.mutate('post', '/a', {}, { invalidates: [def] });
+	await c.get(def, undefined, { staleTime: '1h' });
+	expect(calls.filter((x) => x === 'mine')).toHaveLength(2);
 });

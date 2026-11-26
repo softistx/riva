@@ -1,3 +1,4 @@
+import type { Query } from '@softistx/riva';
 import type { ResourceState } from '@softistx/riva/resource';
 import { useCallResource } from '@softistx/riva-react/resource';
 import type { GetCall } from '../calls';
@@ -5,16 +6,21 @@ import { restOf } from './rest-of';
 import type { UseRest, UseRestOptions } from './types';
 
 function useRestImpl(
-	method: 'get',
-	path: string,
-	input?: unknown,
-	options: UseRestOptions = {},
+	first: 'get' | Query<unknown, unknown>,
+	...rest: unknown[]
 ): ResourceState<unknown> {
+	const def = first !== 'get';
+	const [target, input, options = {}] = (def ? [first, ...rest] : rest) as [
+		string | Query<unknown, unknown>,
+		unknown,
+		UseRestOptions?,
+	];
 	return useCallResource(
-		`${method} ${path}`,
+		typeof target === 'string' ? `get ${target}` : target.id,
 		input,
 		options,
-		(riva, stable, call) => restOf(riva).get(path, stable, call as GetCall),
+		(riva, stable, call) =>
+			restOf(riva).get(target as never, stable, call as GetCall),
 	);
 }
 

@@ -1,4 +1,4 @@
-import type { VarsArgs } from '@softistx/riva';
+import type { Query, VarsArgs } from '@softistx/riva';
 import type { ResourceState } from '@softistx/riva/resource';
 import {
 	type SuspendedState,
@@ -31,6 +31,17 @@ type SuspenseArgs<V, O> = [V] extends [Void]
  * variables function is not called and nothing is fetched. A response with
  * data and errors is the `error` state with the partial `data`.
  */
+export function useGraphQL<Vars, Data>(
+	definition: Query<Vars, Data>,
+	...args: SuspenseArgs<VarsInput<Vars>, Suspending<UseGraphQLOptions>>
+): SuspendedState<Data>;
+export function useGraphQL<Vars, Data>(
+	definition: Query<Vars, Data>,
+	...args: VarsArgs<
+		VarsInput<Vars>,
+		[options?: UseGraphQLOptions & { suspense?: false }]
+	>
+): ResourceState<Data>;
 export function useGraphQL<Data, Vars>(
 	document: Doc<Data, Vars>,
 	...args: SuspenseArgs<VarsInput<VarsOf<Vars>>, Suspending<UseGraphQLOptions>>
@@ -43,17 +54,17 @@ export function useGraphQL<Data, Vars>(
 	>
 ): ResourceState<Data>;
 export function useGraphQL(
-	document: Doc<unknown, never>,
+	document: Doc<unknown, never> | Query<unknown, unknown>,
 	vars?: unknown,
 	options: UseGraphQLOptions = {},
 ): ResourceState<unknown> {
 	return useCallResource(
-		operationOf(document).id,
+		'definitions' in document ? operationOf(document).id : document.id,
 		vars,
 		options,
 		(riva, input, call) =>
 			graphqlOf(riva).query(
-				document,
+				document as never,
 				input as never,
 				call as QueryCall,
 			) as never,

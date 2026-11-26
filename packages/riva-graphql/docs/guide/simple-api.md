@@ -91,6 +91,8 @@ The state is `loading` until the first result, then `success` with the last one.
 
 In a component, `useGraphQL`, `useGraphQLMutation` and `useGraphQLSubscription` call the same API on the riva of the nearest provider ([React hooks](../../README.md#react-hooks)). In a React Router loader, `await riva.graphql.query(DOC, vars)` fills the request's riva, and the component reads it with `useGraphQL(DOC, vars)` ([loader pattern](https://github.com/softistx/riva/blob/develop/packages/riva-react-router/docs/guide/loader.md)). Give the riva a `defaults: { staleTime }` so the browser does not fetch again what the server sent.
 
+A loader can also use a definition (`const def = query(DOC)`): `await def.ensure(riva, vars)`, then `riva.graphql.query(def, vars)` or `useGraphQL(def, vars)` read the same cache entry, and `invalidates: [def]` marks it stale. The definition is used as is, with its own id and options.
+
 When a setting must be shared by several call sites (polling, optimistic updates, infinite lists), use a definition: [Advanced: shared definitions](https://github.com/softistx/riva/blob/develop/packages/riva/docs/guide/shared-definitions.md).
 
 Problems: [troubleshooting](../troubleshooting.md).
