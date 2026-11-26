@@ -386,20 +386,6 @@ if (riva.get(signedIn)) await r;
 const stop = riva.effect(() => render(books.state));
 ```
 
-## A resource stays observed after its reader is gone
-
-**When:** a resource created in a component (or read by a computed or effect that was dropped) keeps its entry observed: no garbage collection, and no refetch stop.
-
-**Why:** a dropped computed or effect reader is noticed only at the entry's next state change. An entry with no polling and no refetch on focus never changes by itself, so it stays observed. Known limitation.
-
-**Fix:** create resources outside render, or subscribe explicitly and unsubscribe.
-
-```ts
-const stop = books.subscribe(() => {});
-// later
-stop();
-```
-
 ## A stream resource restarts on every change, or not at all
 
 **When:** `streamResource`'s stream restarts although the variables are equal, or does not restart after a change.

@@ -44,9 +44,7 @@ if (s.status === 'success') s.data; // typed, never undefined
 
 ### Reactive and lazy
 
-`state` is readable in a computed or effect (it is tracked), and `subscribe(listener)` returns the unsubscribe. A resource is lazy: it observes its entry (fetch, polling, refetch on focus) from its first subscriber, or its first observed computed or effect reader, to its last, and only in a browser. A plain read of `state` starts nothing. A computed reader that is dropped without a change is noticed at the entry's next update; unsubscribing stops at once.
-
-**Known limitation:** a dropped computed or effect reader is noticed only at the entry's next state change. An entry with no polling and no refetch on focus has no such change, so it stays observed and is never garbage-collected. Create resources outside render (once, at module or app level), or `subscribe` explicitly and call the unsubscribe when done.
+`state` is readable in a computed or effect (it is tracked), and `subscribe(listener)` returns the unsubscribe. A resource is lazy: it observes its entry (fetch, polling, refetch on focus) from its first subscriber, or its first observed computed or effect reader, to its last, and only in a browser. A plain read of `state` starts nothing. Unsubscribing stops at once; a dropped computed or effect reader stops the resource at the next microtask, unless it is read again by then.
 
 ### Awaiting
 

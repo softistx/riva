@@ -259,7 +259,7 @@ describe('lazy', () => {
 		expect(calls).toHaveLength(1); // not observed any more: no refetch
 	});
 
-	test('known limitation: with no polling a dropped reader stays observed until a change', async () => {
+	test('a dropped computed reader stops the observation at the next microtask, with no change', async () => {
 		const { q, calls, riva } = setup();
 		const r = resource(riva, () => [q, { n: 1 }] as const);
 		const label = computed(() => r.state.status);
@@ -271,7 +271,7 @@ describe('lazy', () => {
 		await tick();
 		riva.queries.invalidate(q, { n: 1 });
 		await tick();
-		expect(calls).toHaveLength(2); // still observed: the invalidation refetched
+		expect(calls).toHaveLength(1); // not observed any more: no refetch
 	});
 
 	test('on the server nothing is observed', async () => {
