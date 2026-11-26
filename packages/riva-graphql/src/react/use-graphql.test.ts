@@ -422,9 +422,8 @@ test('a definition and a document of one operation keep their own entries', asyn
 	}
 	const m = await mount(h(C, { useDef: false }), riva);
 	expect(t.calls).toHaveLength(2);
-	await m.unmount();
-	const m2 = await mount(h(C, { useDef: true }), riva);
-	expect(m2.text()).toBe('success:{"viewer":{"id":"1"}}:false');
+	await m.rerender(h(C, { useDef: true }));
+	expect(m.text()).toBe('success:{"viewer":{"id":"1"}}:false');
 	expect(t.calls).toHaveLength(2);
-	await m2.unmount();
+	await m.unmount();
 });

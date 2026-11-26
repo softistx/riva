@@ -302,6 +302,8 @@ describe('types', () => {
 			riva.rest.get('/nope');
 			// @ts-expect-error a post is not a get path
 			riva.rest.get('/invoices/{id}', { param: { id: 1 } });
+			// @ts-expect-error the error is on the wrong param, not on the whole call
+			riva.rest.get('/invoices/{id}', { param: { idd: '1' } });
 			// @ts-expect-error the input is required
 			riva.rest.get('/invoices/{id}');
 			// @ts-expect-error a GET path is not a mutation

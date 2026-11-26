@@ -39,6 +39,17 @@ type Route<Ops extends OperationsShape<Ops>, M extends string, P> = Extract<
 	RouteOf<Ops>
 >;
 
+/** The input a typed `get` takes: a definition's own, or the route's. */
+type GetInput<Ops extends OperationsShape<Ops>, T> =
+	// biome-ignore lint/suspicious/noExplicitAny: matches any definition
+	T extends Query<infer I, any> ? I : InputOf<Ops, Route<Ops, 'get', T>>;
+/** The data a typed `get` resolves with. */
+type GetData<Ops extends OperationsShape<Ops>, T, Decoded extends boolean> =
+	// biome-ignore lint/suspicious/noExplicitAny: matches any definition
+	T extends Query<any, infer D>
+		? D
+		: DataOf<Ops, Route<Ops, 'get', T>, Decoded>;
+
 /** What `createRiva({ rest: rest(api) })` puts on `riva.rest`, typed by the spec's operations. */
 export interface RestApi<
 	Ops extends OperationsShape<Ops>,
@@ -50,20 +61,15 @@ export interface RestApi<
 	 * or throws). The input is httpyz's `{ param, query, json }`: a plain value,
 	 * a riva signal or computed, or a function that reads signals. The key is the
 	 * method, the path and the input. Lazy: it fetches at its first subscriber or
-	 * observed reader; `await` is a one-shot load.
+	 * observed reader; `await` is a one-shot load. A query definition (from
+	 * `query(api, route)`) is used as is, so a loader's `ensure(riva, def, input)`
+	 * and this call share one cache entry.
 	 */
-	get<P extends PathsOf<Ops, 'get'>>(
-		path: P,
-		...args: RestArgs<InputOf<Ops, Route<Ops, 'get', P>>, GetCall>
-	): Resource<DataOf<Ops, Route<Ops, 'get', P>, Decoded>>;
-	/**
-	 * The same over a query definition (from `query(api, route)`): it is used as
-	 * is, so a loader's `ensure(riva, def, input)` and this call share one cache entry.
-	 */
-	get<I, Data>(
-		definition: Query<I, Data>,
-		...args: RestArgs<I, GetCall>
-	): Resource<Data>;
+	// biome-ignore lint/suspicious/noExplicitAny: matches any definition
+	get<T extends PathsOf<Ops, 'get'> | Query<any, any>>(
+		target: T,
+		...args: RestArgs<GetInput<Ops, T>, GetCall>
+	): Resource<GetData<Ops, T, Decoded>>;
 	/** A callable handle over a mutation: `await save(input, { invalidates })`, a reactive `state` (idle first) and `reset()`. */
 	mutation<M extends MutationMethod, P extends PathsOf<Ops, M>>(
 		method: M,
@@ -98,17 +104,12 @@ export interface RestApi<
 /** What `createRiva({ rest: rest({ baseUrl }) })` puts on `riva.rest`: no spec, so the data type is yours. */
 export interface UntypedRestApi {
 	/** As the typed `get`, over a URL path (`'/invoices/42'`, or `'/invoices/{id}'` with `param`); `Data` is what you expect back. */
-	get<Data = unknown>(
-		path: string,
-		input?: InputArg<RestInput>,
+	// biome-ignore lint/suspicious/noExplicitAny: matches any definition
+	get<Data = unknown, T extends string | Query<any, any> = string>(
+		target: T,
+		input?: InputArg<T extends Query<infer I, any> ? I : RestInput>,
 		call?: GetCall,
-	): Resource<Data>;
-	/** The same over a query definition, used as is (it shares its cache entries with `ensure`). */
-	get<Data, Input = RestInput>(
-		definition: Query<Input, Data>,
-		input?: InputArg<Input>,
-		call?: GetCall,
-	): Resource<Data>;
+	): Resource<T extends Query<any, infer D> ? D : Data>;
 	mutation<Data = unknown, Input = RestInput>(
 		method: MutationMethod,
 		path: string,

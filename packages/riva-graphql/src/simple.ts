@@ -17,7 +17,7 @@ import type { OperationCache } from './query';
 import type { VarsInput } from './resources';
 import { type SubscribeCall, subscriptionOf } from './subscription';
 import { type GraphQLTransport, provideGraphQL } from './transport';
-import type { VarsOf } from './types';
+import type { TargetData, TargetVars, VarsOf } from './types';
 
 export type { MutateCall, QueryCall } from './calls';
 export type { SubscribeCall } from './subscription';
@@ -31,20 +31,15 @@ export interface GraphQLApi {
 	 * reads signals; the key is the operation name plus the variables. Lazy: it
 	 * fetches at its first subscriber or observed reader, `await` is a one-shot
 	 * load. A response with data and errors is the `error` state with the partial
-	 * `data` and a `GraphQLError`.
+	 * `data` and a `GraphQLError`. A query definition (from `query(DOC)`) is used
+	 * as is, so a loader's `ensure(riva, def, vars)` and this call share one cache
+	 * entry.
 	 */
-	query<Data, Vars>(
-		document: Doc<Data, Vars>,
-		...args: VarsArgs<VarsInput<VarsOf<Vars>>, [options?: QueryCall]>
-	): Resource<Data>;
-	/**
-	 * The same over a query definition (from `query(DOC)`): it is used as is, so
-	 * a loader's `ensure(riva, def, vars)` and this call share one cache entry.
-	 */
-	query<Vars, Data>(
-		definition: Query<Vars, Data>,
-		...args: VarsArgs<VarsInput<Vars>, [options?: QueryCall]>
-	): Resource<Data>;
+	// biome-ignore lint/suspicious/noExplicitAny: matches any document or definition
+	query<T extends Doc<any, any> | Query<any, any>>(
+		target: T,
+		...args: VarsArgs<VarsInput<TargetVars<T>>, [options?: QueryCall]>
+	): Resource<TargetData<T>>;
 	/** Runs a mutation and resolves with its data; throws after the rollback. */
 	mutate<Data, Vars>(
 		document: Doc<Data, Vars>,

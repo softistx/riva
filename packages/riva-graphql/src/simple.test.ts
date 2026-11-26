@@ -754,6 +754,10 @@ const types = async () => {
 	);
 	// @ts-expect-error a function must return the variables
 	riva.graphql.query(PATIENTS_QUERY, () => ({ school: 1 }));
+	// @ts-expect-error the error is on `school`, whichever form the target takes
+	riva.graphql.query(PATIENTS_QUERY, { school: 1 });
+	// @ts-expect-error the same over a definition
+	riva.graphql.query(query(PATIENTS_QUERY), { school: 1 });
 	// The handle.
 	const save = riva.graphql.mutation(RENAME_PATIENT_MUTATION);
 	expectTypeOf(save.state).toEqualTypeOf<MutationState<typeof renamed>>();
