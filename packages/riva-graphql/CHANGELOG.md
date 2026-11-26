@@ -1,5 +1,14 @@
 # @softistx/riva-graphql
 
+## 0.7.1
+
+### Patch Changes
+
+- [#102](https://github.com/softistx/riva/pull/102) [`49d3565`](https://github.com/softistx/riva/commit/49d3565aeee7639f375031bc816cb71bd6cfd413) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Accept `@softistx/graphql-client` 0.12 as a peer (`^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0`). riva-graphql never called `queryIncremental`, so nothing changes for you.
+- Updated dependencies []:
+  - @softistx/riva@0.7.1
+  - @softistx/riva-react@0.7.1
+
 ## 0.7.0
 
 ### Minor Changes

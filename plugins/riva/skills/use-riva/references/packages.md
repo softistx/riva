@@ -31,7 +31,7 @@ Core: signals, Riva, query and mutation engine, normalized and keyed cache, pagi
 GraphQL transport for riva over @softistx/graphql-client, with persisted ids and the allowlist codegen plugin.
 
 - Entry points: `@softistx/riva-graphql`, `@softistx/riva-graphql/infinite`, `@softistx/riva-graphql/cache`, `@softistx/riva-graphql/codegen`, `@softistx/riva-graphql/server`, `@softistx/riva-graphql/bff`, `@softistx/riva-graphql/react`
-- Peers: `@softistx/riva` `^0.7.0`, `@softistx/graphql-client` `^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0`, `@graphql-typed-document-node/core` `^3.2.0` (optional), `graphql` `^16.11.0 || ^17.0.0` (optional), `react` `^19.0.0` (optional), `@softistx/riva-react` `^0.7.0` (optional)
+- Peers: `@softistx/riva` `^0.7.1`, `@softistx/graphql-client` `^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0`, `@graphql-typed-document-node/core` `^3.2.0` (optional), `graphql` `^16.11.0 || ^17.0.0` (optional), `react` `^19.0.0` (optional), `@softistx/riva-react` `^0.7.1` (optional)
 - Read first: `node_modules/@softistx/riva-graphql/README.md` (one example per section, links to the guides)
 - Shipped docs:
   - `node_modules/@softistx/riva-graphql/docs/README.md`: riva-graphql docs
@@ -52,7 +52,7 @@ GraphQL transport for riva over @softistx/graphql-client, with persisted ids and
 React adapter for riva: RivaProvider, hooks, Suspense and SSR support.
 
 - Entry points: `@softistx/riva-react`, `@softistx/riva-react/infinite`, `@softistx/riva-react/entities`, `@softistx/riva-react/resource`, `@softistx/riva-react/store`
-- Peers: `react` `^19.0.0`, `@softistx/riva` `^0.7.0`
+- Peers: `react` `^19.0.0`, `@softistx/riva` `^0.7.1`
 - Read first: `node_modules/@softistx/riva-react/README.md` (one example per section, links to the guides)
 - Shipped docs:
   - `node_modules/@softistx/riva-react/docs/README.md`: @softistx/riva-react docs
@@ -73,7 +73,7 @@ React adapter for riva: RivaProvider, hooks, Suspense and SSR support.
 React Router host for riva: one Riva per request with an ambient scope, SSR dehydrate and hydrate through loader data, and a merge on each navigation.
 
 - Entry points: `@softistx/riva-react-router`, `@softistx/riva-react-router/server`
-- Peers: `@softistx/riva` `^0.7.0`, `@softistx/riva-react` `^0.7.0`, `react` `^19.0.0`, `react-router` `^8.0.0`, `@softistx/alxia-react-router` `^0.83.1` (optional)
+- Peers: `@softistx/riva` `^0.7.1`, `@softistx/riva-react` `^0.7.1`, `react` `^19.0.0`, `react-router` `^8.0.0`, `@softistx/alxia-react-router` `^0.83.1` (optional)
 - Read first: `node_modules/@softistx/riva-react-router/README.md` (one example per section, links to the guides)
 - Shipped docs:
   - `node_modules/@softistx/riva-react-router/docs/README.md`: riva-react-router docs
@@ -88,7 +88,7 @@ React Router host for riva: one Riva per request with an ambient scope, SSR dehy
 REST transport for riva, typed by OpenAPI through openapi-httpyz, with a free fetcher for schema-less APIs.
 
 - Entry points: `@softistx/riva-rest`, `@softistx/riva-rest/entities`, `@softistx/riva-rest/server`, `@softistx/riva-rest/bff`, `@softistx/riva-rest/react`
-- Peers: `@softistx/riva` `^0.7.0`, `@softistx/httpyz` `^0.6.1`, `@softistx/openapi-httpyz` `^0.4.1` (optional), `react` `^19.0.0` (optional), `@softistx/riva-react` `^0.7.0` (optional)
+- Peers: `@softistx/riva` `^0.7.1`, `@softistx/httpyz` `^0.6.1`, `@softistx/openapi-httpyz` `^0.4.1` (optional), `react` `^19.0.0` (optional), `@softistx/riva-react` `^0.7.1` (optional)
 - Read first: `node_modules/@softistx/riva-rest/README.md` (one example per section, links to the guides)
 - Shipped docs:
   - `node_modules/@softistx/riva-rest/docs/README.md`: riva-rest docs
