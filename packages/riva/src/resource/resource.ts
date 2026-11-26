@@ -37,6 +37,28 @@ const sameTarget = (a: Target | undefined, b: Target | undefined): boolean =>
 		a.def === b.def &&
 		stableKey(a.def.id, a.vars) === stableKey(b.def.id, b.vars));
 
+/** The query entry's state as a resource state; a loading key shows `last` as a placeholder. */
+function stateOf<D>(
+	s: QueryState<D>,
+	last: unknown,
+	keepPrevious: boolean,
+): ResourceState<D> {
+	const { status, data, error, isFetching } = s;
+	const base = { error: undefined, placeholder: false } as const;
+	if (status === 'error') return { ...base, status, data, error, isFetching };
+	if (status === 'success')
+		return { ...base, status, data: data as D, isFetching };
+	if (data === undefined && keepPrevious && last !== undefined)
+		return {
+			...base,
+			status: 'success',
+			data: last as D,
+			isFetching: true,
+			placeholder: true,
+		};
+	return { ...base, status: 'loading', data, isFetching };
+}
+
 /**
  * A resource over a query entry. `source` returns the definition and its
  * variables and runs in a tracked computed: when what it reads changes, the
@@ -71,46 +93,18 @@ export function resource<Vars, Data>(
 				t.def,
 				t.vars,
 			);
-			const { data, isFetching } = s;
-			if (s.status === 'error')
-				return {
-					status: 'error',
-					data,
-					error: s.error,
-					isFetching,
-					placeholder: false,
-				};
-			if (s.status === 'success') {
-				last = data;
-				// Stored data the cache cannot read (an evicted entity) is fetched again.
-				if (data === undefined)
-					queueMicrotask(() =>
-						riva.queries.missing(t.def as Query<unknown, unknown>, t.vars),
-					);
-				return {
-					status: 'success',
-					data: data as Data,
-					error: undefined,
-					isFetching,
-					placeholder: false,
-				};
-			}
-			if (data !== undefined) last = data;
-			else if (keepPrevious && last !== undefined)
-				return {
-					status: 'success',
-					data: last as Data,
-					error: undefined,
-					isFetching: true,
-					placeholder: true,
-				};
-			return {
-				status: 'loading',
-				data,
-				error: undefined,
-				isFetching,
-				placeholder: false,
-			};
+			const out = stateOf(s, last, keepPrevious);
+			if (
+				s.status === 'success' ||
+				(s.status !== 'error' && s.data !== undefined)
+			)
+				last = s.data;
+			// Stored data the cache cannot read (an evicted entity) is fetched again.
+			if (s.status === 'success' && s.data === undefined)
+				queueMicrotask(() =>
+					riva.queries.missing(t.def as Query<unknown, unknown>, t.vars),
+				);
+			return out;
 		},
 		{ equals: sameState },
 	);
