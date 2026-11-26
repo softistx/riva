@@ -2,7 +2,6 @@
 
 ## Now
 
-- **Settle the simple API's public names before 1.0** — the extensions become `withGraphQL` and `withRest`, the GraphQL error `RivaGraphQLError`, the call types carry their protocol (`GraphQLQueryCall`, `RestQueryCall`, …) and one `TrackedInput` replaces the adapters' copies; then one mutation-hook shape (`{ run, status, data, error, reset }`, `run` and `reset` stable, no `isPending`) and a path-first `useRest(path)` (slice 2). No deprecated aliases. [#81](https://github.com/softistx/riva/issues/81)
 - **Deprecate the graphql-client cache and React layer** — consumers of `@softistx/graphql-client` are pointed to riva for caching and React bindings, once riva has its first release.
 - **Pilot in a BFF app** — riva run end to end in a server-rendered app with a backend-for-frontend, to validate the API before wider adoption.
 
@@ -31,6 +30,7 @@ Nothing yet.
 
 Landed in `develop`; released from 0.1.0 on, the simple API in the next minor release.
 
+- Settled public names for 1.0: the extensions `withGraphQL` and `withRest`, the error `RivaGraphQLError`, call types that name their protocol (`GraphQLQueryCall`, `RestQueryCall`, …), one `TrackedInput`, one mutation-hook shape (`{ run, status, data, error, reset }` with a stable `run` and `reset`) and a path-first `useRest(path)`. No deprecated aliases.
 - The simple API: one `createRiva({ graphql: withGraphQL(client), rest: withRest(api) })`, then `riva.graphql.query / mutation / subscribe` and `riva.rest.get / mutation` with derived keys, per-call options and `invalidates`, and hooks per namespace (`useGraphQL`, `useGraphQLMutation`, `useGraphQLSubscription`, `useRest`, `useRestMutation`).
 - Reactive resources: tracked variables, an `enabled` option, built-in `idle / loading / success / error` states, previous data kept as a placeholder while the key changes, awaitable on the server, and mutation handles with their own state.
 - A monorepo of five packages that build, typecheck and test, with docs.
