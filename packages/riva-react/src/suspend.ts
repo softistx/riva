@@ -52,9 +52,8 @@ export function retryOnReset(riva: Riva, error: unknown): boolean {
 	const armed = seen.get(error);
 	if (armed) return seen.delete(error);
 	if (armed === undefined) {
-		const errors = seen;
-		errors.set(error, false);
-		setTimeout(() => errors.has(error) && errors.set(error, true), 0);
+		seen.set(error, false);
+		setTimeout(() => seen.has(error) && seen.set(error, true), 0);
 	}
 	return false;
 }

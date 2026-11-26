@@ -32,8 +32,10 @@ export function Page({ school }: { school: string }) {
 - What a Suspense render fetched is not fetched again when the component mounts, whatever the query's `staleTime` (the hooks fetch with a `staleTime` of at least 1000 ms: the call's, else the definition's, else the riva's default; never below 1 s). An invalid duration string throws `RIVA_DURATION`.
 - After an entity is evicted, a suspending component suspends again while the query refetches.
 - On the server, `suspense: true` waits for the fetch and streams the result (`renderToReadableStream` and `renderToPipeableStream`).
-- A failure with no data is thrown to the boundary once. Resetting the boundary (a retry button, `resetErrorBoundary`) refetches it by itself and suspends on the new fetch; a new failure reaches the boundary again. On the server the error is always thrown. `useResource` with `suspense` does the same.
+- A failure with no data is thrown to the boundary. Resetting the boundary (a retry button, `resetErrorBoundary`) refetches it by itself and suspends on the new fetch; a new failure reaches the boundary again. `useResource` with `suspense` does the same.
+- The retry happens in the browser only (the server always throws). An error is armed one task after its first throw: React's synchronous retry and StrictMode re-render it before that, so they never refetch. Any later read of the same error counts as a reset (a remount, a second boundary, a replayed render): it costs one extra fetch, never a loop.
 
 ## Traps
 
+- Under fake timers the error is never armed, so a reset throws it again: advance the timers, or use real ones.
 - A suspending query with no `staleTime` can fetch twice around the Suspense boundary: see [troubleshooting](../troubleshooting.md).

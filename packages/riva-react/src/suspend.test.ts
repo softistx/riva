@@ -55,3 +55,12 @@ test('retryOnReset throws an error once, then retries after a later task, once',
 	expect(retryOnReset(riva, err)).toBe(false); // recorded afresh
 	expect(retryOnReset(riva, new Error('y'))).toBe(false); // a new error starts over
 });
+
+test('an error read again after the tick counts as a reset, even from a late second reader', async () => {
+	const riva = newRiva();
+	const err = new Error('x');
+	expect(retryOnReset(riva, err)).toBe(false);
+	await new Promise((r) => setTimeout(r, 5));
+	expect(retryOnReset(riva, err)).toBe(true); // one extra fetch, never a loop
+	expect(retryOnReset(riva, err)).toBe(false);
+});

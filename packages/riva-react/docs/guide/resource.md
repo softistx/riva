@@ -11,7 +11,7 @@ const state = useResource(key, (riva) => riva.graphql.query(BOOKS_QUERY, vars), 
 - One resource per riva and `key` (a string); it is stopped when the component unmounts. **The key identifies the resource: derive it from everything `make` reads.** `make` runs again only when the riva or the key changes.
 - `state` is the resource state: `idle | loading | success | error`, with `isFetching` and `placeholder`. A fetch that settles with `undefined` is `success` with `data: undefined`.
 - `keepPrevious` (default true) keeps the data of the previous key as a placeholder while the new one loads. It never carries data across a disabled gap: after the resource was `idle` (`enabled` false), a new key shows `loading`, not the old key's data.
-- `suspense: true` suspends until data and types the state as success. Any error, a partial GraphQL one included, is thrown to the error boundary. A disabled (idle) resource does not suspend.
+- `suspense: true` suspends until data and types the state as success. Any error, a partial GraphQL one included, is thrown to the error boundary; resetting the boundary refetches it by itself (see the [suspense guide](./suspense.md)). A disabled (idle) resource does not suspend.
 - Under suspense, give the call `staleTime: suspenseStaleTime(riva, yourStaleTime, def)` (pass the query definition so its own `staleTime` counts): at least 1000 ms (the call's value, else the definition's, else the riva's default; an invalid duration string throws `RIVA_DURATION`), so what the render just fetched is not fetched again at mount.
 
 ## useMutationHandle

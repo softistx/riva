@@ -65,10 +65,8 @@ export function useQuery(
 				q.vars,
 			);
 		}
-		if (state.status === 'error') {
-			if (!retryOnReset(q.riva, state.error)) throw state.error;
-			throw suspend(q.riva, def, q.key, q.vars);
-		}
+		if (state.status === 'error' && !retryOnReset(q.riva, state.error))
+			throw state.error;
 		if (state.status !== 'success' || state.isFetching)
 			throw suspend(q.riva, def, q.key, q.vars);
 	}

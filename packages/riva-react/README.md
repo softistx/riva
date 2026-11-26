@@ -132,7 +132,7 @@ function PatientList({ school }: { school: string }) {
 }
 ```
 
-`useQuery(def, vars?, opts?)` returns `status`, `data`, `error`, `isFetching`, `updatedAt` and `refetch`; its options are `enabled` (`true`) and `suspense` (`false`). Variables are compared by value, so an inline `{ school }` never resubscribes; `refetch()` never rejects. With `suspense: true` the component suspends while there is no data, `data` is no longer optional, and a failure goes to the nearest error boundary. Guides: [queries](./docs/guide/queries.md), [suspense](./docs/guide/suspense.md), [mutations](./docs/guide/mutations.md).
+`useQuery(def, vars?, opts?)` returns `status`, `data`, `error`, `isFetching`, `updatedAt` and `refetch`; its options are `enabled` (`true`) and `suspense` (`false`). Variables are compared by value, so an inline `{ school }` never resubscribes; `refetch()` never rejects. With `suspense: true` the component suspends while there is no data, `data` is no longer optional, and a failure goes to the nearest error boundary; resetting the boundary refetches it by itself. Guides: [queries](./docs/guide/queries.md), [suspense](./docs/guide/suspense.md), [mutations](./docs/guide/mutations.md).
 
 ## Infinite lists
 
