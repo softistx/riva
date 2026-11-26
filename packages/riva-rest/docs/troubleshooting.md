@@ -258,7 +258,7 @@ const invoice = query(api, 'get /invoices/{id}'); // was rest.query(api, '…')
 const save = mutation(api, 'post /invoices'); // was rest.mutation(api, '…')
 ```
 
-## `useRest('get', path) is gone: call useRest(path)`
+## `riva-rest/react: useRest('get', path) is gone: call useRest(path).`
 
 Code: `RIVA_DEFINITION` (`RivaError`).
 
@@ -270,6 +270,21 @@ Code: `RIVA_DEFINITION` (`RivaError`).
 
 ```tsx
 const book = useRest('/books/{id}', { param: { id } });
+```
+
+## `riva-rest/react: useRest takes a path or a query definition.`
+
+Code: `RIVA_DEFINITION` (`RivaError`).
+
+**When:** the first argument of `useRest` is neither a URL path string nor a query definition (a mutation definition, a route object, `undefined`).
+
+**Why:** `useRest` reads GETs only. A mutation definition has no cache entry to read.
+
+**Fix:** pass the path, or a `query(api, route)` definition; run a mutation definition with `useMutation(def)` from `@softistx/riva-react`.
+
+```tsx
+const book = useRest('/books/{id}', { param: { id } });
+const { run } = useMutation(saveBook);
 ```
 
 ## `save` is not a function on `useRestMutation`

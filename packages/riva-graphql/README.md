@@ -84,7 +84,7 @@ const closeFeed = added.subscribe((state) => console.log(state.status)); // open
 
 ## React hooks
 
-`@softistx/riva-graphql/react` calls the simple API from components, on the riva of the nearest `RivaProvider` (`react` and `@softistx/riva-react` are optional peers; the riva needs `createRiva({ graphql })`).
+`@softistx/riva-graphql/react` calls the simple API from components, on the riva of the nearest `RivaProvider` (`react` and `@softistx/riva-react` are optional peers; the riva needs `createRiva({ graphql: withGraphQL(client) })`).
 
 ```tsx
 import { useGraphQL, useGraphQLMutation, useGraphQLSubscription } from '@softistx/riva-graphql/react';
@@ -100,6 +100,7 @@ function Books({ first }: { first: number }) {
 }
 // useGraphQL(def, vars) takes a query(DOC) definition: it shares its entry with a loader's def.ensure(riva, vars).
 // useGraphQL(DOC, vars, { suspense: true }) suspends and returns the success state.
+// The query hooks take a document or a definition; a mutation definition goes through useMutation(def) from @softistx/riva-react.
 // useGraphQLSubscription(BOOK_ADDED_SUBSCRIPTION, {}, { next(added) {} }) is loading, then the last message.
 ```
 
