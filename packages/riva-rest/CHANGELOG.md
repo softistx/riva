@@ -1,5 +1,30 @@
 # @softistx/riva-rest
 
+## 0.10.0
+
+### Minor Changes
+
+- [#122](https://github.com/softistx/riva/pull/122) [`d81a3fa`](https://github.com/softistx/riva/commit/d81a3fa1448000a1ff74aad231877ec189afa3c3) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Breaking: a mutation's `run` is now `mutate`, with no alias. The option, the definition method and the hooks' result are renamed together; `riva.run(() => …)` (the scope runner) and the `/_data` operations' `run` are unchanged.
+  
+  Migration:
+  
+  - `def.run(riva, vars)` becomes `def.mutate(riva, vars)` (core, `riva.graphql.mutation`, `riva.rest.mutation`).
+  - `mutation({ id, run })` becomes `mutation({ id, mutate })` (core and the REST free form).
+  - `const { run } = useMutation(def)` becomes `const { mutate } = useMutation(def)`; the same for `useGraphQLMutation`, `useRestMutation` and `useMutationHandle`.
+  - `mutationHandle(riva, run)` keeps its shape; only the parameter is named `mutate`.
+
+- [#116](https://github.com/softistx/riva/pull/116) [`b0cfc17`](https://github.com/softistx/riva/commit/b0cfc1789e9ad3d038df5a16489ddb0866842cbf) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `query` and `mutation` take the generated `operations` table alone, `query(operations, 'get /invoices/{id}')`, so a definition module imports no client and the riva's transport supplies it at run time. The data is typed as the decoded reply; the client form stays for a `decode: false` client. `operations()` from `@softistx/riva-rest/server` accepts the bare table too. The error for an unknown route now reads `riva-rest: no OpenAPI operation at …`.
+
+- [#113](https://github.com/softistx/riva/pull/113) [`80d4745`](https://github.com/softistx/riva/commit/80d47450005dc53d90336d58db07c21e5bfbda04) Thanks [@SteveGT96](https://github.com/SteveGT96)! - `restEntities` accepts a key function alone as a type, `restEntities({ Invoice: (o) => o['id'] as string })`: an object is of the type when the function returns an id, and the full `{ is, key }` form is unchanged.
+
+- [#114](https://github.com/softistx/riva/pull/114) [`8327261`](https://github.com/softistx/riva/commit/8327261143ea900dfcf5da72f4f2d2cdf1fc16ec) Thanks [@SteveGT96](https://github.com/SteveGT96)! - One entity store per riva, shared by every policy on it: `entities()`, `restEntities()` and `normalized()` policies with different `keys` now merge their keys per type instead of being refused. The same type keyed by two different functions, or a key added for a type the store already holds, throws `RIVA_CACHE`; a custom `identify` stays exclusive.
+
+### Patch Changes
+
+- Updated dependencies [[`d81a3fa`](https://github.com/softistx/riva/commit/d81a3fa1448000a1ff74aad231877ec189afa3c3), [`8327261`](https://github.com/softistx/riva/commit/8327261143ea900dfcf5da72f4f2d2cdf1fc16ec), [`e515cdb`](https://github.com/softistx/riva/commit/e515cdbbd10f5a90d3d8a68cc68ff2195f45b3d8)]:
+  - @softistx/riva@0.10.0
+  - @softistx/riva-react@0.10.0
+
 ## 0.9.0
 
 ### Patch Changes
