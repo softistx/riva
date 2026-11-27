@@ -85,7 +85,14 @@ export default function Root() {
 | `fetch` | global `fetch` | A fetch of your own. |
 | `headers` | none | A function returning `HeadersInit`, called at each request (a CSRF token). |
 
-Same-origin cookies go with each call. `operations(api)` takes the OpenAPI client; a GET, HEAD or OPTIONS is a query, any other method a mutation.
+Same-origin cookies go with each call. `operations(api)` takes the OpenAPI client or the bare generated `operations` table; a GET, HEAD or OPTIONS is a query, any other method a mutation.
+
+```ts
+import { operations } from '@softistx/riva-rest/server';
+import { operations as table } from './generated/invoices';
+
+dataRoute({ sources: [operations(table)] }); // the generated table, no client
+```
 
 ## Traps
 

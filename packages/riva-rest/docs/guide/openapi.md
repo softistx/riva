@@ -4,7 +4,7 @@
 
 ## What it is for
 
-`query(operations, 'method path', options?)` and `mutation(operations, 'method path', options?)` build definitions typed from the spec, from the generated `operations` table alone. `query(api, …)` and `mutation(api, …)` take the configured client instead. The route is the one the spec writes (`'get /invoices/{id}'`), checked at compile time and when the definition is created. The variables are the operation's input (`param`, `query`, `json`, …), the data is its 2xx reply, both from the spec.
+`query(operations, 'method path', options?)` and `mutation(operations, 'method path', options?)` build definitions typed from the spec, from the generated `operations` table alone. The data is typed as the decoded reply, what a client with the default `decode: true` returns; for a client built with `decode: false`, `query(api, …)` and `mutation(api, …)` take the client instead and type the JSON reply. The route is the one the spec writes (`'get /invoices/{id}'`), checked at compile time and when the definition is created. The variables are the operation's input (`param`, `query`, `json`, …), the data is its 2xx reply, both from the spec.
 
 ## Define and run
 
@@ -21,7 +21,7 @@ export const createInvoice = mutation(operations, 'post /invoices', { invalidate
 await invoice.ensure(riva, { param: { id: '7' } }); // Invoice
 ```
 
-The data is typed as the decoded reply, what a client with the default `decode: true` returns. With a client built with `decode: false`, use the client form to get the JSON-typed data:
+The client form (for `decode: false`):
 
 ```ts
 import { mutation, query } from '@softistx/riva-rest';

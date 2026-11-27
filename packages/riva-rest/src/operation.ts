@@ -30,7 +30,7 @@ export function specOf<Ops extends OperationsShape<Ops>>(
 }
 
 /**
- * Reads a route once, against the operation table of own operation table. Throws a
+ * Reads a route once, against the spec's operation table. Throws a
  * `RivaError` (`RIVA_DEFINITION`) for a route that is not `'<method> <path>'`, that the spec has
  * no operation for, or whose method does not fit the definition: a query is
  * a read (GET, HEAD, OPTIONS, QUERY, or a POST that only reads), a mutation

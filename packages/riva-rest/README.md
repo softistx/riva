@@ -154,7 +154,7 @@ riva.get(invoices); // an operation whose input is all optional takes no variabl
 
 Run the REST calls on the server and keep the browser away from the API: the browser posts `{ id, variables }` to a `dataRoute` (`@softistx/riva-react-router`'s `/_data`), the server runs the operation through the request riva's transport (with its session and base URL) and sends the data back.
 
-Server: `rivaMiddleware({ setup })` gives each request riva its transport, and `dataRoute({ sources: [operations(api)] })` serves the spec's operations. Browser: definitions with `provideRest(riva, bffTransport())` in the router provider's `setup` (the simple `riva.rest` calls the API directly). Ids are `rest:<operationId>`; free fetchers are server-only. [Guide](./docs/guide/bff.md).
+Server: `rivaMiddleware({ setup })` gives each request riva its transport, and `dataRoute({ sources: [operations(api)] })` serves the spec's operations (`operations()` takes the OpenAPI client or the bare generated `operations` table). Browser: definitions with `provideRest(riva, bffTransport())` in the router provider's `setup` (the simple `riva.rest` calls the API directly). Ids are `rest:<operationId>`; free fetchers are server-only. [Guide](./docs/guide/bff.md).
 
 ```tsx
 import { RivaRouterProvider } from '@softistx/riva-react-router';
@@ -176,7 +176,7 @@ export default function Root() {
 - `@softistx/riva-rest`: `query`, `mutation`, `withRest` (the extension), `provideRest`, `httpyzTransport`, `toRivaError`, `operationOf` (reads a route into `{ id, method, path, operationId, hasInput }`) and the types: `RestTransport`, `RestContext`, `Route`, `Operation`, the simple API (`RestApi`, `UntypedRestApi`, `RestQueryCall`, `RestMutateCall`, `TrackedInput` (re-exported from the core), `RestSimpleOptions`, `RestBaseOptions`, `PathsOf`, `MutationMethod`, `RestInput`), the options (`RestQueryOptions`, `RestMutationOptions`, `FreeQueryOptions`, `FreeMutationOptions`), the routes (`RouteOf`, `QueryRoute`, `MutationRoute`) and `InputOf`, `DataOf`, `SpecOf`, `ClientOf`, `DecodedOf`.
 - `@softistx/riva-rest/react`: `useRest`, `useRestMutation` and the types `Register`, `UseRest`, `UseRestMutation`, `UseRestOptions`, `MutationResult` (re-exported from `@softistx/riva-react/resource`) (optional peers `react` and `@softistx/riva-react`).
 - `@softistx/riva-rest/entities`: `restEntities` and the types `RestEntity`, `RestEntityKey`, `RestEntities`.
-- `@softistx/riva-rest/server`: `operations(api)` (a `DataSource` for `dataRoute`), the constant `PREFIX` (`'rest:'`, the prefix of every id the route serves: `rest:<operationId>`) and the types `DataSource`, `DataOperation`, `OperationsOf`.
+- `@softistx/riva-rest/server`: `operations(api)` (a `DataSource` for `dataRoute`; `api` is the OpenAPI client or the bare generated `operations` table), the constant `PREFIX` (`'rest:'`, the prefix of every id the route serves: `rest:<operationId>`) and the types `DataSource`, `DataOperation`, `OperationsOf`.
 - `@softistx/riva-rest/bff`: `bffTransport(opts)` and the type `BffTransportOptions`.
 
 Size: riva + riva-rest stays under 8 kB gzipped, and riva + `/bff` under 9 kB, httpyz and openapi-httpyz not counted.

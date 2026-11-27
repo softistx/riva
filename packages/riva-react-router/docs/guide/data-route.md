@@ -33,6 +33,8 @@ const route = dataRoute({
 });
 ```
 
+`operations()` takes the OpenAPI client or the bare generated `operations` table.
+
 ## Options
 
 | Option | Default | Meaning |
