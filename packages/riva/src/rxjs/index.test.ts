@@ -3,6 +3,7 @@ import * as rxjs from './index';
 
 test('the subpath exports', () => {
 	expect(Object.keys(rxjs).sort()).toEqual([
+		'connect',
 		'data$',
 		'fromAsyncIterable',
 		'liveQuery',

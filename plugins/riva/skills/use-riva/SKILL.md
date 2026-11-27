@@ -49,6 +49,7 @@ then `riva.graphql.query(DOC, vars)` and `riva.rest.get(path, input)`.
 | React Router 8: one riva per request, SSR hydration, `/_data`, revalidation | `@softistx/riva-react-router` (`/server`) |
 | Dehydrate on the server, hydrate in the browser, an ambient scope resolver | `@softistx/riva/ssr` |
 | A domain's state, computeds and actions | `@softistx/riva/store` |
+| RxJS interop (optional peer `rxjs ^7.8`): states and queries as Observables, a query fed by a stream, a stream written into a signal | `@softistx/riva/rxjs`: `toObservable` / `data$` (and `fromAsyncIterable` for async iterables), `liveQuery({ id, observe })`, `connect(riva, signal, obs$)`; guide `docs/guide/rxjs.md` |
 | The adapter's entity cache (one copy per entity) | `withGraphQL(client, { cache: normalized() })` from `@softistx/riva-graphql/cache`; `withRest(api, { cache: restEntities(...) })` from `@softistx/riva-rest/entities` |
 | GraphQL allowlist for a BFF (codegen, server source, browser transport) | `@softistx/riva-graphql/codegen`, `/server`, `/bff` |
 | REST through a BFF | `@softistx/riva-rest/server`, `/bff` |

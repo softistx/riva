@@ -454,3 +454,49 @@ import { defaultIfEmpty } from 'rxjs';
 
 liveQuery({ id: 'prices', observe: (symbol: string) => prices$(symbol).pipe(defaultIfEmpty(0)) });
 ```
+
+## `Cannot find package 'rxjs'` (or `Can't resolve 'rxjs'`) on `@softistx/riva/rxjs`
+
+**When:** importing `@softistx/riva/rxjs` fails at build or at import time.
+
+**Why:** `rxjs` is an optional peer, needed only by this subpath. The main entry never imports it, so an app that does not use `/rxjs` installs nothing.
+
+**Fix:** install it (`^7.8`) in the app that imports the subpath.
+
+```sh
+bun add rxjs
+```
+
+## A `liveQuery` never updates
+
+**When:** `riva.get(priceQuery, 'ACME')` shows the first value and then nothing, or the stream never seems to run.
+
+**Why:** in a browser the stream is subscribed only while the query is observed. `ensure()` or `riva.get` alone does not observe it: `ensure()` with no observer closes the stream at once. On the server it is read once, on purpose.
+
+**Fix:** observe it with `useQuery(priceQuery, 'ACME')`, `riva.subscribe(priceQuery, 'ACME', listener)` or `toObservable(riva, priceQuery, 'ACME')`, and keep that subscription for as long as you want updates.
+
+```ts
+const sub = toObservable(riva, priceQuery, 'ACME').subscribe(render);
+```
+
+## `staleTime` is rejected on a `liveQuery`
+
+**When:** passing `staleTime` to `liveQuery({ … })` is a type error (and is ignored at run time).
+
+**Why:** an observed live entry is always fresh: the stream pushes the changes. `fetch` and `live` are not accepted either, since `observe` replaces them.
+
+**Fix:** remove `staleTime`. Use `gcTime` to say how long the data stays after the last observer leaves.
+
+## A `connect`ed signal stopped changing
+
+**When:** the signal keeps its last value although the stream is still expected to emit.
+
+**Why:** the stream errored (an error ends the connection and is swallowed) or `stop()` was called. A stream that completed also stops.
+
+**Fix:** turn the failure into a value or retry upstream, then connect again.
+
+```ts
+import { catchError, EMPTY, retry } from 'rxjs';
+
+const stop = connect(riva, price, feed$.pipe(retry({ delay: 1000 }), catchError(() => EMPTY)));
+```

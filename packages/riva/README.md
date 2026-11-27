@@ -41,7 +41,7 @@ books.state; // { status: 'idle' | 'loading' | 'success' | 'error', data, error,
 | `@softistx/riva/resource` | reactive resources: tracked variables, `enabled`, built-in `idle / loading / success / error` | [resources](./docs/guide/resources.md) |
 | `@softistx/riva/ssr` | dehydrate, hydrate, scope resolver | [ssr](./docs/guide/ssr.md) |
 | `@softistx/riva/data` | the browser's `/_data` riva | [data](./docs/guide/data.md) |
-| `@softistx/riva/rxjs` | cold Observables of states (`toObservable`, `data$`, `fromAsyncIterable`) and `liveQuery`, needs `rxjs` | [RxJS](#rxjs) |
+| `@softistx/riva/rxjs` | cold Observables of states (`toObservable`, `data$`, `fromAsyncIterable`), `liveQuery` and `connect` (a stream into a signal), needs `rxjs` | [RxJS](#rxjs) |
 
 ## Extensions
 
@@ -198,7 +198,7 @@ bun add rxjs
 
 ```ts
 import { createRiva, query } from '@softistx/riva';
-import { data$, fromAsyncIterable, liveQuery, toObservable } from '@softistx/riva/rxjs';
+import { connect, data$, fromAsyncIterable, liveQuery, toObservable } from '@softistx/riva/rxjs';
 
 const riva = createRiva();
 const userQuery = query({ id: 'user', fetch: async (id: number) => ({ id }) });
@@ -251,6 +251,28 @@ On the server `ensure()` resolves at the first value, then unsubscribes; a strea
 - An error before the first value rejects like any query error (retry applies).
 - An error after it sets the error state and keeps the last data; the stream does not reconnect on its own, `refetch()` (or a new observer after a release) subscribes again.
 - `complete` keeps the last value and does not reconnect; a stream that completes without a value rejects.
+
+### Connecting a stream to a state
+
+`connect(riva, state, obs$)` writes each value of an Observable into a signal of that riva and returns the stop. The Observable's type must match the signal's.
+
+```ts
+import { createRiva, signal } from '@softistx/riva';
+import { connect } from '@softistx/riva/rxjs';
+import { fromEvent, map } from 'rxjs';
+
+const width = signal(0);
+const riva = createRiva();
+
+const stop = connect(
+  riva,
+  width,
+  fromEvent(window, 'resize').pipe(map(() => window.innerWidth)),
+);
+stop(); // unsubscribes; calling it again does nothing
+```
+
+`complete` leaves the last value. An `error` ends the connection and is swallowed: the signal keeps its last value, so turn failures into values upstream with `catchError`. The full guide is [RxJS](./docs/guide/rxjs.md).
 
 ## Types
 
