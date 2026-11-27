@@ -1,5 +1,16 @@
 # @softistx/riva-react
 
+## 0.11.0
+
+### Minor Changes
+
+- [#130](https://github.com/softistx/riva/pull/130) [`52fc5c6`](https://github.com/softistx/riva/commit/52fc5c63d6888f34885384b3daa98e6758e83199) Thanks [@SteveGT96](https://github.com/SteveGT96)! - A GraphQL query with `@defer` or `@stream` renders progressively through `useGraphQL` and `useQuery`: `data` is readable from the first part (`status: 'success'`, `isFetching: true`, `dataState: 'streaming'`), each part updates it, and `dataState` becomes `'complete'` at the end, with no loop in the component. The core's `FetchContext` gains `onPart(data)` and `QueryState` an optional `dataState`; a transport's `execute` receives `onPart` for a query, and `graphqlClientTransport` iterates `client.query(...)` for an incremental operation. With `normalized()` each part is merged into the cache, a field only a `@defer` fragment selects being left out until its part arrives. Suspense resolves at the first part in a browser. A plain query is unchanged.
+
+### Patch Changes
+
+- Updated dependencies [[`52fc5c6`](https://github.com/softistx/riva/commit/52fc5c63d6888f34885384b3daa98e6758e83199), [`52fc5c6`](https://github.com/softistx/riva/commit/52fc5c63d6888f34885384b3daa98e6758e83199), [`52fc5c6`](https://github.com/softistx/riva/commit/52fc5c63d6888f34885384b3daa98e6758e83199), [`52fc5c6`](https://github.com/softistx/riva/commit/52fc5c63d6888f34885384b3daa98e6758e83199)]:
+  - @softistx/riva@0.11.0
+
 ## 0.10.0
 
 ### Minor Changes
