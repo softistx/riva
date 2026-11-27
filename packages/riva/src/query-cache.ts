@@ -15,6 +15,7 @@ import {
 	peek,
 	put,
 	putStored,
+	releaseKept,
 	stale,
 	toStored,
 	unreadable,
@@ -128,7 +129,10 @@ export function createQueryCache(
 					error: undefined,
 					isFetching: false,
 					updatedAt: sched.now(),
+					// a stream cut short by this value is complete
+					...(peek(c, e).dataState && { dataState: 'complete' as const }),
 				});
+				if (f) releaseKept(c, e, f, stored); // what the cut run kept for a cancel
 			});
 			armGc(c, e);
 		},

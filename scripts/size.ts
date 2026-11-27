@@ -20,14 +20,14 @@ export interface Budget {
 }
 
 export const budgets: Budget[] = [
-	{ name: '@softistx/riva', entry: 'packages/riva/dist/index.js', limit: 6272 },
+	{ name: '@softistx/riva', entry: 'packages/riva/dist/index.js', limit: 6304 },
 	{
 		name: '@softistx/riva + entities',
 		entry: [
 			'packages/riva/dist/index.js',
 			'packages/riva/dist/entities/index.js',
 		],
-		limit: 8736,
+		limit: 8832,
 	},
 	{
 		name: '@softistx/riva + infinite',
@@ -40,12 +40,12 @@ export const budgets: Budget[] = [
 	{
 		name: '@softistx/riva + ssr',
 		entry: ['packages/riva/dist/index.js', 'packages/riva/dist/ssr/index.js'],
-		limit: 7680,
+		limit: 7712,
 	},
 	{
 		name: '@softistx/riva + store',
 		entry: ['packages/riva/dist/index.js', 'packages/riva/dist/store/index.js'],
-		limit: 7680,
+		limit: 7712,
 	},
 	{
 		name: '@softistx/riva + resource',
@@ -53,7 +53,7 @@ export const budgets: Budget[] = [
 			'packages/riva/dist/index.js',
 			'packages/riva/dist/resource/index.js',
 		],
-		limit: 7808,
+		limit: 7840,
 	},
 	{
 		name: '@softistx/riva + all subpaths',
@@ -64,7 +64,7 @@ export const budgets: Budget[] = [
 			'packages/riva/dist/ssr/index.js',
 			'packages/riva/dist/store/index.js',
 		],
-		limit: 12544,
+		limit: 12608,
 	},
 	{
 		name: '@softistx/riva + riva-react',
@@ -93,7 +93,7 @@ export const budgets: Budget[] = [
 			'packages/riva/dist/store/index.js',
 			'packages/riva-react/dist/store/index.js',
 		],
-		limit: 13056,
+		limit: 13088,
 	},
 	{
 		name: '@softistx/riva + riva-react + resource',
@@ -103,7 +103,7 @@ export const budgets: Budget[] = [
 			'packages/riva-react/dist/index.js',
 			'packages/riva-react/dist/resource/index.js',
 		],
-		limit: 9344,
+		limit: 9440,
 	},
 	{
 		name: '@softistx/riva + riva-graphql/react hooks',
@@ -145,7 +145,7 @@ export const budgets: Budget[] = [
 			'packages/riva-graphql/dist/index.js',
 			'packages/riva-graphql/dist/cache/index.js',
 		],
-		limit: 14336,
+		limit: 14400,
 	},
 	{
 		name: '@softistx/riva + riva-react + riva-react-router',
@@ -160,7 +160,7 @@ export const budgets: Budget[] = [
 	{
 		name: '@softistx/riva + data',
 		entry: ['packages/riva/dist/index.js', 'packages/riva/dist/data/index.js'],
-		limit: 7168,
+		limit: 7296,
 	},
 	{
 		name: '@softistx/riva + rxjs',
@@ -175,12 +175,12 @@ export const budgets: Budget[] = [
 			'packages/riva-graphql/dist/index.js',
 			'packages/riva-graphql/dist/bff/index.js',
 		],
-		limit: 11296,
+		limit: 11392,
 	},
 	{
 		name: '@softistx/riva + riva-rest',
 		entry: ['packages/riva/dist/index.js', 'packages/riva-rest/dist/index.js'],
-		limit: 9600,
+		limit: 9664,
 	},
 	{
 		name: '@softistx/riva + riva-rest/bff',
@@ -190,7 +190,7 @@ export const budgets: Budget[] = [
 			'packages/riva-rest/dist/index.js',
 			'packages/riva-rest/dist/bff/index.js',
 		],
-		limit: 11296,
+		limit: 11392,
 	},
 ];
 

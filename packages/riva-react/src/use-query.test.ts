@@ -193,6 +193,36 @@ test('suspense shows the fallback then the content, with one fetch', async () =>
 	await m.unmount();
 });
 
+test('suspense on a live query subscribes to its source once', async () => {
+	const feed = new Subject<number>();
+	let subscribed = 0;
+	const def = liveQuery<void, number>({
+		id: 'uq/live-suspense',
+		retry: 0,
+		observe: () =>
+			new Observable<number>((sub) => {
+				subscribed++;
+				return feed.subscribe(sub);
+			}),
+	});
+	function C() {
+		const q = useQuery(def, undefined, { suspense: true });
+		return h('p', null, `got:${q.data}`);
+	}
+	const m = await mount(
+		h(Suspense, { fallback: h('p', null, 'loading') }, h(C)),
+		newRiva(),
+	);
+	expect(m.text()).toBe('loading');
+	await flush(() => feed.next(1));
+	await flush();
+	expect(m.text()).toBe('got:1');
+	expect(subscribed).toBe(1);
+	await flush(() => feed.next(2));
+	expect(m.text()).toBe('got:2');
+	await m.unmount();
+});
+
 test('suspense throws an error with no data to the error boundary', async () => {
 	const log = spyOn(console, 'error').mockImplementation(() => {});
 	const def = users('uq/suspense-err', () => Promise.reject(new Error('bad')));
@@ -590,6 +620,7 @@ test('unmounting during the stream aborts it; a part after that is dropped', asy
 	expect(ctx?.signal.aborted).toBe(true);
 	ctx?.onPart?.('late');
 	expect(riva.get(def, { school: 's' }).data).toBeUndefined();
+	expect(riva.get(def, { school: 's' }).dataState).not.toBe('streaming');
 });
 
 test('refetch replaces the stream: the old one is aborted and its parts dropped', async () => {
