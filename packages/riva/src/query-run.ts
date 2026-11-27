@@ -27,10 +27,7 @@ async function loop(c: Ctx, e: Entry, f: Inflight): Promise<unknown> {
 				fetch(e.vars, {
 					signal: ctl.signal,
 					riva: c.riva,
-					keep: (s) => {
-						e.stop?.();
-						e.stop = s;
-					},
+					keep: (s) => (e.stop = s),
 				}),
 				ctl.signal,
 			);
@@ -59,6 +56,7 @@ function start(c: Ctx, e: Entry): Inflight {
 		prev: peek(c, e),
 	};
 	e.run = f;
+	e.stop?.();
 	put(c, e, {
 		status: f.prev.status === 'success' ? 'success' : 'loading',
 		error: undefined,

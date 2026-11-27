@@ -45,8 +45,8 @@ export interface Entry {
 	invalidated?: boolean;
 	run?: Inflight | undefined;
 	gc?: unknown;
-	/** Closes what the fetch kept open (`ctx.keep`). */
-	stop?: (() => void) | undefined;
+	/** Closes what the fetch kept open (`ctx.keep`); returns true. */
+	stop?: (() => true) | undefined;
 	poll?: unknown;
 }
 
@@ -157,14 +157,12 @@ export const stale = (
 ): boolean =>
 	peek(c, e).status !== 'success' ||
 	e.invalidated ||
-	(e.def.options.live && !e.stop) ||
 	c.sched.now() - peek(c, e).updatedAt >= staleTime ||
 	unreadable(c, e);
 
 /** Schedules the removal of an unobserved entry after `gcTime` (never on the server by default). */
 export function armGc(c: Ctx, e: Entry): void {
 	c.sched.clearTimeout(e.gc);
-	e.gc = undefined;
 	const ms = e.def.options.gcTime ?? (isBrowser() ? 300_000 : Infinity);
 	if (e.observers || ms === Infinity) return;
 	e.gc = c.sched.setTimeout(() => {

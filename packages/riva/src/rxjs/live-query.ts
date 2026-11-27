@@ -33,7 +33,7 @@ export function liveQuery<Vars = void, Data = unknown>(
 			new Promise<Data>((resolve, reject) => {
 				let first = true;
 				const all = new Subscription();
-				const stop = () => all.unsubscribe();
+				const stop = () => (all.unsubscribe(), true as const);
 				all.add(
 					observe(vars).subscribe({
 						next(v) {

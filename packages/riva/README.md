@@ -244,7 +244,7 @@ On the server `ensure()` resolves at the first value, then unsubscribes; a strea
 
 ## Size budget
 
-The main entry stays within 6144 B gzipped, with `entities` or `infinite` within 8192 B each, with `ssr` or `store` within 7680 B each, with `data` within 7168 B, with `resource` within 7680 B, with every subpath within 12288 B, core + react within 9216 B, `@softistx/riva/rxjs` within 1024 B with `rxjs` left out (`bun run size` checks every row).
+The main entry stays within 6144 B gzipped, with `entities` or `infinite` within 8192 B each, with `ssr` or `store` within 7680 B each, with `data` within 7168 B, with `resource` within 7680 B, with every subpath within 12288 B, core + react within 9216 B, core + `@softistx/riva/rxjs` within 7168 B (1024 B on top of the core, `rxjs` left out) (`bun run size` checks every row).
 
 ## Documentation
 

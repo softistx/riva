@@ -69,14 +69,13 @@ export function observe(
 	opts?: ObserveOptions,
 ): Unsubscribe {
 	const e = entryOf(c, def, vars);
-	c.sched.clearTimeout(e.gc);
-	e.gc = undefined;
 	if (c.observed++ === 0) {
 		const a = c.events.onFocus(() => refetch(c, 'refetchOnFocus'));
 		const b = c.events.onReconnect(() => refetch(c, 'refetchOnReconnect'));
 		c.detach = both(a, b);
 	}
 	if (e.observers++ === 0) poll(c, e);
+	armGc(c, e);
 	const off = c.riva.subscribe(e.out, (s) => {
 		listener(s);
 		complete(c, e, s);
@@ -89,9 +88,8 @@ export function observe(
 		off();
 		if (--e.observers === 0) {
 			c.sched.clearTimeout(e.poll);
-			e.poll = undefined;
-			e.stop?.();
-			e.stop = undefined;
+			// A closed stream leaves the entry stale: the next observer subscribes again.
+			if (e.stop?.()) e.invalidated = true;
 			abandon(c, e, e.run);
 			armGc(c, e);
 		}
