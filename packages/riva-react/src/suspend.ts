@@ -6,6 +6,14 @@ const SLOT = {};
 const noop = () => {};
 
 /**
+ * How long the watcher outlives the first data. It is the entry's only
+ * observer until the suspended component mounts and observes; releasing it
+ * sooner would close a kept stream (a live query) and make the mount open a
+ * second one.
+ */
+export const HANDOFF_MS = 1000;
+
+/**
  * What a suspended render waits on: `settled`, or in a browser the first
  * data a streaming fetch publishes (`watch` listens to the entry), so a
  * query with `@defer` renders its fast fields while the rest is coming. The
@@ -22,7 +30,9 @@ export function untilData(
 		settled.then(resolve as () => void, resolve as () => void);
 		if ('document' in globalThis)
 			off = watch((state) => state.data !== undefined && resolve());
-	}).then(() => off());
+	}).then(() => {
+		if (off !== noop) setTimeout(off, HANDOFF_MS);
+	});
 }
 
 /**

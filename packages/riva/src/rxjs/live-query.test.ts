@@ -263,6 +263,23 @@ describe('liveQuery in a browser', () => {
 		off();
 	});
 
+	test('two values in the tick of the first one, nobody observing: the stream closes promptly', async () => {
+		browser();
+		const { q, last, count } = feed('two-in-a-tick');
+		const riva = fakeEnv().riva();
+		const p = q.ensure(riva, room);
+		last().next(1);
+		last().next(2);
+		await p;
+		await settle();
+		expect(count()).toEqual({ subscribed: 1, unsubscribed: 1 });
+		expect(riva.get(q, room).data).toBe(2);
+		const off = riva.subscribe(q, room, () => {});
+		await settle();
+		expect(count().subscribed).toBe(2);
+		off();
+	});
+
 	test('a burst on subscribe (startWith) settles after it and later values arrive', async () => {
 		browser();
 		const s = new Subject<number>();
@@ -424,6 +441,15 @@ describe('liveQuery types', () => {
 		expectTypeOf(q.ensure).returns.toEqualTypeOf<Promise<string>>();
 		const s = fakeEnv().riva().get(q, { id: 1 });
 		expectTypeOf(s).toEqualTypeOf<QueryState<string>>();
+	});
+
+	test('refetchEvery is refused: a live entry has no poll', () => {
+		liveQuery<void, number>({
+			id: 'no-poll',
+			observe: () => new Observable<number>(),
+			// @ts-expect-error a live query is not polled
+			refetchEvery: 1000,
+		});
 	});
 
 	test('observe must return an Observable of the data', () => {

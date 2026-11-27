@@ -1,7 +1,10 @@
 import { expect, test } from 'bun:test';
 import { createRiva } from './client';
+import { entities } from './entities';
+import { storeOf } from './entities/policy';
 import { RivaAbortError } from './errors';
 import { type FetchContext, query } from './query';
+import { dehydrate } from './ssr';
 
 const flush = () => new Promise<void>((r) => setImmediate(r));
 
@@ -189,4 +192,76 @@ test('a part published after the fetch settled is ignored', async () => {
 		isFetching: false,
 		dataState: 'complete',
 	});
+});
+
+test('cancel of a streaming refetch restores the previous entity data, still readable', async () => {
+	const ctxs: FetchContext[] = [];
+	let calls = 0;
+	const q = query<void, { id: string; name: string }>({
+		id: 'cancel-entities',
+		retry: 0,
+		cache: entities({ identify: (o) => `P:${(o as { id: string }).id}` }),
+		fetch: (_v, ctx) => {
+			ctxs.push(ctx);
+			return calls++ === 0
+				? Promise.resolve({ id: '1', name: 'Ann' })
+				: new Promise(() => {});
+		},
+	});
+	const riva = createRiva();
+	await q.ensure(riva);
+	q.invalidate(riva);
+	const settled = q.ensure(riva).catch((e) => e);
+	ctxs[1]?.onPart?.({ id: '2', name: 'Bob' });
+	expect(riva.get(q).data).toEqual({ id: '2', name: 'Bob' });
+	q.cancel(riva, undefined);
+	await settled;
+	expect(riva.get(q).data).toEqual({ id: '1', name: 'Ann' });
+	expect([...storeOf(riva).signals.keys()]).toContain('P:1');
+	expect([...storeOf(riva).signals.keys()]).not.toContain('P:2');
+});
+
+test('a streaming refetch that completes releases the previous data and the parts', async () => {
+	const ctxs: FetchContext[] = [];
+	let calls = 0;
+	const gate = { release: (_v: { id: string; name: string }) => {} };
+	const q = query<void, { id: string; name: string }>({
+		id: 'done-entities',
+		retry: 0,
+		cache: entities({ identify: (o) => `P:${(o as { id: string }).id}` }),
+		fetch: (_v, ctx) => {
+			ctxs.push(ctx);
+			return calls++ === 0
+				? Promise.resolve({ id: '1', name: 'Ann' })
+				: new Promise((r) => {
+						gate.release = r;
+					});
+		},
+	});
+	const riva = createRiva();
+	await q.ensure(riva);
+	q.invalidate(riva);
+	const p = q.ensure(riva);
+	ctxs[1]?.onPart?.({ id: '2', name: 'Bob' });
+	gate.release({ id: '3', name: 'Cy' });
+	await p;
+	expect([...storeOf(riva).signals.keys()]).toEqual(['P:3']);
+});
+
+test('cancel and setData mid-stream do not leave dataState streaming', async () => {
+	const a = streaming();
+	const r2 = createRiva();
+	const settled = a.q.ensure(r2).catch((e) => e);
+	a.ctxs[0]?.onPart?.('a');
+	a.q.cancel(r2, undefined);
+	await settled;
+	expect(r2.get(a.q).dataState).toBeUndefined();
+	const b = streaming();
+	const r3 = createRiva();
+	const s3 = b.q.ensure(r3).catch((e) => e);
+	b.ctxs[0]?.onPart?.('a');
+	b.q.setData(r3, undefined, 'set');
+	await s3;
+	expect(r3.get(b.q)).toMatchObject({ data: 'set', dataState: 'complete' });
+	expect(dehydrate(r3).q).toHaveLength(1);
 });

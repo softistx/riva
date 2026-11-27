@@ -4,7 +4,10 @@ import { type Query, type QueryOptions, query } from '../query';
 import { isBrowser } from '../scope';
 
 export interface LiveQueryOptions<Vars, Data>
-	extends Omit<QueryOptions<Vars, Data>, 'fetch' | 'staleTime' | 'live'> {
+	extends Omit<
+		QueryOptions<Vars, Data>,
+		'fetch' | 'staleTime' | 'live' | 'refetchEvery'
+	> {
 	/** The stream behind the query, one per variables. Its first value is the query's first result. */
 	observe: (vars: Vars) => Observable<Data>;
 }

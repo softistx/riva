@@ -25,7 +25,13 @@ async function loop(c: Ctx, e: Entry, f: Inflight): Promise<unknown> {
 		const onPart = (data: unknown) =>
 			ctl.signal.aborted ||
 			e.run !== f ||
-			putData(c, e, { status: 'success', data, dataState: 'streaming' });
+			// The data the run replaces stays stored until it settles: a cancel restores it.
+			putData(
+				c,
+				e,
+				{ status: 'success', data, dataState: 'streaming' },
+				f.prev.data,
+			);
 		let ok = false;
 		let v: unknown;
 		try {
@@ -73,6 +79,7 @@ function start(c: Ctx, e: Entry): Inflight {
 	const done = (patch: Partial<State>): unknown => {
 		if (e.run !== f) return;
 		e.run = undefined;
+		const streamed = peek(c, e).data !== f.prev.data;
 		// A stream closed for want of an observer leaves the entry stale.
 		e.invalidated = !e.observers && !!e.stop?.();
 		const refused = putData(c, e, {
@@ -80,6 +87,10 @@ function start(c: Ctx, e: Entry): Inflight {
 			...(peek(c, e).dataState && { dataState: 'complete' as const }),
 			...patch,
 		});
+		// The run is over: the data it kept for a cancel is not needed any more.
+		const kept = f.prev.data;
+		if (streamed && kept !== undefined && kept !== peek(c, e).data)
+			e.def.options.cache?.release(c.riva, kept);
 		armGc(c, e);
 		return refused;
 	};
@@ -104,7 +115,12 @@ function start(c: Ctx, e: Entry): Inflight {
 			return e.def.options.cache ? (view(c, e).data ?? data) : data;
 		},
 		(error) => {
-			if (f.set) return f.set.v;
+			if (f.set) {
+				// A value pushed in the tick the fetch resolved: the run ended in `setData`.
+				if (!e.run && !e.observers && e.stop?.()) e.invalidated = true;
+				armGc(c, e);
+				return f.set.v;
+			}
 			done({ status: 'error', error });
 			throw error;
 		},
@@ -127,7 +143,9 @@ export function cancel(c: Ctx, e: Entry): void {
 	if (!f) return;
 	e.run = undefined;
 	f.ctl.abort();
-	putStored(c, e, f.prev); // releases the parts a stream stored
+	// Releases the last part a stream stored; the previous data was kept.
+	// `dataState` is written even when absent: a part's `streaming` must not outlive the run.
+	putStored(c, e, { ...f.prev, dataState: f.prev.dataState } as Partial<State>);
 	armGc(c, e);
 }
 

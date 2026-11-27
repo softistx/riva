@@ -116,12 +116,26 @@ export const toStored = (c: Ctx, e: Entry, data: unknown): unknown => {
 		: data;
 };
 
-/** Writes a patch whose `data` is already stored, then releases the data it replaced. */
-export function putStored(c: Ctx, e: Entry, patch: Partial<State>): void {
+/**
+ * Writes a patch whose `data` is already stored, then releases the data it
+ * replaced, except `keep` (the data a running fetch may still restore).
+ */
+export function putStored(
+	c: Ctx,
+	e: Entry,
+	patch: Partial<State>,
+	keep?: unknown,
+): void {
 	const cache = e.def.options.cache;
 	const prev = peek(c, e).data;
 	put(c, e, patch);
-	if (cache && 'data' in patch && prev !== undefined && prev !== patch.data)
+	if (
+		cache &&
+		'data' in patch &&
+		prev !== undefined &&
+		prev !== patch.data &&
+		prev !== keep
+	)
 		cache.release(c.riva, prev);
 }
 
@@ -130,12 +144,17 @@ export function putStored(c: Ctx, e: Entry, patch: Partial<State>): void {
  * that refuses the data leaves the old data and sets the error state; the
  * error is returned.
  */
-export function putData(c: Ctx, e: Entry, patch: Partial<State>): unknown {
+export function putData(
+	c: Ctx,
+	e: Entry,
+	patch: Partial<State>,
+	keep?: unknown,
+): unknown {
 	if (!e.def.options.cache || !('data' in patch)) return void put(c, e, patch);
 	let error: unknown;
 	c.riva.batch(() => {
 		try {
-			putStored(c, e, { ...patch, data: toStored(c, e, patch.data) });
+			putStored(c, e, { ...patch, data: toStored(c, e, patch.data) }, keep);
 		} catch (x) {
 			error = x;
 			const { data: _, ...rest } = patch;

@@ -122,13 +122,20 @@ export function createQueryCache(
 					f.ctl.abort();
 				}
 				e.invalidated = false;
+				const streamed = !!f && peek(c, e).data !== f.prev.data;
 				putStored(c, e, {
 					status: 'success',
 					data: stored,
 					error: undefined,
 					isFetching: false,
 					updatedAt: sched.now(),
+					// a stream cut short by this value is complete
+					...(peek(c, e).dataState && { dataState: 'complete' as const }),
 				});
+				// the data the cut run kept for a cancel
+				const kept = f?.prev.data;
+				if (streamed && kept !== undefined && kept !== stored)
+					e.def.options.cache?.release(riva, kept);
 			});
 			armGc(c, e);
 		},
