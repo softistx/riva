@@ -175,3 +175,18 @@ test('a restart replaces the stream: parts of the old attempt are dropped', asyn
 	expect(riva.get(q)).toMatchObject({ data: 'final', dataState: 'complete' });
 	off();
 });
+
+test('a part published after the fetch settled is ignored', async () => {
+	const { q, ctxs, gate } = streaming();
+	const riva = createRiva();
+	const p = q.ensure(riva);
+	ctxs[0]?.onPart?.('a');
+	gate.release('final');
+	await p;
+	ctxs[0]?.onPart?.('late');
+	expect(riva.get(q)).toMatchObject({
+		data: 'final',
+		isFetching: false,
+		dataState: 'complete',
+	});
+});

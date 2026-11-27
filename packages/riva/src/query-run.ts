@@ -24,6 +24,7 @@ async function loop(c: Ctx, e: Entry, f: Inflight): Promise<unknown> {
 		// A part of an aborted attempt (cancel, restart, replaced) is dropped.
 		const onPart = (data: unknown) =>
 			ctl.signal.aborted ||
+			e.run !== f ||
 			putData(c, e, { status: 'success', data, dataState: 'streaming' });
 		let ok = false;
 		let v: unknown;

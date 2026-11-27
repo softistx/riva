@@ -3,6 +3,18 @@ import { parse } from 'graphql';
 import { walkOf } from '../../test/cache';
 import { cacheDocumentOf, collectFields, variablesOf } from './selection';
 
+function deferredOf(source: string, vars: Record<string, unknown> = {}) {
+	const walk = walkOf(source, vars);
+	return [
+		...collectFields(
+			[walk.document.operation.selectionSet],
+			'Query',
+			walk,
+			false,
+		).deferred,
+	].sort();
+}
+
 function keysOf(
 	walk: ReturnType<typeof walkOf>,
 	typename = 'Query',
@@ -78,5 +90,28 @@ describe('cacheDocumentOf and variablesOf', () => {
 		expect(variablesOf(operation, { q: 'x' })).toEqual({ n: 2, q: 'x' });
 		expect(variablesOf(operation, { n: 5 })).toEqual({ n: 5 });
 		expect(variablesOf(operation, undefined)).toEqual({ n: 2 });
+	});
+});
+
+describe('collectFields, deferred keys', () => {
+	test('a field only inside @defer is deferred, a plain one is not', () => {
+		expect(deferredOf('query { a ... @defer { b } }')).toEqual(['b']);
+	});
+
+	test('a plain selection overrides a deferred one, whatever the order', () => {
+		expect(deferredOf('query { ... @defer { a } a }')).toEqual([]);
+		expect(deferredOf('query { a ... @defer { a b } }')).toEqual(['b']);
+	});
+
+	test('a fragment nested in a deferred one is deferred too', () => {
+		expect(
+			deferredOf(
+				'query { ... @defer { a ... on Query { b } ...F } } fragment F on Query { c }',
+			),
+		).toEqual(['a', 'b', 'c']);
+	});
+
+	test('@defer(if: false) is plain', () => {
+		expect(deferredOf('query { ... @defer(if: false) { a } }')).toEqual([]);
 	});
 });

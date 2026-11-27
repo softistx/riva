@@ -1,7 +1,7 @@
 import { describe, expect, test } from 'bun:test';
 import { fakeEnv, settle } from '../../test/ssr';
 import { RivaError, RivaHttpError } from '../errors';
-import { query } from '../query';
+import { type FetchContext, query } from '../query';
 import { signal } from '../signal';
 import { dehydrate } from './index';
 
@@ -15,6 +15,22 @@ const items = query<{ page: number }, { n: number; at: Date }>({
 });
 
 describe('entries', () => {
+	test('an entry still streaming is left out: the client fetches it', async () => {
+		const riva = fakeEnv().riva();
+		const ctxs: FetchContext[] = [];
+		const parted = query<void, string>({
+			id: 'parted',
+			fetch: (_v, ctx) => {
+				ctxs.push(ctx);
+				return new Promise<string>(() => {});
+			},
+		});
+		void parted.ensure(riva).catch(() => {});
+		ctxs[0]?.onPart?.('first part');
+		expect(riva.get(parted)).toMatchObject({ dataState: 'streaming' });
+		expect(dehydrate(riva).q).toEqual([]);
+	});
+
 	test('a success is dehydrated with its encoded data and its age', async () => {
 		const { riva: make, sched } = fakeEnv();
 		const riva = make();

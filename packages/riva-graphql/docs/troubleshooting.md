@@ -327,3 +327,33 @@ if (error instanceof RivaGraphQLError) error.errors; // match with instanceof, o
 const { mutate: add, status } = useGraphQLMutation(ADD_BOOK_MUTATION);
 <button disabled={status === 'loading'} onClick={() => add({ title: 'Dune' })}>Add</button>;
 ```
+
+## A `@defer` field is absent, or reading it throws, until its part arrives
+
+**Why:** `data` is there from the first part, and a deferred field (or the items a `@stream` has not delivered) is missing until its part comes. The type is the full document's data.
+
+**Fix:** read it defensively, or branch on `isFetching` (`dataState === 'streaming'` with `useQuery`): `me.posts?.map(...)`.
+
+## `data` is partial while `isFetching` is true
+
+**Why:** that is a stream in progress: `status: 'success'`, `isFetching: true`, `data` holding the parts so far. It is not a background refetch of complete data.
+
+**Fix:** show the rest as loading while `isFetching` is true (`dataState === 'streaming'` with `useQuery`).
+
+## `dataState` is undefined on `useGraphQL`
+
+**Why:** only `useQuery` and `riva.get` carry `dataState`. A resource (`useGraphQL`, `riva.graphql.query`) shows a stream as `success` with `isFetching: true`. A query with no `@defer` or `@stream` never has one either.
+
+**Fix:** read `isFetching`, or define the query with `query(DOCUMENT)` and read it with `useQuery` from `@softistx/riva-react`.
+
+## A deferred query renders only at the end
+
+**Why:** the transport ignores `onPart`. A custom `GraphQLTransport` that never calls `options.onPart` resolves once, so the query renders when it does. `graphqlClientTransport` calls it for operations that select `@defer` or `@stream`.
+
+**Fix:** call `options.onPart(data)` with the data so far on each part before the last, then resolve with the final data.
+
+## A failed stream keeps its partial data with `status: 'error'`
+
+**Why:** the parts that arrived stay in `data`, `dataState` is `'complete'` (the stream ended) and `status` is `'error'`.
+
+**Fix:** treat `status === 'error'` as the failure and show `data` as partial, or hide it.

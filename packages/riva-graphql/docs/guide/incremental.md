@@ -28,7 +28,32 @@ export function Profile() {
 }
 ```
 
-`useQuery(profile)` from `@softistx/riva-react` behaves the same and also exposes `dataState`. A resource (`useGraphQL`, `riva.graphql.query(PROFILE_QUERY).state`) shows the stream as `success` with `isFetching: true` and has no `dataState`.
+With a query definition and `useQuery` from `@softistx/riva-react`, the state also carries `dataState`:
+
+```tsx
+import { query } from '@softistx/riva-graphql';
+import { useQuery } from '@softistx/riva-react';
+import { PROFILE_QUERY } from './graphql';
+
+const profile = query(PROFILE_QUERY);
+
+export function Profile() {
+	const q = useQuery(profile);
+	if (q.status !== 'success') return <p>Loading</p>;
+	return (
+		<>
+			<h1>{q.data.me.name}</h1>
+			{q.dataState === 'streaming' ? (
+				<p>Loading posts</p>
+			) : (
+				<ul>{q.data.me.posts.map((post) => <li key={post.id}>{post.title}</li>)}</ul>
+			)}
+		</>
+	);
+}
+```
+
+A resource (`useGraphQL`, `riva.graphql.query(PROFILE_QUERY).state`) shows the stream as `success` with `isFetching: true` and has no `dataState`.
 
 ## The state while parts arrive
 
@@ -39,7 +64,9 @@ export function Profile() {
 | `isFetching` | `true` | `true` | `false` |
 | `dataState` (`useQuery`) | `'streaming'` | `'streaming'` | `'complete'` |
 
-Until the first part, the query is `loading`, as any query. Riva's model already says that `success` with `isFetching: true` is "there is data, a fetch is still running" (a background refetch), so a stream reuses it: `data` is readable from the first part and a component that renders on `status === 'success'` renders at once. A resource (`useGraphQL`, `riva.graphql.query`) shows exactly that: `isFetching` tells the stream from the end. `useQuery` and `riva.get` also carry `dataState`, `'streaming'` while more parts are coming and `'complete'` once the fetch ended. A query with no `@defer` or `@stream` never has a `dataState`.
+Until the first part the query is `loading`, as any query. `success` with `isFetching: true` is riva's "data there, a fetch still running", so a component that renders on `status === 'success'` renders at once. A query with no `@defer` or `@stream` never has a `dataState`.
+
+`dataState` stays `'complete'` after a failed stream too: it means "the stream ended", and `status: 'error'` marks the failure. `'complete'` with `status: 'error'` means `data` is partial, the parts that arrived before the failure.
 
 `data` is typed as the full document's data. A deferred field, or the items a `@stream` has not delivered yet, can be missing while `dataState` is `'streaming'`: read it defensively, or branch on `isFetching` (`dataState` in `useQuery`).
 
