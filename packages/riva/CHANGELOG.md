@@ -1,5 +1,17 @@
 # @softistx/riva
 
+## 0.11.0
+
+### Minor Changes
+
+- [#130](https://github.com/softistx/riva/pull/130) [`52fc5c6`](https://github.com/softistx/riva/commit/52fc5c63d6888f34885384b3daa98e6758e83199) Thanks [@SteveGT96](https://github.com/SteveGT96)! - A GraphQL query with `@defer` or `@stream` renders progressively through `useGraphQL` and `useQuery`: `data` is readable from the first part (`status: 'success'`, `isFetching: true`, `dataState: 'streaming'`), each part updates it, and `dataState` becomes `'complete'` at the end, with no loop in the component. The core's `FetchContext` gains `onPart(data)` and `QueryState` an optional `dataState`; a transport's `execute` receives `onPart` for a query, and `graphqlClientTransport` iterates `client.query(...)` for an incremental operation. With `normalized()` each part is merged into the cache, a field only a `@defer` fragment selects being left out until its part arrives. Suspense resolves at the first part in a browser. A plain query is unchanged.
+
+- [#130](https://github.com/softistx/riva/pull/130) [`52fc5c6`](https://github.com/softistx/riva/commit/52fc5c63d6888f34885384b3daa98e6758e83199) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Add `connect(riva, state, obs$)` to `@softistx/riva/rxjs`: subscribes to an Observable and writes each value into a signal of that riva, returning an idempotent stop that unsubscribes. The Observable's type must match the signal's; `complete` keeps the last value, an `error` ends the connection and is swallowed (the signal keeps its last value). Also adds the RxJS guide and troubleshooting entries.
+
+- [#130](https://github.com/softistx/riva/pull/130) [`52fc5c6`](https://github.com/softistx/riva/commit/52fc5c63d6888f34885384b3daa98e6758e83199) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Add `liveQuery({ id, observe })` to `@softistx/riva/rxjs`: a query fed by an Observable, used like any query (`riva.get`, `subscribe`, `ensure`, `useQuery(liveQuery)`), with a derived key and a cache. On the server `ensure()` resolves at the first value, then unsubscribes (the request signal stops a silent stream), and the snapshot carries the value. In a browser it is subscribed while observed and kept for `gcTime` after the last release; an error keeps the last data and `refetch()` (or a new observer) subscribes again; `complete` keeps the last value (a stream that completes without a value rejects).
+
+- [#130](https://github.com/softistx/riva/pull/130) [`52fc5c6`](https://github.com/softistx/riva/commit/52fc5c63d6888f34885384b3daa98e6758e83199) Thanks [@SteveGT96](https://github.com/SteveGT96)! - Add the `@softistx/riva/rxjs` subpath: `toObservable(riva, def, vars?)` returns a cold Observable of full states for a query (subscribing observes it like `useQuery`, unsubscribing releases it, an error is a value), a signal, a computed or a mutation handle; `data$` maps to the data alone; `fromAsyncIterable` (also reachable as `toObservable(iterable)`) turns an async iterable into an Observable, calling `return()` on unsubscribe. `rxjs ^7.8` is an optional peer, imported only by this subpath.
+
 ## 0.10.0
 
 ### Minor Changes
