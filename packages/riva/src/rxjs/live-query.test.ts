@@ -1,5 +1,14 @@
 import { afterEach, describe, expect, expectTypeOf, test } from 'bun:test';
-import { EMPTY, Observable, ReplaySubject, Subject, startWith } from 'rxjs';
+import {
+	concat,
+	EMPTY,
+	Observable,
+	of,
+	ReplaySubject,
+	Subject,
+	startWith,
+	throwError,
+} from 'rxjs';
 import { fakeEnv, settle } from '../../test/ssr';
 import type { Query, QueryState } from '../query';
 import { dehydrate, hydrate } from '../ssr';
@@ -299,6 +308,32 @@ describe('liveQuery in a browser', () => {
 		r.next(5);
 		expect(riva.get(q).data).toBe(5);
 		off();
+	});
+
+	test('values then a synchronous error resolve with the last value, then show the error', async () => {
+		browser();
+		let unsubscribed = 0;
+		const err = new Error('boom');
+		const q = liveQuery<void, number>({
+			id: 'burst/error',
+			retry: 0,
+			observe: () =>
+				new Observable<number>((sub) => {
+					const inner = concat(
+						of(1, 2),
+						throwError(() => err),
+					).subscribe(sub);
+					return () => {
+						unsubscribed++;
+						inner.unsubscribe();
+					};
+				}),
+		});
+		const riva = fakeEnv().riva();
+		expect(await q.ensure(riva)).toBe(2);
+		await new Promise((r) => setTimeout(r, 5));
+		expect(riva.get(q)).toMatchObject({ status: 'error', data: 2, error: err });
+		expect(unsubscribed).toBe(1);
 	});
 
 	test('one stream per variables', async () => {
