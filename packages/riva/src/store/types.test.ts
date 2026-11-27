@@ -17,7 +17,7 @@ const find = query<{ id: number }, Book>({
 });
 const saveBook = mutation<{ book: Book }, Book>({
 	id: 't/save',
-	run: async (v) => v.book,
+	mutate: async (v) => v.book,
 });
 
 const Books = store({

@@ -23,7 +23,7 @@ export const todos = query({
 
 export const renameTodo = mutation({
 	id: 'renameTodo',
-	run: async (vars: { id: string; title: string }, { http, signal }) =>
+	mutate: async (vars: { id: string; title: string }, { http, signal }) =>
 		(await http.patch('/todos/{id}', { param: { id: vars.id }, json: { title: vars.title }, signal })).data as Todo,
 });
 ```
@@ -36,7 +36,7 @@ export const renameTodo = mutation({
 |---|---|---|
 | `id` | required | A function has no name to derive a key from. |
 | `fetch(vars, ctx)` (query) | required | Returns the data. |
-| `run(vars, ctx)` (mutation) | required | Sends the change, returns the data. |
+| `mutate(vars, ctx)` (mutation) | required | Sends the change, returns the data. |
 | the others | core defaults | `staleTime`, `gcTime`, `retry`, `cache`, `optimistic`, `invalidates`… |
 
 The context is the core's (`signal`, `riva`) plus `http`, the httpyz client of the transport.

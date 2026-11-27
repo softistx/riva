@@ -46,7 +46,7 @@ export async function execute<Vars, Data>(
 			riva.queries.sched,
 			{ retry: o.retry ?? 0, retryDelay: o.retryDelay },
 			signal,
-			() => o.run(vars, { signal, riva }),
+			() => o.mutate(vars, { signal, riva }),
 		);
 		// A throw here rolls back like a failed run.
 		const inv =

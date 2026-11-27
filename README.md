@@ -39,7 +39,7 @@ export async function loader({ context, params }: Route.LoaderArgs) {
 // Component: the same call, as a hook
 function PatientList({ school }: { school: string }) {
   const patients = useGraphQL(PATIENTS_QUERY, { school });
-  const { run: rename } = useGraphQLMutation(RENAME_PATIENT_MUTATION);
+  const { mutate: rename } = useGraphQLMutation(RENAME_PATIENT_MUTATION);
   if (patients.status !== "success") return null;
   return patients.data.patients.map((p) => <button key={p.id} onClick={() => rename({ id: p.id, name: "Ana" })}>{p.name}</button>);
 }

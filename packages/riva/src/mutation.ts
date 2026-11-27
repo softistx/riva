@@ -37,7 +37,7 @@ export interface MutationOptions<Vars, Data> {
 	/** Identifies the definition. */
 	id: string;
 	/** Sends the mutation. */
-	run: (vars: Vars, ctx: FetchContext) => Promise<Data>;
+	mutate: (vars: Vars, ctx: FetchContext) => Promise<Data>;
 	/** Normalizes the optimistic data and the server result (`entities()`). */
 	cache?: CachePolicy;
 	/** Shows the expected result at once: `tx.set` layers, and the returned data into the entities. */
@@ -66,7 +66,10 @@ export interface Mutation<Vars, Data> {
 	/** @internal */
 	readonly options: MutationOptions<Vars, Data>;
 	/** Resolves with the server data; rejects with the error, after the rollback. */
-	run(riva: Riva, ...args: VarsArgs<Vars, [opts?: RunOptions]>): Promise<Data>;
+	mutate(
+		riva: Riva,
+		...args: VarsArgs<Vars, [opts?: RunOptions]>
+	): Promise<Data>;
 }
 
 export function mutation<Vars = void, Data = unknown>(
@@ -76,7 +79,7 @@ export function mutation<Vars = void, Data = unknown>(
 		kind: 'mutation',
 		id: options.id,
 		options,
-		run: (riva: Riva, vars?: Vars, opts?: RunOptions) =>
+		mutate: (riva: Riva, vars?: Vars, opts?: RunOptions) =>
 			execute(riva, options, vars as Vars, opts),
 	} as Mutation<Vars, Data>);
 	return def;

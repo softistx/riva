@@ -42,7 +42,7 @@ test('idle, loading, success, reset; invalidates refetches the observed GET', as
 	function C() {
 		const r = useRestMutation('post', '/invoices');
 		hook = r as never;
-		create = r.run as never;
+		create = r.mutate as never;
 		const list = useRest('/invoices', {});
 		return h(
 			'p',
@@ -76,7 +76,7 @@ test('a failure rejects the call and lands in the state', async () => {
 	let status = '';
 	function C() {
 		const r = useRestMutation('post', '/invoices');
-		create = r.run as never;
+		create = r.mutate as never;
 		status = r.status;
 		return null;
 	}

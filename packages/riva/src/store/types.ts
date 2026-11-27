@@ -15,7 +15,7 @@ export interface StoreContext {
 		query: Query<Vars, Data, any>,
 		...args: VarsArgs<Vars, [opts?: EnsureOptions]>
 	): Promise<Data>;
-	/** Runs a mutation (`mutation.run(riva, …)`). */
+	/** Runs a mutation (`mutation.mutate(riva, …)`). */
 	mutate<Vars, Data>(
 		mutation: Mutation<Vars, Data>,
 		...args: VarsArgs<Vars, [opts?: RunOptions]>

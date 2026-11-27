@@ -60,12 +60,15 @@ const byId = query<{ id: string }, string[]>({
 	fetch: async (v) => [v.id],
 });
 
-const add = (opts: { run?: (v: string) => Promise<string>; retry?: number }) =>
+const add = (opts: {
+	mutate?: (v: string) => Promise<string>;
+	retry?: number;
+}) =>
 	mutation<string, string>({
 		id: 'add',
 		...(opts.retry === undefined ? {} : { retry: opts.retry }),
 		retryDelay: () => 100,
-		run: opts.run ?? (async (v) => v),
+		mutate: opts.mutate ?? (async (v) => v),
 		optimistic: (v, tx) => tx.set(list, undefined, (p) => [...(p ?? []), v]),
 	});
 
@@ -92,8 +95,8 @@ describe('the optimistic layer on a keyed query', () => {
 	test('is visible at once and rolled back on error, status untouched', async () => {
 		const { riva } = await seeded();
 		const d = deferred<string>();
-		const m = add({ run: () => d.promise });
-		const p = m.run(riva, 'b');
+		const m = add({ mutate: () => d.promise });
+		const p = m.mutate(riva, 'b');
 		expect(riva.get(list).data).toEqual(['a', 'b']);
 		expect(riva.get(list).status).toBe('success');
 		expect(riva.get(list).isFetching).toBe(false);
@@ -107,14 +110,14 @@ describe('the optimistic layer on a keyed query', () => {
 		const d = deferred<string>();
 		const m = mutation<string, string>({
 			id: 'add',
-			run: () => d.promise,
+			mutate: () => d.promise,
 			optimistic: (v, tx) => tx.set(list, undefined, (p) => [...(p ?? []), v]),
 			updates: (tx, data) =>
 				tx.set(list, undefined, (p) => [...(p ?? []), data]),
 		});
 		const w = watch(riva);
 		w.seen.length = 0;
-		const p = m.run(riva, 'tmp');
+		const p = m.mutate(riva, 'tmp');
 		expect(w.seen).toEqual([['a', 'tmp']]);
 		d.resolve('real');
 		expect(await p).toBe('real');
@@ -131,13 +134,13 @@ describe('the optimistic layer on a keyed query', () => {
 		const d = deferred<string>();
 		const m = mutation<void, string>({
 			id: 'm',
-			run: () => d.promise,
+			mutate: () => d.promise,
 			optimistic: (_, tx) => {
 				tx.set(list, undefined, ['x']);
 				tx.set(list, undefined, (p) => [...(p ?? []), 'y']);
 			},
 		});
-		const p = m.run(riva);
+		const p = m.mutate(riva);
 		expect(riva.get(list).data).toEqual(['x', 'y']);
 		d.resolve('');
 		await p;
@@ -147,7 +150,7 @@ describe('the optimistic layer on a keyed query', () => {
 	test('a refetch during a layer updates the committed value; the layer stays on top', async () => {
 		const { riva } = await seeded();
 		const d = deferred<string>();
-		const p = add({ run: () => d.promise }).run(riva, 'b');
+		const p = add({ mutate: () => d.promise }).mutate(riva, 'b');
 		server = ['a', 'z'];
 		await list.ensure(riva).catch(() => {});
 		list.invalidate(riva);
@@ -170,11 +173,11 @@ describe('ordering', () => {
 		const mk = (name: string, d: ReturnType<typeof deferred<string>>) =>
 			mutation<void, string>({
 				id: name,
-				run: () => d.promise,
+				mutate: () => d.promise,
 				updates: () => void order.push(name),
 			});
-		const a = mk('A', da).run(riva);
-		const b = mk('B', db).run(riva);
+		const a = mk('A', da).mutate(riva);
+		const b = mk('B', db).mutate(riva);
 		db.resolve('b');
 		await tick();
 		expect(order).toEqual([]);
@@ -187,8 +190,8 @@ describe('ordering', () => {
 		const { riva } = await seeded();
 		const da = deferred<string>();
 		const db = deferred<string>();
-		const a = add({ run: () => da.promise }).run(riva, 'A');
-		const b = add({ run: () => db.promise }).run(riva, 'B');
+		const a = add({ mutate: () => da.promise }).mutate(riva, 'A');
+		const b = add({ mutate: () => db.promise }).mutate(riva, 'B');
 		expect(riva.get(list).data).toEqual(['a', 'A', 'B']);
 		db.resolve('B');
 		await tick();
@@ -204,8 +207,8 @@ describe('ordering', () => {
 		const { riva } = await seeded();
 		const da = deferred<string>();
 		const db = deferred<string>();
-		const a = add({ run: () => da.promise }).run(riva, 'A');
-		const b = add({ run: () => db.promise }).run(riva, 'B');
+		const a = add({ mutate: () => da.promise }).mutate(riva, 'A');
+		const b = add({ mutate: () => db.promise }).mutate(riva, 'B');
 		da.reject(new Error('no'));
 		await a.catch(() => {});
 		expect(riva.get(list).data).toEqual(['a', 'B']);
@@ -225,18 +228,18 @@ describe('settle', () => {
 		server = ['a', 'b'];
 		await mutation<void, string>({
 			id: 'm',
-			run: async () => 'ok',
+			mutate: async () => 'ok',
 			invalidates: [list],
-		}).run(riva);
+		}).mutate(riva);
 		await tick();
 		expect(fetches).toBe(before + 1);
 		expect(riva.get(list).data).toEqual(['a', 'b']);
 		server = ['c'];
 		await mutation<void, string>({
 			id: 'm',
-			run: async () => 'ok',
+			mutate: async () => 'ok',
 			invalidates: (data) => [list, at(byId, { id: data })],
-		}).run(riva);
+		}).mutate(riva);
 		await tick();
 		expect(riva.get(list).data).toEqual(['c']);
 		off();
@@ -249,7 +252,7 @@ describe('settle', () => {
 		const before = fetches;
 		await mutation<void, string>({
 			id: 'm',
-			run: async () => {
+			mutate: async () => {
 				throw new Error('x');
 			},
 			invalidates: [list],
@@ -257,7 +260,7 @@ describe('settle', () => {
 				throw new Error('never');
 			},
 		})
-			.run(riva)
+			.mutate(riva)
 			.catch(() => {});
 		await tick();
 		expect(fetches).toBe(before);
@@ -269,12 +272,12 @@ describe('settle', () => {
 		const d = deferred<string>();
 		const m = mutation<string, string>({
 			id: 'm',
-			run: () => d.promise,
+			mutate: () => d.promise,
 			optimistic: (v, tx) => tx.set(list, undefined, (p) => [...(p ?? []), v]),
 			updates: (tx, data) =>
 				tx.set(list, undefined, (p) => [...(p ?? []), data]),
 		});
-		const p = m.run(riva, 'tmp');
+		const p = m.mutate(riva, 'tmp');
 		d.resolve('real');
 		await p;
 		expect(riva.get(list).data).toEqual(['a', 'real']);
@@ -294,11 +297,11 @@ describe('settle', () => {
 		const m = mutation<string, string>({
 			id: 'm',
 			cache,
-			run: async (v) => v,
+			mutate: async (v) => v,
 			optimistic: (v, tx) => tx.set(list, undefined, (p) => [...(p ?? []), v]),
 			invalidates: [list],
 		});
-		const p = m.run(riva, 'b');
+		const p = m.mutate(riva, 'b');
 		expect(riva.get(list).data).toEqual(['a', 'b']);
 		await expect(p).rejects.toMatchObject({ code: 'RIVA_CACHE' });
 		expect(riva.get(list).data).toEqual(['a']);
@@ -308,13 +311,13 @@ describe('settle', () => {
 		const { riva } = await seeded();
 		const m = mutation<void, string>({
 			id: 'm',
-			run: async () => 'x',
+			mutate: async () => 'x',
 			optimistic: (_, tx) => {
 				tx.set(list, undefined, ['half']);
 				throw new Error('boom');
 			},
 		});
-		await expect(m.run(riva)).rejects.toThrow('boom');
+		await expect(m.mutate(riva)).rejects.toThrow('boom');
 		expect(riva.get(list).data).toEqual(['a']);
 	});
 });
@@ -325,12 +328,12 @@ describe('retry and abort', () => {
 		let n = 0;
 		const m = add({
 			retry: 2,
-			run: async (v) => {
+			mutate: async (v) => {
 				if (++n < 3) throw new RivaNetworkError();
 				return v;
 			},
 		});
-		const p = m.run(riva, 'b');
+		const p = m.mutate(riva, 'b');
 		await tick();
 		expect(n).toBe(1);
 		expect(riva.get(list).data).toEqual(['a', 'b']);
@@ -346,11 +349,11 @@ describe('retry and abort', () => {
 		let n = 0;
 		const p = add({
 			retry: 1,
-			run: async () => {
+			mutate: async () => {
 				n++;
 				throw new RivaHttpError(503);
 			},
-		}).run(riva, 'b');
+		}).mutate(riva, 'b');
 		await tick();
 		sched.advance(100);
 		await expect(p).rejects.toBeInstanceOf(RivaHttpError);
@@ -363,20 +366,20 @@ describe('retry and abort', () => {
 		let n = 0;
 		await add({
 			retry: 5,
-			run: async () => {
+			mutate: async () => {
 				n++;
 				throw new RivaHttpError(400);
 			},
 		})
-			.run(riva, 'b')
+			.mutate(riva, 'b')
 			.catch(() => {});
 		await add({
-			run: async () => {
+			mutate: async () => {
 				n++;
 				throw new RivaNetworkError();
 			},
 		})
-			.run(riva, 'b')
+			.mutate(riva, 'b')
 			.catch(() => {});
 		expect(n).toBe(2);
 	});
@@ -384,9 +387,13 @@ describe('retry and abort', () => {
 	test('an abort rejects with RivaAbortError and rolls back', async () => {
 		const { riva } = await seeded();
 		const ctl = new AbortController();
-		const p = add({ run: () => new Promise<string>(() => {}) }).run(riva, 'b', {
-			signal: ctl.signal,
-		});
+		const p = add({ mutate: () => new Promise<string>(() => {}) }).mutate(
+			riva,
+			'b',
+			{
+				signal: ctl.signal,
+			},
+		);
 		expect(riva.get(list).data).toEqual(['a', 'b']);
 		ctl.abort();
 		await expect(p).rejects.toBeInstanceOf(RivaAbortError);
@@ -400,11 +407,11 @@ describe('retry and abort', () => {
 		let ran = false;
 		await expect(
 			add({
-				run: async () => {
+				mutate: async () => {
 					ran = true;
 					return 'x';
 				},
-			}).run(riva, 'b', {
+			}).mutate(riva, 'b', {
 				signal: ctl.signal,
 			}),
 		).rejects.toBeInstanceOf(RivaAbortError);
@@ -421,10 +428,10 @@ describe('riva instances and the server', () => {
 		await list.ensure(c1);
 		await list.ensure(c2);
 		const d1 = deferred<string>();
-		const p1 = add({ run: () => d1.promise }).run(c1, 'one');
+		const p1 = add({ mutate: () => d1.promise }).mutate(c1, 'one');
 		expect(c2.get(list).data).toEqual(['a']);
 		// c2's mutation does not wait for c1's pending one.
-		expect(await add({}).run(c2, 'two')).toBe('two');
+		expect(await add({}).mutate(c2, 'two')).toBe('two');
 		expect(c1.get(list).data).toEqual(['a', 'one']);
 		d1.resolve('one');
 		await p1;
@@ -436,9 +443,9 @@ describe('riva instances and the server', () => {
 		const riva = createRiva({ scheduler: sched });
 		server = ['a'];
 		await list.ensure(riva);
-		await add({}).run(riva, 'b');
-		await add({ run: async () => Promise.reject(new Error('x')) })
-			.run(riva, 'c')
+		await add({}).mutate(riva, 'b');
+		await add({ mutate: async () => Promise.reject(new Error('x')) })
+			.mutate(riva, 'c')
 			.catch(() => {});
 		expect(sched.count()).toBe(0);
 		expect(riva.get(list).data).toEqual(['a']);
@@ -450,15 +457,15 @@ describe('review fixes', () => {
 		const { riva } = await seeded();
 		const da = deferred<string>();
 		const order: string[] = [];
-		const a = add({ run: () => da.promise }).run(riva, 'A');
+		const a = add({ mutate: () => da.promise }).mutate(riva, 'A');
 		const ctl = new AbortController();
 		const db = deferred<string>();
 		const b = mutation<string, string>({
 			id: 'B',
-			run: () => db.promise,
+			mutate: () => db.promise,
 			optimistic: (v, tx) => tx.set(list, undefined, (p) => [...(p ?? []), v]),
 			updates: () => void order.push('B'),
-		}).run(riva, 'B', { signal: ctl.signal });
+		}).mutate(riva, 'B', { signal: ctl.signal });
 		db.resolve('B');
 		await tick();
 		expect(riva.get(list).data).toEqual(['a', 'A', 'B']);
@@ -470,20 +477,20 @@ describe('review fixes', () => {
 		await tick();
 		expect(order).toEqual([]);
 		// later mutations are not blocked by the aborted one
-		expect(await add({}).run(riva, 'C')).toBe('C');
+		expect(await add({}).mutate(riva, 'C')).toBe('C');
 	});
 
 	test('a throwing invalidates function rolls back and rejects', async () => {
 		const { riva } = await seeded();
 		const m = mutation<string, string>({
 			id: 'm',
-			run: async (v) => v,
+			mutate: async (v) => v,
 			optimistic: (v, tx) => tx.set(list, undefined, (p) => [...(p ?? []), v]),
 			invalidates: () => {
 				throw new Error('inv');
 			},
 		});
-		await expect(m.run(riva, 'b')).rejects.toThrow('inv');
+		await expect(m.mutate(riva, 'b')).rejects.toThrow('inv');
 		expect(riva.get(list).data).toEqual(['a']);
 	});
 
@@ -494,14 +501,14 @@ describe('review fixes', () => {
 		server = ['a', 'srv'];
 		const m = mutation<string, string>({
 			id: 'm',
-			run: async (v) => v,
+			mutate: async (v) => v,
 			optimistic: (v, tx) => tx.set(list, undefined, (p) => [...(p ?? []), v]),
 			updates: () => {
 				throw new Error('upd');
 			},
 			invalidates: [list],
 		});
-		await expect(m.run(riva, 'b')).rejects.toThrow('upd');
+		await expect(m.mutate(riva, 'b')).rejects.toThrow('upd');
 		await tick();
 		expect(fetches).toBe(before + 1);
 		expect(riva.get(list).data).toEqual(['a', 'srv']);

@@ -54,7 +54,7 @@ describe('mutateInvalidating', () => {
 		} as unknown as ReturnType<typeof query<{ k: number }, number>>;
 		const m = mutation<string, string>({
 			id: 'm',
-			run: async (v) => {
+			mutate: async (v) => {
 				log.push('run');
 				return v;
 			},
@@ -109,7 +109,7 @@ describe('mutateInvalidating', () => {
 		const { spy, riva, log } = setup();
 		const bad = mutation<string, string>({
 			id: 'bad',
-			run: async () => {
+			mutate: async () => {
 				throw new Error('no');
 			},
 		});
@@ -124,7 +124,7 @@ describe('mutateInvalidating', () => {
 		let seen: AbortSignal | undefined;
 		const m = mutation<string, string>({
 			id: 's',
-			run: async (v, ctx) => {
+			mutate: async (v, ctx) => {
 				seen = ctx.signal;
 				return v;
 			},
@@ -149,7 +149,7 @@ describe('types', () => {
 	test('mutateInvalidating follows the definition, its variables and its data', () => {
 		const m = mutation<{ id: number }, string>({
 			id: 'tm',
-			run: async () => '',
+			mutate: async () => '',
 		});
 		const riva = createRiva();
 		expectTypeOf(

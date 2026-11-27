@@ -19,7 +19,7 @@ The package's [README](../README.md) is the short path. These pages go deeper. T
 | [Shared definitions](https://github.com/softistx/riva/blob/develop/packages/riva/docs/guide/shared-definitions.md) | You wonder whether a call site needs a definition at all. |
 | [Queries](./guide/queries.md) | You use `useQuery`: options, result, `refetch`. |
 | [Suspense](./guide/suspense.md) | You use `suspense: true`, error boundaries and retry. |
-| [Mutations](./guide/mutations.md) | You use `useMutation`: status, `run`, `reset`. |
+| [Mutations](./guide/mutations.md) | You use `useMutation`: status, `mutate`, `reset`. |
 | [Infinite lists](./guide/infinite.md) | You use `useInfiniteQuery` and paging. |
 | [Entities](./guide/entities.md) | You use `useFragment` over the normalized cache. |
 

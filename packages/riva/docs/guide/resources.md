@@ -50,7 +50,7 @@ if (s.status === 'success') s.data; // typed, never undefined
 
 `await books` is a one-shot load through the definition's `ensure` with the current variables (fresh data resolves without fetching). It rejects with the error, and with a `RivaError` `RIVA_DEFINITION` while the resource is disabled. It is the way to load on a server, where nothing is observed; the state then reads the filled cache. A resource is a thenable: do not return it from an `async` function unless you mean to await it.
 
-## `mutationHandle(riva, run)`
+## `mutationHandle(riva, mutate)`
 
 ```ts
 import type { RunOptions } from '@softistx/riva';

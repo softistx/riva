@@ -2,7 +2,7 @@
 
 > Most call sites use the simple API (`riva.graphql`, `riva.rest`, the hooks over them). This page covers the definition, for settings several call sites share: see [Advanced: shared definitions](./shared-definitions.md).
 
-`mutation({ id, run, optimistic?, updates?, invalidates?, cache?, retry?, retryDelay? })` sends a change and shows its expected result at once. The definition is stateless; `run(riva, vars, { signal? })` resolves with the server data, or rejects with the error after the rollback.
+`mutation({ id, mutate, optimistic?, updates?, invalidates?, cache?, retry?, retryDelay? })` sends a change and shows its expected result at once. The definition is stateless; `mutate(riva, vars, { signal? })` resolves with the server data, or rejects with the error after the rollback.
 
 ```ts
 import { at, createRiva, mutation, query } from '@softistx/riva';
@@ -11,7 +11,7 @@ const todos = query({ id: 'todos', fetch: async () => (await fetch('/api/todos')
 
 const addTodo = mutation<string, string>({
 	id: 'addTodo',
-	run: async (title, { signal }) =>
+	mutate: async (title, { signal }) =>
 		(await fetch('/api/todos', { method: 'POST', body: title, signal })).text(),
 	// shown at once, over the committed data; the updater gets the value below
 	optimistic: (title, tx) => tx.set(todos, undefined, (prev) => [...(prev ?? []), title]),
@@ -22,7 +22,7 @@ const addTodo = mutation<string, string>({
 });
 
 const riva = createRiva();
-await addTodo.run(riva, 'Buy milk'); // rejects, with the layer dropped, on failure
+await addTodo.mutate(riva, 'Buy milk'); // rejects, with the layer dropped, on failure
 ```
 
 ## Options
@@ -30,7 +30,7 @@ await addTodo.run(riva, 'Buy milk'); // rejects, with the layer dropped, on fail
 | Option | Default | Effect |
 | --- | --- | --- |
 | `id` | required | Identifies the definition. |
-| `run(vars, { signal })` | required | Sends the change; returns the server data. |
+| `mutate(vars, { signal })` | required | Sends the change; returns the server data. |
 | `optimistic(vars, tx)` | none | Shows the expected result at once. Returns data for the entity layer (with `cache`), or writes with `tx.set`. |
 | `updates(tx, data, vars)` | none | On success, writes the committed data. |
 | `invalidates` | none | `[query]`, `[at(query, vars)]` or `(data, vars) => [...]`: queries to mark stale on success. |
@@ -50,7 +50,7 @@ type Patient = { __typename: 'Patient'; id: string; name: string };
 const renamePatient = mutation<{ id: string; name: string }, Patient>({
 	id: 'renamePatient',
 	cache: entities(),
-	run: async (v) => (await fetch(`/api/patients/${v.id}`, { method: 'PATCH', body: JSON.stringify(v) })).json(),
+	mutate: async (v) => (await fetch(`/api/patients/${v.id}`, { method: 'PATCH', body: JSON.stringify(v) })).json(),
 	optimistic: (v) => ({ __typename: 'Patient', id: v.id, name: v.name }), // every query reading Patient:<id> shows it
 });
 ```
@@ -59,10 +59,10 @@ const renamePatient = mutation<{ id: string; name: string }, Patient>({
 
 - **The layer.** While a mutation is in flight its optimistic writes sit above the committed cache. `riva.get`, `subscribe` and computeds see the committed data with the layers applied in start order; the committed data is never mutated. A keyed layer never changes `status` or `isFetching`. A refetch that lands meanwhile updates the committed value and the layer stays on top.
 - **Rollback.** On failure (after the retries, on an abort, or when the commit is refused with `RIVA_CACHE`) the layers are dropped and readers go back to the value below. Nothing else runs: no `updates`, no `invalidates`. A throwing `invalidates` function counts as a failure.
-- **Success.** In one batch: the result is committed through `cache`, the layers are dropped, `updates` writes the committed data, then `invalidates` runs. If `updates` throws, the server result stays committed, the layers are dropped, the invalidations still run, and `run` rejects with the thrown error.
+- **Success.** In one batch: the result is committed through `cache`, the layers are dropped, `updates` writes the committed data, then `invalidates` runs. If `updates` throws, the server result stays committed, the layers are dropped, the invalidations still run, and `mutate` rejects with the thrown error.
 - **Order.** Mutations on one riva resolve in start order. If B (started after A) succeeds first, its layer stays visible and its commit waits until A settles. If A fails, A's layer is dropped at once and B's still applies. Clients never share the order.
 - **Abort.** `signal` aborts with `RivaAbortError` and rolls back, also while the mutation waits for an earlier one.
-- **Server.** `run` works in a React Router action: layers are applied there too but nobody observes them.
+- **Server.** `mutate` works in a React Router action: layers are applied there too but nobody observes them.
 
 ## Traps
 
@@ -70,6 +70,6 @@ const renamePatient = mutation<{ id: string; name: string }, Patient>({
 - `tx.set` targets one entry: use the variables the reader uses.
 - A data value that is itself a function is taken as an updater.
 - After success the layer is dropped: without `updates`, `invalidates` or `cache`, nothing replaces it. Only observed queries refetch at once.
-- A mutation that succeeded waits for earlier ones: an earlier `run` that never resolves holds it back, so pass a `signal` and abort it.
+- A mutation that succeeded waits for earlier ones: an earlier `mutate` that never resolves holds it back, so pass a `signal` and abort it.
 
 Exported types: `Mutation`, `MutationOptions`, `RunOptions`, `Tx`, `Invalidation`, `Target`.

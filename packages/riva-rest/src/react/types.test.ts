@@ -69,7 +69,7 @@ test('types: a wrong path or input is inferred from the arguments and refused', 
 		useRest('/health', undefined, { suspense: true, enabled: false });
 		// @ts-expect-error not a path of the spec
 		useRestMutation('post', '/nope');
-		const { run: create } = useRestMutation('post', '/invoices');
+		const { mutate: create } = useRestMutation('post', '/invoices');
 		// @ts-expect-error `total` is a number
 		create({ json: { number: 'X', total: 'ten' } });
 		// @ts-expect-error `json` is required

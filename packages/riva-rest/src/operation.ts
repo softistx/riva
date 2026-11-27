@@ -14,8 +14,8 @@ export interface Operation extends Route {
  * spec (anything with `operations`) as is, or a bare generated operations
  * table (an object holding an entry with a string `method` and `path`) wrapped
  * as `{ operations }`. `undefined` for anything else, which the caller reads as
- * free options (`{ id, fetch }`, `{ id, run }`); free options win when
- * `fetch` or `run` is a function.
+ * free options (`{ id, fetch }`, `{ id, mutate }`); free options win when
+ * `fetch` or `mutate` is a function.
  */
 export function specOf<Ops extends OperationsShape<Ops>>(
 	first: unknown,
@@ -23,7 +23,7 @@ export function specOf<Ops extends OperationsShape<Ops>>(
 	const o = first as Record<string, { method?: unknown; path?: unknown }>;
 	if (!o || typeof o !== 'object') return undefined;
 	if ('operations' in o) return o as unknown as SpecOf<Ops>;
-	if (typeof (o['fetch'] ?? o['run']) !== 'function')
+	if (typeof (o['fetch'] ?? o['mutate']) !== 'function')
 		for (const v of Object.values(o))
 			if (v?.method && v.path) return { operations: o } as never;
 	return undefined;

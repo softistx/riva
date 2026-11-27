@@ -6,7 +6,7 @@ import { query } from './query';
 test('a definition is frozen and stateless', () => {
 	const m = mutation<{ id: string }, number>({
 		id: 'm',
-		run: async () => 1,
+		mutate: async () => 1,
 	});
 	expect(Object.isFrozen(m)).toBe(true);
 	expect(m.kind).toBe('mutation');
@@ -14,11 +14,11 @@ test('a definition is frozen and stateless', () => {
 });
 
 test('variables are optional when void', async () => {
-	const m = mutation({ id: 'm', run: async () => 'ok' });
-	expect(await m.run(createRiva())).toBe('ok');
+	const m = mutation({ id: 'm', mutate: async () => 'ok' });
+	expect(await m.mutate(createRiva())).toBe('ok');
 });
 
-test('Vars and Data are typed through run, optimistic, updates and invalidates', () => {
+test('Vars and Data are typed through mutate, optimistic, updates and invalidates', () => {
 	const list = query<{ s: string }, string[]>({
 		id: 'l',
 		fetch: async () => [],
@@ -26,7 +26,7 @@ test('Vars and Data are typed through run, optimistic, updates and invalidates',
 	const one = query<void, number>({ id: 'o', fetch: async () => 1 });
 	const m = mutation<{ name: string }, { ok: boolean }>({
 		id: 'm',
-		run: async (vars, ctx) => {
+		mutate: async (vars, ctx) => {
 			expectTypeOf(vars).toEqualTypeOf<{ name: string }>();
 			expectTypeOf(ctx.signal).toEqualTypeOf<AbortSignal>();
 			return { ok: true };
@@ -58,21 +58,21 @@ test('Vars and Data are typed through run, optimistic, updates and invalidates',
 	// @ts-expect-error wrong variables for the query
 	at(list, { t: 'x' });
 	// @ts-expect-error wrong variables inside invalidates
-	mutation({ id: 'w', run: async () => 1, invalidates: [at(one, 3)] });
+	mutation({ id: 'w', mutate: async () => 1, invalidates: [at(one, 3)] });
 	// Never called: only the types are checked.
 	const _calls = () => {
 		const c = createRiva();
-		expectTypeOf(m.run(c, { name: 'x' })).toEqualTypeOf<
+		expectTypeOf(m.mutate(c, { name: 'x' })).toEqualTypeOf<
 			Promise<{ ok: boolean }>
 		>();
 		expectTypeOf(
-			m.run(c, { name: 'x' }, { signal: new AbortController().signal }),
+			m.mutate(c, { name: 'x' }, { signal: new AbortController().signal }),
 		).toEqualTypeOf<Promise<{ ok: boolean }>>();
 		// @ts-expect-error variables are required
-		m.run(c);
+		m.mutate(c);
 		// @ts-expect-error wrong variables
-		m.run(c, { name: 1 });
+		m.mutate(c, { name: 1 });
 	};
 	void _calls;
-	mutation({ id: 'i', run: async () => 1, invalidates: [list, one] });
+	mutation({ id: 'i', mutate: async () => 1, invalidates: [list, one] });
 });

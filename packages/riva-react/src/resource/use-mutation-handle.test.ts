@@ -16,7 +16,7 @@ test('idle, loading, success, then reset', async () => {
 	expect(m.text()).toBe('idle:-');
 	let result!: Promise<number>;
 	await flush(() => {
-		result = hook.run({ id: 1 });
+		result = hook.mutate({ id: 1 });
 	});
 	expect(m.text()).toBe('loading:-');
 	await flush(() => gate.resolve(7));
@@ -37,21 +37,23 @@ test('a failure rejects the call and lands in the state', async () => {
 	}
 	const m = await mount(h(C), newRiva());
 	await flush(() => {
-		hook.run().catch(() => {});
+		hook.mutate().catch(() => {});
 	});
 	expect(m.text()).toBe('error');
 	expect((hook.error as Error).message).toBe('no');
 	await m.unmount();
 });
 
-test('types: the state is a discriminated union beside run', () => {
+test('types: the state is a discriminated union beside mutate', () => {
 	const h1 = {} as MutationResult<{ id: number }, string>;
 	expectTypeOf(h1.reset).toEqualTypeOf<() => void>();
 	if (h1.status === 'success') expectTypeOf(h1.data).toEqualTypeOf<string>();
-	expectTypeOf<Parameters<typeof h1.run>[0]>().toEqualTypeOf<{ id: number }>();
+	expectTypeOf<Parameters<typeof h1.mutate>[0]>().toEqualTypeOf<{
+		id: number;
+	}>();
 });
 
-test('run and reset keep their identity from idle to loading to success', async () => {
+test('mutate and reset keep their identity from idle to loading to success', async () => {
 	const gate = deferred<number>();
 	let hook!: MutationResult<{ id: number }, number, never>;
 	function C() {
@@ -61,13 +63,13 @@ test('run and reset keep their identity from idle to loading to success', async 
 		return h('p', null, hook.status);
 	}
 	const m = await mount(h(C), newRiva());
-	const { run, reset } = hook;
-	await flush(() => void hook.run({ id: 1 }));
+	const { mutate, reset } = hook;
+	await flush(() => void hook.mutate({ id: 1 }));
 	expect(m.text()).toBe('loading');
-	expect(hook.run).toBe(run);
+	expect(hook.mutate).toBe(mutate);
 	await flush(() => gate.resolve(1));
 	expect(m.text()).toBe('success');
-	expect(hook.run).toBe(run);
+	expect(hook.mutate).toBe(mutate);
 	expect(hook.reset).toBe(reset);
 	await m.unmount();
 });

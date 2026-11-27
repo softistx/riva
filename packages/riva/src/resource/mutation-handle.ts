@@ -21,13 +21,13 @@ export interface MutationHandle<Vars, Data, Opts = never> {
 }
 
 /**
- * Wraps `run` in a callable handle. Calls may overlap: each resolves with its
+ * Wraps `mutate` in a callable handle. Calls may overlap: each resolves with its
  * own result, and the state follows the last call made (an earlier call that
  * settles later does not overwrite it).
  */
 export function mutationHandle<Vars, Data, Opts = never>(
 	riva: Riva,
-	run: (vars: Vars, opts?: Opts) => Promise<Data>,
+	mutate: (vars: Vars, opts?: Opts) => Promise<Data>,
 ): MutationHandle<Vars, Data, Opts> {
 	const state = signal<MutationState<Data>>(IDLE);
 	let last = 0;
@@ -38,7 +38,7 @@ export function mutationHandle<Vars, Data, Opts = never>(
 		const id = ++last;
 		set(id, { status: 'loading', data: undefined, error: undefined });
 		try {
-			const data = await run(vars as Vars, opts);
+			const data = await mutate(vars as Vars, opts);
 			set(id, { status: 'success', data, error: undefined });
 			return data;
 		} catch (error) {

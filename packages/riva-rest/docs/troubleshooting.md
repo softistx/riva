@@ -316,11 +316,11 @@ Code: `RIVA_DEFINITION` (`RivaError`).
 
 ```tsx
 const book = useRest('/books/{id}', { param: { id } });
-const { run } = useMutation(saveBook);
+const { mutate } = useMutation(saveBook);
 ```
 
 ## `save` is not a function on `useRestMutation`
 
-**Why:** the hook returns `{ run, status, data, error, reset }`; `run` and `reset` are stable.
+**Why:** the hook returns `{ mutate, status, data, error, reset }`; `mutate` and `reset` are stable.
 
-**Fix:** `const { run: save } = useRestMutation('put', '/books/{id}');`
+**Fix:** `const { mutate: save } = useRestMutation('put', '/books/{id}');`

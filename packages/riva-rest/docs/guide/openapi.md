@@ -32,7 +32,7 @@ export const invoices = query(api, 'get /invoices');
 export const createInvoice = mutation(api, 'post /invoices', { invalidates: [invoices] });
 
 await invoice.ensure(riva, { param: { id: '7' } }); // Invoice
-await createInvoice.run(riva, { json: { number: 'F-8', total: 120 } });
+await createInvoice.mutate(riva, { json: { number: 'F-8', total: 120 } });
 riva.get(invoices); // an operation whose input is all optional takes no variables
 ```
 

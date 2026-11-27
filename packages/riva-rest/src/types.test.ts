@@ -98,7 +98,7 @@ const types = () => {
 	expectTypeOf(generic).toEqualTypeOf<
 		Query<{ id: string }, { name: string }>
 	>();
-	const run = mutation({ id: 'run', run: async (n: number) => n });
+	const run = mutation({ id: 'run', mutate: async (n: number) => n });
 	expectTypeOf(run).toEqualTypeOf<Mutation<number, number>>();
 };
 void types;

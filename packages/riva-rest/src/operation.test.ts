@@ -61,7 +61,7 @@ test('specOf reads a client or spec as is, a bare table wrapped, free options as
 	expect(specOf(spec)).toBe(spec);
 	expect(specOf(operations)).toEqual({ operations });
 	expect(specOf({ id: 'x', fetch: async () => 1 })).toBeUndefined();
-	expect(specOf({ id: 'x', run: async () => 1 })).toBeUndefined();
+	expect(specOf({ id: 'x', mutate: async () => 1 })).toBeUndefined();
 	expect(specOf({ id: 'x' })).toBeUndefined();
 	expect(specOf({})).toBeUndefined();
 	expect(specOf(undefined)).toBeUndefined();

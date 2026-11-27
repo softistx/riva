@@ -85,7 +85,7 @@ const first = await books; // or a one-shot load that rejects with the error
 
 `resource(riva, source, options)` from `@softistx/riva/resource` builds the same thing over a query definition of your own.
 
-Also `mutationHandle(riva, run)` (a callable with a reactive `state` and `reset`) and `streamResource(riva, source)` (a subscription as a resource). A resource starts at its first reader and stops at the last; the status is `idle | loading | success | error`. [resources](./docs/guide/resources.md).
+Also `mutationHandle(riva, mutate)` (a callable with a reactive `state` and `reset`) and `streamResource(riva, source)` (a subscription as a resource). A resource starts at its first reader and stops at the last; the status is `idle | loading | success | error`. [resources](./docs/guide/resources.md).
 
 For adapter authors and wrappers, also from `@softistx/riva/resource`:
 
@@ -133,14 +133,14 @@ import { createRiva, mutation, query } from '@softistx/riva';
 const todos = query({ id: 'todos', staleTime: '30s', fetch: async () => (await fetch('/api/todos')).json() as Promise<string[]> });
 const addTodo = mutation<string, string>({
 	id: 'addTodo',
-	run: async (title, { signal }) => (await fetch('/api/todos', { method: 'POST', body: title, signal })).text(),
+	mutate: async (title, { signal }) => (await fetch('/api/todos', { method: 'POST', body: title, signal })).text(),
 	optimistic: (title, tx) => tx.set(todos, undefined, (prev) => [...(prev ?? []), title]), // shown at once
 	invalidates: [todos], // observed ones refetch
 });
 
 const riva = createRiva();
 await todos.ensure(riva); // fetch if missing or stale, else the cache
-await addTodo.run(riva, 'Buy milk'); // rejects, with the layer dropped, on failure
+await addTodo.mutate(riva, 'Buy milk'); // rejects, with the layer dropped, on failure
 ```
 
 Every option: [queries](./docs/guide/queries.md), [mutations](./docs/guide/mutations.md), [entities](./docs/guide/entities.md) (`@softistx/riva/entities`, the normalized cache) and [infinite lists](./docs/guide/infinite.md) (`@softistx/riva/infinite`, cursor pagination). Trap: after success the optimistic layer is dropped, so give the mutation `updates`, `invalidates` or `cache`.

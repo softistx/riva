@@ -118,7 +118,7 @@ describe('normalized() over the entity store', () => {
 		);
 		await patient.ensure(riva, { id: '1' });
 		await patients.ensure(riva);
-		await rename.run(riva, { id: '1', name: 'Zed' });
+		await rename.mutate(riva, { id: '1', name: 'Zed' });
 		expect(riva.get(patient, { id: '1' }).data?.patient.name).toBe('Zed');
 		expect(riva.get(patients).data?.patients[0]?.name).toBe('Zed');
 	});
@@ -129,7 +129,7 @@ describe('normalized() over the entity store', () => {
 		await patients.ensure(riva);
 		const d = deferred<unknown>();
 		transport.execute = async () => d.promise as never;
-		const p = rename.run(riva, { id: '1', name: 'Zed' });
+		const p = rename.mutate(riva, { id: '1', name: 'Zed' });
 		expect(riva.get(patient, { id: '1' }).data?.patient.name).toBe('Zed');
 		expect(riva.get(patients).data?.patients[0]?.name).toBe('Zed');
 		expect(storeOfRiva(riva).peek('Patient:1')).toMatchObject({
@@ -145,7 +145,7 @@ describe('normalized() over the entity store', () => {
 		const { riva, transport } = setup(() => ({}));
 		const d = deferred<unknown>();
 		transport.execute = async () => d.promise as never;
-		const p = rename.run(riva, { id: '9', name: 'New' });
+		const p = rename.mutate(riva, { id: '9', name: 'New' });
 		expect(readEntity(riva, 'Patient:9')).toMatchObject({ name: 'New' });
 		d.reject(new Error('x'));
 		await p.catch(() => {});
@@ -350,10 +350,10 @@ const types = () => {
 	expectTypeOf(patient).toEqualTypeOf<
 		Query<{ id: string }, { patient: Named }>
 	>();
-	expectTypeOf(rename.run)
+	expectTypeOf(rename.mutate)
 		.parameter(1)
 		.toEqualTypeOf<{ id: string; name: string }>();
-	expectTypeOf(rename.run).returns.resolves.toExtend<{
+	expectTypeOf(rename.mutate).returns.resolves.toExtend<{
 		renamePatient: { id: string };
 	}>();
 	const opts = normalized({ possibleTypes: { Node: ['Patient'] } });

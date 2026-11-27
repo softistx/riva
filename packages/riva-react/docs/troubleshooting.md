@@ -39,18 +39,18 @@ This is not the core's "No Riva in scope: read through riva.get(def)…" error, 
 const patients = query({ id: 'patients', staleTime: '30s', fetch });
 ```
 
-## Unhandled rejection from `run`
+## Unhandled rejection from `mutate`
 
-**When:** `useMutation`'s `run(vars)` fails and the console reports an unhandled promise rejection.
+**When:** `useMutation`'s `mutate(vars)` fails and the console reports an unhandled promise rejection.
 
-**Why:** `run` rejects with the error, as the definition's own `run` does, besides setting `error` in the hook's state.
+**Why:** `mutate` rejects with the error, as the definition's own `mutate` does, besides setting `error` in the hook's state.
 
 **Fix:** catch it where you call it, or read `error` and ignore the rejection.
 
 ```tsx
 function Rename({ id, name }: { id: string; name: string }) {
-	const { run, error } = useMutation(rename);
-	return <button onClick={() => run({ id, name }).catch(() => {})}>Rename</button>;
+	const { mutate, error } = useMutation(rename);
+	return <button onClick={() => mutate({ id, name }).catch(() => {})}>Rename</button>;
 }
 ```
 
@@ -63,20 +63,20 @@ function Rename({ id, name }: { id: string; name: string }) {
 **Fix:**
 
 ```tsx
-const { run, status } = useMutation(rename);
-<button disabled={status === 'loading'} onClick={() => run({ id, name }).catch(() => {})}>Rename</button>;
+const { mutate, status } = useMutation(rename);
+<button disabled={status === 'loading'} onClick={() => mutate({ id, name }).catch(() => {})}>Rename</button>;
 ```
 
-## `save` is now `run`, and it is stable
+## `save` is now `mutate`, and it is stable
 
 **When:** a mutation hook result is no longer callable (`add(vars)` is not a function).
 
-**Why:** `useGraphQLMutation`, `useRestMutation` and `useMutation` all return `{ run, status, data, error, reset }`. `run` and `reset` keep their identity across renders, so they are safe in effect and memo dependencies. The handle of `riva.graphql.mutation()` and `riva.rest.mutation()` stays callable.
+**Why:** `useGraphQLMutation`, `useRestMutation` and `useMutation` all return `{ mutate, status, data, error, reset }`. `mutate` and `reset` keep their identity across renders, so they are safe in effect and memo dependencies. The handle of `riva.graphql.mutation()` and `riva.rest.mutation()` stays callable.
 
 **Fix:**
 
 ```tsx
-const { run: save, status } = useGraphQLMutation(ADD_BOOK_MUTATION);
+const { mutate: save, status } = useGraphQLMutation(ADD_BOOK_MUTATION);
 await save({ title: 'Dune' }, { invalidates: [BOOKS_QUERY] });
 ```
 

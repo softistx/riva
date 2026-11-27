@@ -26,7 +26,7 @@ test('idle, loading, success, reset; a call invalidates the observed query', asy
 	let rename!: {
 		status: string;
 		reset(): void;
-		run: (...a: unknown[]) => Promise<unknown>;
+		mutate: (...a: unknown[]) => Promise<unknown>;
 	};
 	let shown = '';
 	function C() {
@@ -40,7 +40,7 @@ test('idle, loading, success, reset; a call invalidates the observed query', asy
 	expect(m.text()).toBe('idle:1');
 	let result: unknown;
 	await flush(async () => {
-		result = await rename.run(
+		result = await rename.mutate(
 			{ id: '1', name: 'Z' },
 			{ invalidates: [VIEWER_QUERY] },
 		);
@@ -64,7 +64,7 @@ test('a failure rejects the call and lands in the state', async () => {
 	let status = '';
 	function C() {
 		const r = useGraphQLMutation(RENAME_PATIENT_MUTATION);
-		rename = r.run as never;
+		rename = r.mutate as never;
 		status = r.status;
 		return h('p', null, r.status);
 	}
@@ -94,7 +94,7 @@ test('types: variables and data come from the document', () => {
 
 test('types: the input is inferred from the document', () => {
 	const never = () => {
-		const { run: rename } = useGraphQLMutation(RENAME_PATIENT_MUTATION);
+		const { mutate: rename } = useGraphQLMutation(RENAME_PATIENT_MUTATION);
 		// @ts-expect-error `id` must be a string
 		rename({ id: 1, name: 'Z' });
 		// @ts-expect-error `nom` is not an input of the document

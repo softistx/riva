@@ -102,7 +102,7 @@ test('a mutation runs through the transport, with optimistic and invalidates', a
 			? { renamePatient: { id: '1', name: 'New' } }
 			: { patients: 1 },
 	);
-	await rename.run(riva, { id: '1', name: 'New' });
+	await rename.mutate(riva, { id: '1', name: 'New' });
 	expect(transport.calls[0]).toMatchObject({
 		name: 'RenamePatient',
 		kind: 'mutation',

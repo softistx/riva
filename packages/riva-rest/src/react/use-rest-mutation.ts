@@ -10,10 +10,10 @@ function useRestMutationImpl(method: MutationMethod, path: string) {
 }
 
 /**
- * A POST, PUT, PATCH or DELETE held by the component: read `run`, `status`, `data`,
- * `error` and `reset` from the result (`await run({ json })` resolves with the
+ * A POST, PUT, PATCH or DELETE held by the component: read `mutate`, `status`, `data`,
+ * `error` and `reset` from the result (`await mutate({ json })` resolves with the
  * data and rejects with the error, `invalidates` as a second argument; `idle`
- * first; `reset()` goes back to idle). `run` and `reset` keep their identity
+ * first; `reset()` goes back to idle). `mutate` and `reset` keep their identity
  * across renders.
  */
 export const useRestMutation =

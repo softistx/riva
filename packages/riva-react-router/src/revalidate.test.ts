@@ -9,10 +9,10 @@ test('a mutation that invalidates revalidate reruns the route loaders once', asy
 	expect(app.loads()).toBe(1);
 	const save = mutation({
 		id: 'save',
-		run: async () => 'ok',
+		mutate: async () => 'ok',
 		invalidates: [revalidate],
 	});
-	await settle(40, () => save.run(app.riva()));
+	await settle(40, () => save.mutate(app.riva()));
 	expect(app.loads()).toBe(2);
 	await page.unmount();
 });

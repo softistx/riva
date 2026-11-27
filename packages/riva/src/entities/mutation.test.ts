@@ -39,11 +39,11 @@ const deferred = <T>() => {
 	return { promise, resolve, reject };
 };
 
-const rename = (run: (name: string) => Promise<P>) =>
+const rename = (mutate: (name: string) => Promise<P>) =>
 	mutation<{ id: string; name: string }, P>({
 		id: 'rename',
 		cache,
-		run: (v) => run(v.name),
+		mutate: (v) => mutate(v.name),
 		optimistic: (v) => ({ __typename: 'Patient', id: v.id, name: v.name }),
 	});
 
@@ -60,7 +60,7 @@ describe('mutations over entities()', () => {
 			seen.push(`all:${s.data?.items[0]?.name}`),
 		);
 		const d = deferred<P>();
-		const p = rename(() => d.promise).run(riva, { id: '1', name: 'Zed' });
+		const p = rename(() => d.promise).mutate(riva, { id: '1', name: 'Zed' });
 		expect(riva.get(one, { id: '1' }).data?.name).toBe('Zed');
 		expect(riva.get(all).data?.items[0]?.name).toBe('Zed');
 		expect(riva.get(all).status).toBe('success');
@@ -84,7 +84,7 @@ describe('mutations over entities()', () => {
 			names.push(s.data?.name),
 		);
 		const d = deferred<P>();
-		const p = rename(() => d.promise).run(riva, { id: '1', name: 'Zed' });
+		const p = rename(() => d.promise).mutate(riva, { id: '1', name: 'Zed' });
 		d.resolve({ __typename: 'Patient', id: '1', name: 'Zed (server)' });
 		await p;
 		expect(names).toEqual(['Zed', 'Zed (server)']);
@@ -95,7 +95,7 @@ describe('mutations over entities()', () => {
 	test('an entity created by the layer exists only until it settles', async () => {
 		const riva = createRiva();
 		const d = deferred<P>();
-		const p = rename(() => d.promise).run(riva, { id: '9', name: 'New' });
+		const p = rename(() => d.promise).mutate(riva, { id: '9', name: 'New' });
 		expect(readEntity(riva, 'Patient:9')).toMatchObject({ name: 'New' });
 		d.reject(new Error('x'));
 		await p.catch(() => {});
@@ -107,8 +107,8 @@ describe('mutations over entities()', () => {
 		await one.ensure(riva, { id: '1' });
 		const da = deferred<P>();
 		const db = deferred<P>();
-		const a = rename(() => da.promise).run(riva, { id: '1', name: 'A' });
-		const b = rename(() => db.promise).run(riva, { id: '1', name: 'B' });
+		const a = rename(() => da.promise).mutate(riva, { id: '1', name: 'A' });
+		const b = rename(() => db.promise).mutate(riva, { id: '1', name: 'B' });
 		expect(riva.get(one, { id: '1' }).data?.name).toBe('B');
 		db.resolve({ __typename: 'Patient', id: '1', name: 'B' });
 		await Promise.resolve();
@@ -119,8 +119,8 @@ describe('mutations over entities()', () => {
 		expect(riva.get(one, { id: '1' }).data?.name).toBe('B');
 		const dc = deferred<P>();
 		const dd = deferred<P>();
-		const c = rename(() => dc.promise).run(riva, { id: '1', name: 'C' });
-		const d = rename(() => dd.promise).run(riva, { id: '1', name: 'D' });
+		const c = rename(() => dc.promise).mutate(riva, { id: '1', name: 'C' });
+		const d = rename(() => dd.promise).mutate(riva, { id: '1', name: 'D' });
 		dc.reject(new Error('x'));
 		await c.catch(() => {});
 		expect(riva.get(one, { id: '1' }).data?.name).toBe('D');
@@ -133,7 +133,7 @@ describe('mutations over entities()', () => {
 		const riva = createRiva();
 		await one.ensure(riva, { id: '1' });
 		const d = deferred<P>();
-		const p = rename(() => d.promise).run(riva, { id: '1', name: 'Zed' });
+		const p = rename(() => d.promise).mutate(riva, { id: '1', name: 'Zed' });
 		one.setData(
 			riva,
 			{ id: '1' },
@@ -156,16 +156,18 @@ describe('mutations over entities()', () => {
 		const bad = mutation<void, unknown>({
 			id: 'bad',
 			cache,
-			run: async () => ({ __typename: 'Patient', id: '1', f: () => 1 }),
+			mutate: async () => ({ __typename: 'Patient', id: '1', f: () => 1 }),
 		});
-		await expect(bad.run(riva)).rejects.toMatchObject({ code: 'RIVA_CACHE' });
+		await expect(bad.mutate(riva)).rejects.toMatchObject({
+			code: 'RIVA_CACHE',
+		});
 		const bad2 = mutation<void, unknown>({
 			id: 'bad2',
 			cache,
-			run: async () => 1,
+			mutate: async () => 1,
 			optimistic: () => ({ __typename: 'Patient', id: '1', f: () => 1 }),
 		});
-		await expect(bad2.run(riva)).rejects.toMatchObject({
+		await expect(bad2.mutate(riva)).rejects.toMatchObject({
 			code: 'RIVA_CACHE',
 		});
 		expect(riva.get(one, { id: '1' }).data?.name).toBe('Ann');
@@ -177,7 +179,7 @@ describe('mutations over entities()', () => {
 		await one.ensure(c1, { id: '1' });
 		await one.ensure(c2, { id: '1' });
 		const d = deferred<P>();
-		const p = rename(() => d.promise).run(c1, { id: '1', name: 'Zed' });
+		const p = rename(() => d.promise).mutate(c1, { id: '1', name: 'Zed' });
 		expect(c2.get(one, { id: '1' }).data?.name).toBe('Ann');
 		d.reject(new Error('x'));
 		await p.catch(() => {});
@@ -195,7 +197,7 @@ test('setData during a live layer starts from the committed data and keeps no op
 	const riva = createRiva();
 	await q.ensure(riva, { id: '1' });
 	const d = deferred<P>();
-	const p = rename(() => d.promise).run(riva, { id: '1', name: 'OPT' });
+	const p = rename(() => d.promise).mutate(riva, { id: '1', name: 'OPT' });
 	expect(riva.get(q, { id: '1' }).data?.name).toBe('OPT');
 	q.setData(riva, { id: '1' }, (prev) => ({ ...(prev as Q), n: 5 }));
 	d.reject(new Error('x'));

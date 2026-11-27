@@ -38,7 +38,7 @@ export type RestQueryOptions<Vars, Data> = Omit<
 
 export type RestMutationOptions<Vars, Data> = Omit<
 	MutationOptions<Vars, Data>,
-	'id' | 'run'
+	'id' | 'mutate'
 > & {
 	/** Replaces the id derived from the route. */
 	id?: string;
@@ -57,10 +57,10 @@ export type FreeQueryOptions<Vars, Data> = Omit<
 
 export type FreeMutationOptions<Vars, Data> = Omit<
 	MutationOptions<Vars, Data>,
-	'run'
+	'mutate'
 > & {
 	id: string;
-	run: (vars: Vars, ctx: RestContext) => Promise<Data>;
+	mutate: (vars: Vars, ctx: RestContext) => Promise<Data>;
 };
 
 export const callOf =
@@ -146,7 +146,7 @@ export function query(
 /**
  * A mutation definition, in the same three forms as `query`:
  * `mutation(operations, 'post /invoices', opts?)`, `mutation(api, 'post /invoices', opts?)`
- * or `mutation({ id, run })`.
+ * or `mutation({ id, mutate })`.
  */
 export function mutation<
 	Ops extends OperationsShape<Ops>,
@@ -179,17 +179,17 @@ export function mutation(
 	const spec = specOf(first);
 	if (!spec) {
 		freeId(first as { id?: unknown }, 'mutation');
-		const { run, ...rest } = first as unknown as FreeMutationOptions<
+		const { mutate, ...rest } = first as unknown as FreeMutationOptions<
 			unknown,
 			unknown
 		>;
-		return coreMutation({ ...rest, run: guarded(run) });
+		return coreMutation({ ...rest, mutate: guarded(mutate) });
 	}
 	const op = operationOf(spec, route as never, 'mutation');
 	return coreMutation({
 		...(opts as object),
 		id: opts.id ?? op.id,
-		run: callOf(op),
+		mutate: callOf(op),
 	} as MutationOptions<unknown, unknown>);
 }
 

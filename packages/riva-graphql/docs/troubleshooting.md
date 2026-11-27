@@ -319,11 +319,11 @@ if (error instanceof RivaGraphQLError) error.errors; // match with instanceof, o
 
 ## `add` is not a function, or `isPending` is undefined, on `useGraphQLMutation`
 
-**Why:** the hook returns `{ run, status, data, error, reset }`, not a callable, and has no `isPending`. `run` and `reset` are stable across renders.
+**Why:** the hook returns `{ mutate, status, data, error, reset }`, not a callable, and has no `isPending`. `mutate` and `reset` are stable across renders.
 
 **Fix:**
 
 ```tsx
-const { run: add, status } = useGraphQLMutation(ADD_BOOK_MUTATION);
+const { mutate: add, status } = useGraphQLMutation(ADD_BOOK_MUTATION);
 <button disabled={status === 'loading'} onClick={() => add({ title: 'Dune' })}>Add</button>;
 ```
