@@ -24,6 +24,8 @@ export interface Inflight {
 	set?: { v: unknown } | undefined;
 	/** The state to restore on cancel. */
 	prev: State;
+	/** A part of the stream was stored: `prev.data` is still held for a cancel. */
+	parted?: boolean;
 }
 
 /** An optimistic write: maps the value below it to the value readers see. */
@@ -137,6 +139,18 @@ export function putStored(
 		prev !== keep
 	)
 		cache.release(c.riva, prev);
+}
+
+/** Ends a run's hold on the data it replaced: released when parts were stored and `next` is not it. */
+export function releaseKept(
+	c: Ctx,
+	e: Entry,
+	f: Inflight,
+	next: unknown,
+): void {
+	const kept = f.prev.data;
+	if (f.parted && kept !== undefined && kept !== next)
+		e.def.options.cache?.release(c.riva, kept);
 }
 
 /**

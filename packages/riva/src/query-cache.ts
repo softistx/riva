@@ -15,6 +15,7 @@ import {
 	peek,
 	put,
 	putStored,
+	releaseKept,
 	stale,
 	toStored,
 	unreadable,
@@ -122,7 +123,6 @@ export function createQueryCache(
 					f.ctl.abort();
 				}
 				e.invalidated = false;
-				const streamed = !!f && peek(c, e).data !== f.prev.data;
 				putStored(c, e, {
 					status: 'success',
 					data: stored,
@@ -132,10 +132,7 @@ export function createQueryCache(
 					// a stream cut short by this value is complete
 					...(peek(c, e).dataState && { dataState: 'complete' as const }),
 				});
-				// the data the cut run kept for a cancel
-				const kept = f?.prev.data;
-				if (streamed && kept !== undefined && kept !== stored)
-					e.def.options.cache?.release(riva, kept);
+				if (f) releaseKept(c, e, f, stored); // what the cut run kept for a cancel
 			});
 			armGc(c, e);
 		},

@@ -4,7 +4,7 @@ import { entities } from './entities';
 import { storeOf } from './entities/policy';
 import { RivaAbortError } from './errors';
 import { type FetchContext, query } from './query';
-import { dehydrate } from './ssr';
+import { dehydrate, hydrate } from './ssr';
 
 const flush = () => new Promise<void>((r) => setImmediate(r));
 
@@ -264,4 +264,39 @@ test('cancel and setData mid-stream do not leave dataState streaming', async () 
 	await s3;
 	expect(r3.get(b.q)).toMatchObject({ data: 'set', dataState: 'complete' });
 	expect(dehydrate(r3).q).toHaveLength(1);
+});
+
+test('a hydrate in the middle of a run with no parts releases the replaced data once', async () => {
+	const log: string[] = [];
+	const cache = {
+		write: (_c: unknown, d: unknown) => ({ boxed: d as number }),
+		read: (_c: unknown, s: { boxed: number }) => s.boxed,
+		release: (_c: unknown, s: { boxed: number }) =>
+			void log.push(`release ${s.boxed}`),
+	};
+	let calls = 0;
+	let gate = (_v: number) => {};
+	const q = query<void, number>({
+		id: 'hydrate-mid-run',
+		retry: 0,
+		cache,
+		fetch: () =>
+			++calls <= 2
+				? Promise.resolve(1)
+				: new Promise<number>((r) => {
+						gate = r;
+					}),
+	});
+	const server = createRiva();
+	await q.ensure(server);
+	const snap = JSON.parse(JSON.stringify(dehydrate(server)));
+	log.length = 0;
+	const riva = createRiva();
+	await q.ensure(riva);
+	q.invalidate(riva);
+	const p = q.ensure(riva);
+	hydrate(riva, snap);
+	gate(2);
+	await p;
+	expect(log.filter((x) => x === 'release 1')).toHaveLength(1);
 });

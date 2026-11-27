@@ -10,6 +10,7 @@ import {
 	put,
 	putData,
 	putStored,
+	releaseKept,
 	type State,
 	unreadable,
 	view,
@@ -22,9 +23,9 @@ async function loop(c: Ctx, e: Entry, f: Inflight): Promise<unknown> {
 	for (let failures = 0; ; ) {
 		const ctl = f.ctl;
 		// A part of an aborted attempt (cancel, restart, replaced) is dropped.
-		const onPart = (data: unknown) =>
-			ctl.signal.aborted ||
-			e.run !== f ||
+		const onPart = (data: unknown) => {
+			if (ctl.signal.aborted || e.run !== f) return;
+			f.parted = true;
 			// The data the run replaces stays stored until it settles: a cancel restores it.
 			putData(
 				c,
@@ -32,6 +33,7 @@ async function loop(c: Ctx, e: Entry, f: Inflight): Promise<unknown> {
 				{ status: 'success', data, dataState: 'streaming' },
 				f.prev.data,
 			);
+		};
 		let ok = false;
 		let v: unknown;
 		try {
@@ -79,7 +81,6 @@ function start(c: Ctx, e: Entry): Inflight {
 	const done = (patch: Partial<State>): unknown => {
 		if (e.run !== f) return;
 		e.run = undefined;
-		const streamed = peek(c, e).data !== f.prev.data;
 		// A stream closed for want of an observer leaves the entry stale.
 		e.invalidated = !e.observers && !!e.stop?.();
 		const refused = putData(c, e, {
@@ -88,9 +89,7 @@ function start(c: Ctx, e: Entry): Inflight {
 			...patch,
 		});
 		// The run is over: the data it kept for a cancel is not needed any more.
-		const kept = f.prev.data;
-		if (streamed && kept !== undefined && kept !== peek(c, e).data)
-			e.def.options.cache?.release(c.riva, kept);
+		releaseKept(c, e, f, peek(c, e).data);
 		armGc(c, e);
 		return refused;
 	};
