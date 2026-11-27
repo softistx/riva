@@ -191,7 +191,7 @@ const admin = query({ id: 'admin', fetch }); // an escape hatch: not 'user' agai
 
 Code: `RIVA_CACHE` (`RivaError`).
 
-**When:** a query with `cache: entities()` (or `writeEntity`) receives data holding a function, a symbol, a bigint, a non-finite number, a class instance other than `Date`, a `Map`/`Set` or a circular reference. A fetch rejects with it (the entry shows the error and keeps its previous data). `setData` throws it and leaves the entry untouched. A mutation with `cache: entities()` hits it too: data returned by `optimistic` makes `run` reject before anything is shown, and a server result refused at commit rolls the layers back; in both cases `updates` and `invalidates` do not run and `run` rejects with the error.
+**When:** a query with `cache: entities()` (or `writeEntity`) receives data holding a function, a symbol, a bigint, a non-finite number, a class instance other than `Date`, a `Map`/`Set` or a circular reference. A fetch rejects with it (the entry shows the error and keeps its previous data). `setData` throws it and leaves the entry untouched. A mutation with `cache: entities()` hits it too: data returned by `optimistic` makes `mutate` reject before anything is shown, and a server result refused at commit rolls the layers back; in both cases `updates` and `invalidates` do not run and `mutate` rejects with the error.
 
 **Why:** the entity store merges and compares plain JSON data field by field, so it cannot hold anything else. Nothing is written when it throws.
 

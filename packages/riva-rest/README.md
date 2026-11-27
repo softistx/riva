@@ -105,7 +105,7 @@ Without `Register` the hooks are untyped (`useRest<T>`). How they behave:
 - While `enabled` is false the status is `idle`, the input function is not called and nothing is fetched.
 - `suspense: true` suspends until data, types the state as `success` and sends any error to the nearest error boundary; resetting the boundary refetches it by itself. `enabled` cannot be combined with `suspense` (a type error): a suspending hook is never idle. Its fetch uses a `staleTime` of at least 1000 ms (yours, else the riva's default, whichever is longer).
 
-`useRest` takes the path first (`useRest('get', path)` is gone and throws `RIVA_DEFINITION`). The mutation hook returns `{ mutate, status, data, error, reset }`, the same shape as `useMutation` and `useGraphQLMutation` (type `MutationResult`). `run` and `reset` keep their identity across renders; to react to a result, read `status` and `data`:
+`useRest` takes the path first (`useRest('get', path)` is gone and throws `RIVA_DEFINITION`). The mutation hook returns `{ mutate, status, data, error, reset }`, the same shape as `useMutation` and `useGraphQLMutation` (type `MutationResult`). `mutate` and `reset` keep their identity across renders; to react to a result, read `status` and `data`:
 
 ```tsx
 const { mutate, status } = useRestMutation('post', '/books');
