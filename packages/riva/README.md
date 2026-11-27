@@ -41,6 +41,7 @@ books.state; // { status: 'idle' | 'loading' | 'success' | 'error', data, error,
 | `@softistx/riva/resource` | reactive resources: tracked variables, `enabled`, built-in `idle / loading / success / error` | [resources](./docs/guide/resources.md) |
 | `@softistx/riva/ssr` | dehydrate, hydrate, scope resolver | [ssr](./docs/guide/ssr.md) |
 | `@softistx/riva/data` | the browser's `/_data` riva | [data](./docs/guide/data.md) |
+| `@softistx/riva/rxjs` | cold Observables of states (`toObservable`, `data$`, `fromAsyncIterable`), needs `rxjs` | [RxJS](#rxjs) |
 
 ## Extensions
 
@@ -187,13 +188,50 @@ The snapshot is an opaque format: pass on what `dehydrate` returned. A fresh ent
 
 `@softistx/riva/data` is the browser's side of a `/_data` route, for a transport of your own: `postData(opts, id, variables, signal?)`. [data](./docs/guide/data.md).
 
+## RxJS
+
+`@softistx/riva/rxjs` turns riva into cold Observables. `rxjs ^7.8` is an optional peer that only this subpath needs; the main entry never imports it, and importing `@softistx/riva/rxjs` without it installed fails at import.
+
+```sh
+bun add rxjs
+```
+
+```ts
+import { createRiva, query } from '@softistx/riva';
+import { data$, fromAsyncIterable, toObservable } from '@softistx/riva/rxjs';
+
+const riva = createRiva();
+const userQuery = query({ id: 'user', fetch: async (id: number) => ({ id }) });
+
+// Full states: { status, data, error, isFetching, updatedAt }
+const sub = toObservable(riva, userQuery, 1).subscribe(console.log);
+sub.unsubscribe(); // releases the query
+
+data$(riva, userQuery, 1).subscribe(console.log); // the data alone, no repeats
+
+// A mutation handle (e.g. `riva.graphql.mutation(DOC)` or `mutationHandle`): its state
+// toObservable(riva, saveHandle).subscribe(console.log);
+```
+
+Subscribing observes a query like `useQuery` and unsubscribing releases it. An error is a value of the stream, never its end. `toObservable` also takes a signal or computed (its value). `data$` takes a query or a `{ state, subscribe }` handle whose state has `data`, not a signal or computed.
+
+### Async streams
+
+`fromAsyncIterable(source)` (or `toObservable(source)`) takes an `AsyncSource<T>`: an `AsyncIterable<T>`, or a factory `(signal: AbortSignal) => AsyncIterable<T>`. Unsubscribing calls the iterator's `return()`; only the factory form also gets an abort, through its `signal`. A bare generator object is single-use and shared by every subscription to it, so prefer the factory form for generators:
+
+```ts
+const messages$ = fromAsyncIterable((signal) => subscribeToMessages({ signal }));
+```
+
+A factory that throws synchronously ends the stream with `error`.
+
 ## Types
 
 `RivaOptions` (what `createRiva` takes), `DataOperation` and `DataSource` (a `/_data` route's operations, from the main entry), `AddContextLast` and `ReservedKey` (the store's typing helpers, from `/store`). Each subpath exports its own types, listed in its [guide](./docs/README.md).
 
 ## Size budget
 
-The main entry stays within 6144 B gzipped, with `entities` or `infinite` within 8192 B each, with `ssr` or `store` within 7680 B each, with `data` within 7168 B, with `resource` within 7680 B, with every subpath within 12288 B, core + react within 9216 B (`bun run size` checks every row).
+The main entry stays within 6144 B gzipped, with `entities` or `infinite` within 8192 B each, with `ssr` or `store` within 7680 B each, with `data` within 7168 B, with `resource` within 7680 B, with every subpath within 12288 B, core + react within 9216 B, `@softistx/riva/rxjs` within 1024 B with `rxjs` left out (`bun run size` checks every row).
 
 ## Documentation
 

@@ -8,8 +8,8 @@ One entry per package: what it is, its entry points, its peers and the docs its 
 
 Core: signals, Riva, query and mutation engine, normalized and keyed cache, pagination, optimistic layer, dehydrate and hydrate. Pure TypeScript, no DOM, no React.
 
-- Entry points: `@softistx/riva`, `@softistx/riva/entities`, `@softistx/riva/infinite`, `@softistx/riva/ssr`, `@softistx/riva/store`, `@softistx/riva/resource`, `@softistx/riva/data`
-- Peers: none
+- Entry points: `@softistx/riva`, `@softistx/riva/entities`, `@softistx/riva/infinite`, `@softistx/riva/ssr`, `@softistx/riva/store`, `@softistx/riva/resource`, `@softistx/riva/data`, `@softistx/riva/rxjs`
+- Peers: `rxjs` `^7.8` (optional)
 - Read first: `node_modules/@softistx/riva/README.md` (one example per section, links to the guides)
 - Shipped docs:
   - `node_modules/@softistx/riva/docs/README.md`: @softistx/riva docs

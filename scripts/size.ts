@@ -163,6 +163,11 @@ export const budgets: Budget[] = [
 		limit: 7168,
 	},
 	{
+		name: '@softistx/riva/rxjs',
+		entry: 'packages/riva/dist/rxjs/index.js',
+		limit: 1024,
+	},
+	{
 		name: '@softistx/riva + riva-graphql/bff',
 		entry: [
 			'packages/riva/dist/index.js',
@@ -225,6 +230,7 @@ export async function measure(entry: string | string[]): Promise<number> {
 			'@softistx/openapi-httpyz',
 			'react-router',
 			'react-router/*',
+			'rxjs',
 			'node:async_hooks',
 		],
 		target: 'browser',
