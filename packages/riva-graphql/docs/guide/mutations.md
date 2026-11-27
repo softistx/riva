@@ -17,7 +17,7 @@ export const renamePatient = mutation(RENAME_PATIENT_MUTATION, {
 	invalidates: [patients], // observed lists refetch once it succeeded
 });
 
-await renamePatient.run(riva, { id: '1', name: 'Ana' }); // rejects after the rollback
+await renamePatient.mutate(riva, { id: '1', name: 'Ana' }); // rejects after the rollback
 ```
 
 ## Options
@@ -36,5 +36,5 @@ await renamePatient.run(riva, { id: '1', name: 'Ana' }); // rejects after the ro
 
 ## Traps
 
-- `run` rejects after the rollback: catch it, or read the error on the React hook.
+- `mutate` rejects after the rollback: catch it, or read the error on the React hook.
 - With `normalized()`, the optimistic data must include `__typename` and `id`.

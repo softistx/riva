@@ -89,7 +89,7 @@ The state is `loading` until the first result, then `success` with the last one.
 
 ## In components and loaders
 
-In a component, `useGraphQL`, `useGraphQLMutation` and `useGraphQLSubscription` call the same API on the riva of the nearest provider ([React hooks](../../README.md#react-hooks)); `useGraphQLMutation` returns `{ run, status, data, error, reset }` where the core handle is callable. In a React Router loader, `await riva.graphql.query(DOC, vars)` fills the request's riva, and the component reads it with `useGraphQL(DOC, vars)` ([loader pattern](https://github.com/softistx/riva/blob/develop/packages/riva-react-router/docs/guide/loader.md)). Give the riva a `defaults: { staleTime }` so the browser does not fetch again what the server sent.
+In a component, `useGraphQL`, `useGraphQLMutation` and `useGraphQLSubscription` call the same API on the riva of the nearest provider ([React hooks](../../README.md#react-hooks)); `useGraphQLMutation` returns `{ mutate, status, data, error, reset }` where the core handle is callable. In a React Router loader, `await riva.graphql.query(DOC, vars)` fills the request's riva, and the component reads it with `useGraphQL(DOC, vars)` ([loader pattern](https://github.com/softistx/riva/blob/develop/packages/riva-react-router/docs/guide/loader.md)). Give the riva a `defaults: { staleTime }` so the browser does not fetch again what the server sent.
 
 ```ts
 import { query } from '@softistx/riva-graphql';

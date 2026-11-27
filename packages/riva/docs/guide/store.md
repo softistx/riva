@@ -6,7 +6,7 @@ One definition per domain groups its state, computeds and actions. Every state k
 import { createRiva, mutation } from '@softistx/riva';
 import { store, type StoreContext } from '@softistx/riva/store';
 
-const saveBook = mutation<{ book: Book }, Book>({ id: 'saveBook', run: postBook });
+const saveBook = mutation<{ book: Book }, Book>({ id: 'saveBook', mutate: postBook });
 
 export const BookStore = store({
 	name: 'books', // required, unique on a riva; prefixes the signal names
@@ -63,7 +63,7 @@ await a.save(book); // `s` stays bound to `riva` across the await
 
 ## The context
 
-An action is `(s, ...args, ctx)`; callers pass only `args`. Annotating `ctx: StoreContext` is mandatory: it types the context and removes it from the callers' signature. `StoreContext` is `{ riva, fetch, mutate }`, where `fetch(query, vars?)` is `query.ensure(riva, …)` and `mutate(mutation, vars?)` is `mutation.run(riva, …)`.
+An action is `(s, ...args, ctx)`; callers pass only `args`. Annotating `ctx: StoreContext` is mandatory: it types the context and removes it from the callers' signature. `StoreContext` is `{ riva, fetch, mutate }`, where `fetch(query, vars?)` is `query.ensure(riva, …)` and `mutate(mutation, vars?)` is `mutation.mutate(riva, …)`.
 
 The context goes right after the declared arguments: a default value before it moves it. **An action whose last parameter is optional or defaulted must also declare `ctx?: StoreContext` last** (`inc(s, by?: number, ctx?: StoreContext)`): without it the context lands in that parameter, and the action fails to type.
 

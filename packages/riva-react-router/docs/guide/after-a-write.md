@@ -15,7 +15,7 @@ import { PATIENTS_QUERY, RENAME_PATIENT_MUTATION } from './graphql'; // schemati
 
 export default function Patients({ params }: { params: { school: string } }) {
 	const patients = useGraphQL(PATIENTS_QUERY, { school: params.school });
-	const { run: rename } = useGraphQLMutation(RENAME_PATIENT_MUTATION);
+	const { mutate: rename } = useGraphQLMutation(RENAME_PATIENT_MUTATION);
 	if (patients.status !== 'success') return null;
 	return (
 		<ul>

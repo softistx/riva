@@ -17,7 +17,7 @@ export function useMutation<Vars, Data>(
 ): MutationResult<Vars, Data> {
 	return useMutationHandle(def, (riva) =>
 		mutationHandle<Vars, Data, RunOptions>(riva, (vars, opts) =>
-			(def.run as (c: typeof riva, ...a: unknown[]) => Promise<Data>)(
+			(def.mutate as (c: typeof riva, ...a: unknown[]) => Promise<Data>)(
 				riva,
 				vars,
 				opts,

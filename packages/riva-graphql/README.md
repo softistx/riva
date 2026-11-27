@@ -93,7 +93,7 @@ import { useGraphQL, useGraphQLMutation, useGraphQLSubscription } from '@softist
 // Spinner and Failure are schematic: your own components.
 function Books({ first }: { first: number }) {
 	const books = useGraphQL(BOOKS_QUERY, { first });
-	const { run: add } = useGraphQLMutation(ADD_BOOK_MUTATION);
+	const { mutate: add } = useGraphQLMutation(ADD_BOOK_MUTATION);
 	if (books.status === 'loading') return <Spinner />;
 	if (books.status === 'error') return <Failure error={books.error} />; // books.data keeps a partial result
 	return <button onClick={() => add({ title: 'Dune' }, { invalidates: [BOOKS_QUERY] })}>{books.data.books.length}</button>;
@@ -113,11 +113,11 @@ How the hooks behave:
 - `suspense: true` suspends until data and types the state as `success`. Any error, a response with partial data and errors included, goes to the nearest error boundary, and resetting the boundary refetches it by itself. `enabled` cannot be combined with `suspense` (a type error): a suspending hook has data or throws, it is never idle. A subscription cannot suspend.
 - Under `suspense` the fetch uses a `staleTime` of at least 1000 ms (your `staleTime`, else the riva's default, whichever is longer), so the data a Suspense render just fetched is not fetched again at mount.
 
-The mutation hook returns `{ run, status, data, error, reset }`, the same shape as `useMutation` and `useRestMutation` (type `MutationResult`). `run` and `reset` keep their identity across renders; to react to a result, read `status` and `data`:
+The mutation hook returns `{ mutate, status, data, error, reset }`, the same shape as `useMutation` and `useRestMutation` (type `MutationResult`). `mutate` and `reset` keep their identity across renders; to react to a result, read `status` and `data`:
 
 ```tsx
-const { run, status } = useGraphQLMutation(ADD_BOOK_MUTATION);
-<button onClick={() => run({ title: 'Dune' })}>Add</button>;
+const { mutate, status } = useGraphQLMutation(ADD_BOOK_MUTATION);
+<button onClick={() => mutate({ title: 'Dune' })}>Add</button>;
 useEffect(() => {
 	if (status === 'success') close();
 }, [status]);
@@ -195,7 +195,7 @@ export const renamePatient = mutation(RENAME_PATIENT_MUTATION, {
 export const patientsFeed = infinite(PATIENTS_QUERY, { connection: (data) => data.patients });
 
 await patients.ensure(riva, { school: 'north' }); // variables typed from the document
-await renamePatient.run(riva, { id: '1', name: 'Ana' }); // rejects after the rollback
+await renamePatient.mutate(riva, { id: '1', name: 'Ana' }); // rejects after the rollback
 await patientsFeed.fetchNext(riva, { school: 'north' });
 ```
 

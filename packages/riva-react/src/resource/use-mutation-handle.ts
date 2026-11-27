@@ -11,7 +11,7 @@ import { useRiva } from '../context';
 
 /**
  * What every mutation hook returns (`useMutation`, `useGraphQLMutation`,
- * `useRestMutation`): `run` and `reset` are stable across renders, `status`,
+ * `useRestMutation`): `mutate` and `reset` are stable across renders, `status`,
  * `data` and `error` are the state of the last run (`idle` first).
  */
 export type MutationResult<
@@ -20,15 +20,15 @@ export type MutationResult<
 	Opts = RunOptions,
 > = MutationState<Data> & {
 	/** Runs the mutation: resolves with the server data, rejects with the error (also in `error`). */
-	run: (...args: VarsArgs<Vars, [opts?: Opts]>) => Promise<Data>;
+	mutate: (...args: VarsArgs<Vars, [opts?: Opts]>) => Promise<Data>;
 	/** Back to `idle`; the result of a run still in flight is dropped from the state. */
 	reset: () => void;
 };
 
 /**
  * A mutation handle held by the component: `make` builds it for the riva in
- * scope (once per riva and `key`; a definition is its own key), `run` calls
- * it and the state of its last call is read beside it. `run` and `reset` keep
+ * scope (once per riva and `key`; a definition is its own key), `mutate` calls
+ * it and the state of its last call is read beside it. `mutate` and `reset` keep
  * their identity across renders. The state starts `idle` on the server and
  * the client alike; a call that outlives the component only stops reporting.
  */
@@ -48,10 +48,10 @@ export function useMutationHandle<Vars, Data, Opts = never>(
 		() => handle.state,
 		() => handle.state,
 	);
-	const run = useCallback(
+	const mutate = useCallback(
 		(...args: VarsArgs<Vars, [opts?: Opts]>) => current.current(...args),
 		[],
 	);
 	const reset = useCallback(() => current.current.reset(), []);
-	return useMemo(() => ({ ...state, run, reset }), [state, run, reset]);
+	return useMemo(() => ({ ...state, mutate, reset }), [state, mutate, reset]);
 }

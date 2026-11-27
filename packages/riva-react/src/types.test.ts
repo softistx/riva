@@ -41,13 +41,13 @@ const types = () => {
 
 	const rename = mutation<{ id: string }, boolean>({
 		id: 't/rename',
-		run: async () => true,
+		mutate: async () => true,
 	});
 	const m = useMutation(rename);
-	expectTypeOf(m.run({ id: '1' })).toEqualTypeOf<Promise<boolean>>();
+	expectTypeOf(m.mutate({ id: '1' })).toEqualTypeOf<Promise<boolean>>();
 	expectTypeOf(m.data).toEqualTypeOf<boolean | undefined>();
 	// @ts-expect-error wrong variables
-	m.run({ id: 1 });
+	m.mutate({ id: 1 });
 
 	const feed = infinite<
 		{ school: string; after?: string },

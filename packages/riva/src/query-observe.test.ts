@@ -230,10 +230,10 @@ test('an optimistic layer that hides the data starts no fetch and sets no error'
 	let release!: (v: string) => void;
 	const m = mutation<void, string>({
 		id: 'hide',
-		run: () => new Promise<string>((r) => (release = r)),
+		mutate: () => new Promise<string>((r) => (release = r)),
 		optimistic: (_v, tx) => tx.set(q, undefined, () => undefined as never),
 	});
-	const run = m.run(riva);
+	const run = m.mutate(riva);
 	await flush();
 	expect(riva.get(q).data).toBeUndefined();
 	expect(riva.get(q).status).toBe('success');

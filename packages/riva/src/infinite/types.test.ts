@@ -59,7 +59,7 @@ test('a feed with no variables takes none', () => {
 test('a feed is a query for mutations', () => {
 	mutation<string, void>({
 		id: 'm',
-		run: async () => {},
+		mutate: async () => {},
 		optimistic: (_n, tx) =>
 			tx.set(
 				feed,

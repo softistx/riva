@@ -67,7 +67,7 @@ export function run(
 	const ctx: StoreContext = {
 		riva,
 		fetch: (q, ...a) => (q.ensure as (...x: unknown[]) => never)(riva, ...a),
-		mutate: (m, ...a) => (m.run as (...x: unknown[]) => never)(riva, ...a),
+		mutate: (m, ...a) => (m.mutate as (...x: unknown[]) => never)(riva, ...a),
 	};
 	// The context goes after the declared arguments: defaults before it shift it.
 	const given = args.slice();

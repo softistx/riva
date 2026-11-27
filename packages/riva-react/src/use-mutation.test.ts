@@ -6,10 +6,10 @@ import { type MutationResult, useMutation } from './use-mutation';
 
 type Rename = MutationResult<{ id: string; name: string }, string>;
 
-function setup(run: (v: { id: string; name: string }) => Promise<string>) {
+function setup(mutate: (v: { id: string; name: string }) => Promise<string>) {
 	const def = mutation<{ id: string; name: string }, string>({
 		id: `um/${Math.random()}`,
-		run,
+		mutate,
 	});
 	const box: { m?: Rename; renders: number } = { renders: 0 };
 	function C() {
@@ -28,7 +28,7 @@ test('status flows idle, loading, success with the data', async () => {
 	expect(m.text()).toBe('idle:-');
 	let result!: Promise<string>;
 	await act(async () => {
-		result = box.m?.run({ id: '1', name: 'a' }) as Promise<string>;
+		result = box.m?.mutate({ id: '1', name: 'a' }) as Promise<string>;
 	});
 	expect(m.text()).toBe('loading:-');
 	await act(async () => gate.resolve('done'));
@@ -44,7 +44,7 @@ test('a rejection sets the error and rejects the run', async () => {
 	const m = await mount(h(C), newRiva());
 	let caught: unknown;
 	await act(async () => {
-		await box.m?.run({ id: '1', name: 'a' }).catch((e) => {
+		await box.m?.mutate({ id: '1', name: 'a' }).catch((e) => {
 			caught = e;
 		});
 	});
@@ -62,8 +62,8 @@ test('the latest run owns the state', async () => {
 	);
 	const m = await mount(h(C), newRiva());
 	await act(async () => {
-		void box.m?.run({ id: '1', name: 'a' });
-		void box.m?.run({ id: '1', name: 'b' });
+		void box.m?.mutate({ id: '1', name: 'a' });
+		void box.m?.mutate({ id: '1', name: 'b' });
 	});
 	await act(async () => gates[1]?.resolve('second'));
 	await act(async () => gates[0]?.resolve('first'));
@@ -84,7 +84,7 @@ test('a run finishes after unmount with no state update and no warning', async (
 	const rendersBefore = box.renders;
 	let result!: Promise<string>;
 	await act(async () => {
-		result = box.m?.run({ id: '1', name: 'a' }) as Promise<string>;
+		result = box.m?.mutate({ id: '1', name: 'a' }) as Promise<string>;
 	});
 	const rendersPending = box.renders;
 	await m.unmount();
@@ -97,12 +97,12 @@ test('a run finishes after unmount with no state update and no warning', async (
 	error.mockRestore();
 });
 
-test('run and reset keep their identity across renders', async () => {
+test('mutate and reset keep their identity across renders', async () => {
 	const [box, C] = setup(async () => 'x');
 	const m = await mount(h(C), newRiva());
-	const { run, reset } = box.m as Rename;
-	await act(async () => void box.m?.run({ id: '1', name: 'a' }));
-	expect(box.m?.run).toBe(run);
+	const { mutate, reset } = box.m as Rename;
+	await act(async () => void box.m?.mutate({ id: '1', name: 'a' }));
+	expect(box.m?.mutate).toBe(mutate);
 	expect(box.m?.reset).toBe(reset);
 	await m.unmount();
 });
@@ -111,11 +111,11 @@ test('a changed definition resets the state to idle and drops the run still in f
 	const gate = deferred<string>();
 	const first = mutation<string, string>({
 		id: 'um/first',
-		run: () => gate.promise,
+		mutate: () => gate.promise,
 	});
 	const second = mutation<string, string>({
 		id: 'um/second',
-		run: async () => 'second',
+		mutate: async () => 'second',
 	});
 	const box: { m?: MutationResult<string, string> } = {};
 	function C({ def }: { def: typeof first }) {
@@ -125,7 +125,7 @@ test('a changed definition resets the state to idle and drops the run still in f
 	const m = await mount(h(C, { def: first }), newRiva());
 	let pending!: Promise<string>;
 	await act(async () => {
-		pending = box.m?.run('x') as Promise<string>;
+		pending = box.m?.mutate('x') as Promise<string>;
 	});
 	expect(m.text()).toBe('loading:-');
 	await m.rerender(h(C, { def: second }));
@@ -134,7 +134,7 @@ test('a changed definition resets the state to idle and drops the run still in f
 	expect(await pending).toBe('late'); // the run itself still resolves
 	await act(async () => {});
 	expect(m.text()).toBe('idle:-'); // but no longer reports
-	await act(async () => void box.m?.run('y'));
+	await act(async () => void box.m?.mutate('y'));
 	expect(m.text()).toBe('success:second');
 	await m.unmount();
 });

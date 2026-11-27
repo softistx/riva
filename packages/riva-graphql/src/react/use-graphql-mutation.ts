@@ -8,10 +8,10 @@ import type { VarsOf } from '../types';
 import { graphqlOf } from './graphql-of';
 
 /**
- * A GraphQL mutation held by the component: read `run`, `status`, `data`,
- * `error` and `reset` from the result (`await run({ id })` resolves with the
+ * A GraphQL mutation held by the component: read `mutate`, `status`, `data`,
+ * `error` and `reset` from the result (`await mutate({ id })` resolves with the
  * data and rejects with the error; `idle` first; `reset()` goes back to idle).
- * `run` and `reset` keep their identity across renders. Its options are `riva.graphql.mutation`'s
+ * `mutate` and `reset` keep their identity across renders. Its options are `riva.graphql.mutation`'s
  * (`invalidates`).
  */
 export function useGraphQLMutation<Data, Vars>(

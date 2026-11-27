@@ -40,7 +40,7 @@ const riva = createRiva({
 
 await patients.ensure(riva, { school: 'north' }); // fetch if missing or stale, else the cache
 const state = riva.get(patients, { school: 'north' }); // state.data is the document's data
-await renamePatient.run(riva, { id: '1', name: 'Ana' }); // rejects after the rollback
+await renamePatient.mutate(riva, { id: '1', name: 'Ana' }); // rejects after the rollback
 patients.invalidate(riva, { school: 'north' });
 ```
 
@@ -77,13 +77,13 @@ const todos = query({ id: 'todos', fetch: async () => (await fetch('/api/todos')
 
 const addTodo = mutation<string, string>({
 	id: 'addTodo',
-	run: async (title, { signal }) => (await fetch('/api/todos', { method: 'POST', body: title, signal })).text(),
+	mutate: async (title, { signal }) => (await fetch('/api/todos', { method: 'POST', body: title, signal })).text(),
 	optimistic: (title, tx) => tx.set(todos, undefined, (prev) => [...(prev ?? []), title]), // shown at once
 	updates: (tx, saved) => tx.set(todos, undefined, (prev) => [...(prev ?? []), saved]), // on success
 	invalidates: [todos], // marks stale; observed ones refetch
 });
 
-await addTodo.run(createRiva(), 'Buy milk'); // rejects, with the layer dropped, on failure
+await addTodo.mutate(createRiva(), 'Buy milk'); // rejects, with the layer dropped, on failure
 ```
 
 Trap: after success the optimistic layer is dropped, so give the mutation `updates`, `invalidates` or `cache`.
@@ -156,7 +156,7 @@ Name the cursor variables with `cursor: { after: 'afterCursor' }` when the docum
 
 ## Definitions in components
 
-`useQuery`, `useMutation` and `useInfiniteQuery` of `@softistx/riva-react` read definitions; `useGraphQL` and `useRest(path | definition, input)` read the simple API; the mutation hooks return `{ run, status, data, error, reset }`. See the [React guides](https://github.com/softistx/riva/blob/develop/packages/riva-react/docs/README.md).
+`useQuery`, `useMutation` and `useInfiniteQuery` of `@softistx/riva-react` read definitions; `useGraphQL` and `useRest(path | definition, input)` read the simple API; the mutation hooks return `{ mutate, status, data, error, reset }`. See the [React guides](https://github.com/softistx/riva/blob/develop/packages/riva-react/docs/README.md).
 
 ## One riva, two kinds of entry
 

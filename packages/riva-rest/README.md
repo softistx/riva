@@ -88,7 +88,7 @@ import { useRest, useRestMutation } from '@softistx/riva-rest/react';
 
 function Book({ id }: { id: string }) {
 	const book = useRest('/books/{id}', { param: { id } });
-	const { run: save } = useRestMutation('put', '/books/{id}');
+	const { mutate: save } = useRestMutation('put', '/books/{id}');
 	if (book.status !== 'success') return null;
 	return <button onClick={() => save({ param: { id }, json: { title: 'Dune' } })}>{book.data.title}</button>;
 }
@@ -105,11 +105,11 @@ Without `Register` the hooks are untyped (`useRest<T>`). How they behave:
 - While `enabled` is false the status is `idle`, the input function is not called and nothing is fetched.
 - `suspense: true` suspends until data, types the state as `success` and sends any error to the nearest error boundary; resetting the boundary refetches it by itself. `enabled` cannot be combined with `suspense` (a type error): a suspending hook is never idle. Its fetch uses a `staleTime` of at least 1000 ms (yours, else the riva's default, whichever is longer).
 
-`useRest` takes the path first (`useRest('get', path)` is gone and throws `RIVA_DEFINITION`). The mutation hook returns `{ run, status, data, error, reset }`, the same shape as `useMutation` and `useGraphQLMutation` (type `MutationResult`). `run` and `reset` keep their identity across renders; to react to a result, read `status` and `data`:
+`useRest` takes the path first (`useRest('get', path)` is gone and throws `RIVA_DEFINITION`). The mutation hook returns `{ mutate, status, data, error, reset }`, the same shape as `useMutation` and `useGraphQLMutation` (type `MutationResult`). `run` and `reset` keep their identity across renders; to react to a result, read `status` and `data`:
 
 ```tsx
-const { run, status } = useRestMutation('post', '/books');
-<button onClick={() => run({ json: { title: 'Dune' } })}>Add</button>;
+const { mutate, status } = useRestMutation('post', '/books');
+<button onClick={() => mutate({ json: { title: 'Dune' } })}>Add</button>;
 useEffect(() => {
 	if (status === 'success') close();
 }, [status]);
@@ -144,7 +144,7 @@ export const invoices = query(operations, 'get /invoices');
 export const createInvoice = mutation(operations, 'post /invoices', { invalidates: [invoices] });
 
 await invoice.ensure(riva, { param: { id: '7' } }); // Invoice, typed from the spec
-await createInvoice.run(riva, { json: { number: 'F-8', total: 120 } });
+await createInvoice.mutate(riva, { json: { number: 'F-8', total: 120 } });
 riva.get(invoices); // an operation whose input is all optional takes no variables
 ```
 

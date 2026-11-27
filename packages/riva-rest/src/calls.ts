@@ -77,7 +77,11 @@ export function callsOf(
 		const op = resolve(method, path, 'mutation');
 		let def = memo.mutations.get(op.id);
 		if (!def) {
-			def = coreMutation({ ...defaults, id: `rest:${op.id}`, run: callOf(op) });
+			def = coreMutation({
+				...defaults,
+				id: `rest:${op.id}`,
+				mutate: callOf(op),
+			});
 			memo.mutations.set(op.id, def);
 		}
 		return def;

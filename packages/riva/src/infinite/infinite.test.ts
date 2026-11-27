@@ -425,7 +425,7 @@ describe('with entities()', () => {
 		await f.ensure(c);
 		const add = mutation<string, string>({
 			id: 'add',
-			run: async () => {
+			mutate: async () => {
 				throw new RivaHttpError(500, 'Server Error');
 			},
 			optimistic: (name, tx) =>
@@ -446,7 +446,7 @@ describe('with entities()', () => {
 					return { pages: [page], params: prev?.params ?? [{}] };
 				}),
 		});
-		const run = add.run(c, 'Neo').catch(() => {});
+		const run = add.mutate(c, 'Neo').catch(() => {});
 		expect(c.get(f).data?.nodes[0]?.name).toBe('Neo');
 		expect(c.get(f).data?.nodes).toHaveLength(3);
 		await run;

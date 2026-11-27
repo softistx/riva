@@ -49,9 +49,13 @@ export async function mutateInvalidating<T, V, D>(
 			? () => t.query.invalidate(riva, t.vars)
 			: () => (t as Query<never, unknown>).invalidate(riva);
 	});
-	const data = await (def.run as (...a: unknown[]) => Promise<D>)(riva, vars, {
-		signal: call?.signal,
-	});
+	const data = await (def.mutate as (...a: unknown[]) => Promise<D>)(
+		riva,
+		vars,
+		{
+			signal: call?.signal,
+		},
+	);
 	for (const f of stale) f();
 	return data;
 }

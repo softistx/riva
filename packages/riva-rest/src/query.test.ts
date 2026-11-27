@@ -60,7 +60,7 @@ test('a mutation posts its body and invalidates a query', async () => {
 	const create = mutation(api, 'post /invoices', { invalidates: [list] });
 	expect(create.id).toBe('post /invoices');
 	await list.ensure(riva, undefined);
-	const created = await create.run(riva, {
+	const created = await create.mutate(riva, {
 		json: { number: 'F-1', total: 5 },
 	});
 	expect(created).toEqual({ id: '1', number: 'F-1', total: 5 });
@@ -168,11 +168,11 @@ test('a free fetcher is typed by its function, gets ctx.http, and has its httpyz
 	await expect(broken.ensure(riva)).rejects.toBeInstanceOf(RivaNetworkError);
 	const down = mutation({
 		id: 'down',
-		run: async () => {
+		mutate: async () => {
 			throw new NetworkError({ method: 'post', path: '/down' });
 		},
 	});
-	await expect(down.run(riva)).rejects.toBeInstanceOf(RivaNetworkError);
+	await expect(down.mutate(riva)).rejects.toBeInstanceOf(RivaNetworkError);
 });
 
 test('a free definition with no ctx.http riva says how to build the transport', async () => {
@@ -196,7 +196,7 @@ test('a free fetcher or mutation with no id throws a RivaError', () => {
 		query({ fetch: async () => 1 } as unknown as Parameters<typeof query>[0]),
 	).toThrow('query() needs an id');
 	expect(() =>
-		mutation({ run: async () => 1 } as unknown as Parameters<
+		mutation({ mutate: async () => 1 } as unknown as Parameters<
 			typeof mutation
 		>[0]),
 	).toThrow('mutation() needs an id');
@@ -221,7 +221,7 @@ test('a definition from the operations table alone has the same id and runs thro
 	);
 	await fromTable.ensure(riva, { param: { id: '7' } });
 	expect(calls).toEqual([['getInvoice', { param: { id: '7' } }]]);
-	await mutation(operations, 'post /invoices').run(riva, {
+	await mutation(operations, 'post /invoices').mutate(riva, {
 		json: { number: 'F-8', total: 2 },
 	});
 	expect(calls[1]).toEqual([
@@ -244,11 +244,11 @@ test('the table form refuses an unknown route and a wrong kind at definition tim
 test('free options still define, and one without an id still throws', () => {
 	const free = query({ id: 'free', fetch: async () => 1 });
 	expect(free.id).toBe('free');
-	expect(mutation({ id: 'free-m', run: async () => 1 }).id).toBe('free-m');
+	expect(mutation({ id: 'free-m', mutate: async () => 1 }).id).toBe('free-m');
 	expect(() => query({ fetch: async () => 1 } as never)).toThrow(
 		'query() needs an id',
 	);
-	expect(() => mutation({ run: async () => 1 } as never)).toThrow(
+	expect(() => mutation({ mutate: async () => 1 } as never)).toThrow(
 		'mutation() needs an id',
 	);
 });

@@ -50,7 +50,7 @@ export type GraphQLQueryOptions = Omit<
 
 export type GraphQLMutationOptions<Vars, Data> = Omit<
 	MutationOptions<Vars, Data>,
-	'id' | 'run' | 'cache'
+	'id' | 'mutate' | 'cache'
 > & {
 	/** Replaces the id derived from the document. */
 	id?: string;
@@ -89,6 +89,6 @@ export function mutation<Data, Vars>(
 		...rest,
 		...policyOf(cache, op),
 		id: id ?? op.id,
-		run: fetchOf(op) as MutationOptions<VarsOf<Vars>, Data>['run'],
+		mutate: fetchOf(op) as MutationOptions<VarsOf<Vars>, Data>['mutate'],
 	});
 }

@@ -36,9 +36,9 @@ const types = () => {
 		>
 	>();
 	// @ts-expect-error variables are required and typed
-	rename.run({} as never);
+	rename.mutate({} as never);
 	// @ts-expect-error unknown variable
-	rename.run({} as never, { id: '1', name: 'a', extra: 1 });
+	rename.mutate({} as never, { id: '1', name: 'a', extra: 1 });
 	// @ts-expect-error a number is not a school id string
 	patients.ensure({} as never, { school: 1 });
 	viewer.ensure({} as never);

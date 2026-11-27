@@ -363,7 +363,7 @@ describe('async actions', () => {
 	});
 	const save = mutation<{ title: string }, Book>({
 		id: 'store/save',
-		run: async (v) => ({ title: v.title }),
+		mutate: async (v) => ({ title: v.title }),
 	});
 
 	const make2 = (gate?: Promise<void>) =>

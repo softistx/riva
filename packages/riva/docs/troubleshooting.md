@@ -317,7 +317,7 @@ const invoices = query({ id: 'invoices', staleTime: '30s', fetch });
 
 Code: `RIVA_ABORT` (`RivaAbortError`).
 
-**When:** `ensure` rejects with it after the `signal` you passed aborted, or after `cancel` aborted the fetch you were waiting on. A mutation's `run(riva, vars, { signal })` rejects with it too, and rolls back its optimistic layers, including while it waits for an earlier mutation to settle (it never commits afterwards).
+**When:** `ensure` rejects with it after the `signal` you passed aborted, or after `cancel` aborted the fetch you were waiting on. A mutation's `mutate(riva, vars, { signal })` rejects with it too, and rolls back its optimistic layers, including while it waits for an earlier mutation to settle (it never commits afterwards).
 
 **Why:** abort is a decision, not a failure: it is never retried and never stored as the query's error; the entry returns to its previous state.
 

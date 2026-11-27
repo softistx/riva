@@ -196,7 +196,10 @@ describe('riva.graphql.mutate', () => {
 	test('a mutation definition runs on the same riva', async () => {
 		const t = fakeTransport(() => ({ renamePatient: { id: '1', name: 'A' } }));
 		const riva = createRiva({ graphql: withGraphQL(t) });
-		await mutation(RENAME_PATIENT_MUTATION).run(riva, { id: '1', name: 'A' });
+		await mutation(RENAME_PATIENT_MUTATION).mutate(riva, {
+			id: '1',
+			name: 'A',
+		});
 		expect(t.calls).toHaveLength(1);
 	});
 });

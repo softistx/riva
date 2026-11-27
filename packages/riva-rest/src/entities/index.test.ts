@@ -63,9 +63,9 @@ test('a mutation result updates every query showing the invoice', async () => {
 	const rename = mutation({
 		id: 'rename',
 		cache,
-		run: async () => ({ id: '1', number: 'F-1', total: 5 }),
+		mutate: async () => ({ id: '1', number: 'F-1', total: 5 }),
 	});
-	await rename.run(riva);
+	await rename.mutate(riva);
 	const list = riva.get(all).data as { items: Invoice[] };
 	expect(list.items[0]?.total).toBe(5);
 	evict(riva, 'Invoice:1');
