@@ -89,7 +89,7 @@ export function observe(
 		if (--e.observers === 0) {
 			c.sched.clearTimeout(e.poll);
 			// A closed stream leaves the entry stale: the next observer subscribes again.
-			if (e.stop?.()) e.invalidated = true;
+			if (!e.run && e.stop?.()) e.invalidated = true;
 			abandon(c, e, e.run);
 			armGc(c, e);
 		}

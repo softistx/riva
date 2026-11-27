@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, expectTypeOf, test } from 'bun:test';
-import { EMPTY, Observable, Subject } from 'rxjs';
+import { EMPTY, Observable, ReplaySubject, Subject, startWith } from 'rxjs';
 import { fakeEnv, settle } from '../../test/ssr';
 import type { Query, QueryState } from '../query';
 import { dehydrate, hydrate } from '../ssr';
@@ -251,6 +251,53 @@ describe('liveQuery in a browser', () => {
 		const off = riva.subscribe(q, room, () => {});
 		await settle();
 		expect(count().subscribed).toBe(2);
+		off();
+	});
+
+	test('a burst on subscribe (startWith) settles after it and later values arrive', async () => {
+		browser();
+		const s = new Subject<number>();
+		const q = liveQuery<void, number>({
+			id: 'burst/start',
+			retry: 0,
+			observe: () => s.pipe(startWith(1, 2)),
+		});
+		const riva = fakeEnv().riva();
+		const off = riva.subscribe(q, undefined, () => {});
+		await settle();
+		expect(riva.get(q)).toMatchObject({ status: 'success', data: 2 });
+		s.next(3);
+		expect(riva.get(q).data).toBe(3);
+		expect(s.observed).toBe(true);
+		off();
+		expect(s.observed).toBe(false);
+	});
+
+	test('an unobserved ensure over a ReplaySubject closes it; an observer resubscribes', async () => {
+		browser();
+		const r = new ReplaySubject<number>(2);
+		r.next(1);
+		r.next(2);
+		let subscribed = 0;
+		const q = liveQuery<void, number>({
+			id: 'burst/replay',
+			retry: 0,
+			observe: () =>
+				new Observable<number>((sub) => {
+					subscribed++;
+					return r.subscribe(sub);
+				}),
+		});
+		const riva = fakeEnv().riva();
+		expect(await q.ensure(riva)).toBe(2);
+		await settle();
+		expect(r.observed).toBe(false);
+		const off = riva.subscribe(q, undefined, () => {});
+		await settle();
+		expect(subscribed).toBe(2);
+		expect(r.observed).toBe(true);
+		r.next(5);
+		expect(riva.get(q).data).toBe(5);
 		off();
 	});
 

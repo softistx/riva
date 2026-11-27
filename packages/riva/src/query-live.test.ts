@@ -97,4 +97,19 @@ describe('hydrating a live entry', () => {
 		off();
 		expect(stops).toEqual([1]);
 	});
+
+	test('a release and a new observer in the same task keep the stream open', async () => {
+		g.document = {};
+		const { q, stops } = kept('keep/restrict');
+		const riva = fakeEnv().riva();
+		q.prefetch(riva);
+		const a = riva.subscribe(q, undefined, () => {});
+		a();
+		const b = riva.subscribe(q, undefined, () => {});
+		await settle();
+		expect(stops).toEqual([]);
+		expect(riva.get(q).data).toBe(1);
+		b();
+		expect(stops).toEqual([1]);
+	});
 });

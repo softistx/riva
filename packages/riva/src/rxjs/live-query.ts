@@ -34,24 +34,33 @@ export function liveQuery<Vars = void, Data = unknown>(
 			new Promise<Data>((resolve, reject) => {
 				let first = true;
 				let push = false;
+				let sync = true;
+				let got = false;
+				let last!: Data;
+				let late: { e: unknown } | undefined;
 				const all = new Subscription();
 				const stop = () => (all.unsubscribe(), true as const);
+				const settle = (v: Data) => {
+					first = false;
+					resolve(v);
+					if (isBrowser() && keep) keep(stop);
+					else stop();
+				};
 				all.add(
 					observe(vars).subscribe({
 						next(v) {
-							if (!first) {
+							if (sync) {
+								got = true;
+								last = v;
+							} else if (first) settle(v);
+							else {
 								push = true;
 								def.setData(riva, vars, v);
 								push = false;
-								return;
 							}
-							first = false;
-							resolve(v);
-							if (isBrowser() && keep) keep(stop);
-							else stop();
 						},
 						complete() {
-							if (first)
+							if (first && !got)
 								reject(
 									new RivaError(
 										'RIVA_LIVE',
@@ -60,13 +69,23 @@ export function liveQuery<Vars = void, Data = unknown>(
 								);
 						},
 						error(e) {
-							if (first) reject(e);
+							if (sync && got) late = { e };
+							else if (first) reject(e);
 							else riva.queries.fail(def, vars, e);
 						},
 					}),
 				);
+				sync = false;
 				signal.addEventListener('abort', () => push || stop(), { once: true });
 				if (signal.aborted) stop();
+				else if (got && first) {
+					settle(last);
+					// a stream that failed right after its values: the error follows the value
+					if (late)
+						void Promise.resolve().then(() =>
+							riva.queries.fail(def, vars, late?.e),
+						);
+				}
 			}),
 	});
 	return def;
