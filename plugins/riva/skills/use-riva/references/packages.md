@@ -32,7 +32,7 @@ Core: signals, Riva, query and mutation engine, normalized and keyed cache, pagi
 GraphQL transport for riva over @softistx/graphql-client, with persisted ids and the allowlist codegen plugin.
 
 - Entry points: `@softistx/riva-graphql`, `@softistx/riva-graphql/infinite`, `@softistx/riva-graphql/cache`, `@softistx/riva-graphql/codegen`, `@softistx/riva-graphql/server`, `@softistx/riva-graphql/bff`, `@softistx/riva-graphql/react`
-- Peers: `@softistx/riva` `^0.10.0`, `@softistx/graphql-client` `^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0`, `@graphql-typed-document-node/core` `^3.2.0` (optional), `graphql` `^16.11.0 || ^17.0.0` (optional), `react` `^19.0.0` (optional), `@softistx/riva-react` `^0.10.0` (optional)
+- Peers: `@softistx/riva` `^0.10.0`, `@softistx/graphql-client` `^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0`, `@graphql-typed-document-node/core` `^3.2.0` (optional), `graphql` `^16.11.0 || ^17.0.0` (optional), `react` `^19.0.0` (optional), `@softistx/riva-react` `^0.10.0` (optional)
 - Read first: `node_modules/@softistx/riva-graphql/README.md` (one example per section, links to the guides)
 - Shipped docs:
   - `node_modules/@softistx/riva-graphql/docs/README.md`: riva-graphql docs
