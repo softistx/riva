@@ -533,3 +533,122 @@ test('a live query shows what its stream pushes and unsubscribes on unmount', as
 	await m.unmount();
 	expect(unsubscribed).toBe(1);
 });
+
+/** A query that publishes `parts` through `ctx.onPart`, then resolves with the last gate's value. */
+function streamed(id: string) {
+	const gate = deferred<{ a: string; b?: string }>();
+	let publish: (d: unknown) => void = () => {};
+	let calls = 0;
+	const def = query<{ school: string }, { a: string; b?: string }>({
+		id,
+		retry: 0,
+		fetch: (_v, ctx) => {
+			calls++;
+			publish = (d) => ctx.onPart?.(d);
+			return gate.promise;
+		},
+	});
+	return { def, gate, part: (d: unknown) => publish(d), calls: () => calls };
+}
+
+function Parts({ def }: { def: ReturnType<typeof streamed>['def'] }) {
+	const q = useQuery(def, { school: 's' });
+	return h(
+		'p',
+		null,
+		`${q.status}:${q.dataState ?? '-'}:${q.data?.a ?? '-'}:${q.data?.b ?? '-'}:${q.isFetching}`,
+	);
+}
+
+test('renders the first part, then the full data, with no loop in the component', async () => {
+	const s = streamed('uq/parts');
+	const m = await mount(h(Parts, { def: s.def }), newRiva());
+	expect(m.text()).toBe('loading:-:-:-:true');
+	await flush(() => s.part({ a: 'fast' }));
+	expect(m.text()).toBe('success:streaming:fast:-:true');
+	await flush(() => s.gate.resolve({ a: 'fast', b: 'slow' }));
+	expect(m.text()).toBe('success:complete:fast:slow:false');
+	expect(s.calls()).toBe(1);
+	await m.unmount();
+});
+
+test('unmounting during the stream aborts it; a part after that is dropped', async () => {
+	let ctx: { signal: AbortSignal; onPart?: (d: unknown) => void } | undefined;
+	const def = query<{ school: string }, string>({
+		id: 'uq/parts-abort',
+		retry: 0,
+		fetch: (_v, c) => {
+			ctx = c;
+			return new Promise(() => {});
+		},
+	});
+	const riva = newRiva();
+	const m = await mount(h(Show, { def, school: 's' }), riva);
+	await flush(() => ctx?.onPart?.('a'));
+	expect(m.text()).toBe('success:a:true');
+	await m.unmount();
+	expect(ctx?.signal.aborted).toBe(true);
+	ctx?.onPart?.('late');
+	expect(riva.get(def, { school: 's' }).data).toBeUndefined();
+});
+
+test('refetch replaces the stream: the old one is aborted and its parts dropped', async () => {
+	const ctxs: Array<{ signal: AbortSignal; onPart?: (d: unknown) => void }> =
+		[];
+	const gates: Array<ReturnType<typeof deferred<string>>> = [];
+	const q2 = query<{ school: string }, string>({
+		id: 'uq/parts-refetch2',
+		retry: 0,
+		fetch: (_v, c) => {
+			ctxs.push(c);
+			const g = deferred<string>();
+			gates.push(g);
+			return g.promise;
+		},
+	});
+	let refetch!: () => Promise<void>;
+	function C() {
+		const q = useQuery(q2, { school: 's' });
+		refetch = q.refetch;
+		return h('p', null, `${q.data ?? '-'}:${q.dataState ?? '-'}`);
+	}
+	const m = await mount(h(C), newRiva());
+	await flush(() => ctxs[0]?.onPart?.('one'));
+	expect(m.text()).toBe('one:streaming');
+	await flush(() => void refetch());
+	expect(ctxs[0]?.signal.aborted).toBe(true);
+	await flush(() => ctxs[0]?.onPart?.('stale'));
+	expect(m.text()).toBe('one:streaming');
+	await flush(() => ctxs[1]?.onPart?.('two'));
+	expect(m.text()).toBe('two:streaming');
+	await flush(() => gates[1]?.resolve('two!'));
+	expect(m.text()).toBe('two!:complete');
+	await m.unmount();
+});
+
+test('suspense resolves at the first part; later parts update without suspending again', async () => {
+	const s = streamed('uq/parts-suspense');
+	let suspended = 0;
+	function C() {
+		const q = useQuery(s.def, { school: 's' }, { suspense: true });
+		return h('p', null, `${q.data.a}:${q.data.b ?? '-'}:${q.dataState ?? '-'}`);
+	}
+	function Fallback() {
+		suspended++;
+		return h('p', null, 'loading');
+	}
+	const m = await mount(
+		h(Suspense, { fallback: h(Fallback) }, h(C)),
+		newRiva(),
+	);
+	expect(m.text()).toBe('loading');
+	await flush(() => s.part({ a: 'fast' }));
+	await flush();
+	expect(m.text()).toBe('fast:-:streaming');
+	const before = suspended;
+	await flush(() => s.gate.resolve({ a: 'fast', b: 'slow' }));
+	expect(m.text()).toBe('fast:slow:complete');
+	expect(suspended).toBe(before);
+	expect(s.calls()).toBe(1);
+	await m.unmount();
+});

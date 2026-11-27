@@ -1,3 +1,4 @@
+/* biome-ignore-all lint/style/useNamingConvention: GraphQL's __typename */
 import { expect, test } from 'bun:test';
 import type { TypedDocumentNode } from '@graphql-typed-document-node/core';
 import { createRiva, RivaRequestError } from '@softistx/riva';
@@ -8,6 +9,7 @@ import {
 	RENAME_PATIENT_MUTATION,
 	VIEWER_QUERY,
 } from '../test/fixtures';
+import { normalized } from './cache';
 import { mutation, query } from './query';
 import { provideGraphQL } from './transport';
 
@@ -108,4 +110,102 @@ test('a mutation runs through the transport, with optimistic and invalidates', a
 		kind: 'mutation',
 		variables: { id: '1', name: 'New' },
 	});
+});
+
+const PROFILE_QUERY = parse(
+	'query Profile { me { __typename id ... @defer { name } } }',
+) as TypedDocumentNode<
+	{ me: { __typename: 'User'; id: string; name: string } },
+	{ [key: string]: never }
+>;
+
+/** A transport that publishes a part, then waits for the test to finish the query. */
+const streamingTransport = () => {
+	let finish!: (data: unknown) => void;
+	let part!: (data: unknown) => void;
+	let signal!: AbortSignal;
+	return {
+		part: (d: unknown) => part(d),
+		finish: (d: unknown) => finish(d),
+		signal: () => signal,
+		transport: {
+			execute: (_op: unknown, _vars: unknown, opts: never) => {
+				const o = opts as {
+					signal: AbortSignal;
+					onPart?: (d: unknown) => void;
+				};
+				signal = o.signal;
+				part = (d) => o.onPart?.(d);
+				return new Promise((r) => {
+					finish = r;
+				});
+			},
+		} as never,
+	};
+};
+
+test('a query renders each part from the transport, then the final data', async () => {
+	const profile = query(PROFILE_QUERY);
+	const riva = createRiva();
+	const s = streamingTransport();
+	provideGraphQL(riva, s.transport);
+	const done = profile.ensure(riva);
+	s.part({ me: { __typename: 'User', id: '1' } });
+	expect(riva.get(profile)).toMatchObject({
+		status: 'success',
+		dataState: 'streaming',
+		isFetching: true,
+		data: { me: { id: '1' } },
+	});
+	const final = { me: { __typename: 'User', id: '1', name: 'Ada' } };
+	s.finish(final);
+	expect(await done).toEqual(final as never);
+	expect(riva.get(profile)).toMatchObject({
+		dataState: 'complete',
+		isFetching: false,
+		data: final,
+	});
+});
+
+test('with normalized(), each part is merged into the cache and reads back', async () => {
+	const profile = query(PROFILE_QUERY, { cache: normalized() });
+	const riva = createRiva();
+	const s = streamingTransport();
+	provideGraphQL(riva, s.transport);
+	const done = profile.ensure(riva);
+	s.part({ me: { __typename: 'User', id: '1' } });
+	expect(riva.get(profile)).toMatchObject({
+		status: 'success',
+		dataState: 'streaming',
+		data: { me: { __typename: 'User', id: '1' } },
+	});
+	const final = { me: { __typename: 'User', id: '1', name: 'Ada' } };
+	s.part(final);
+	expect(riva.get(profile).data).toEqual(final as never);
+	s.finish(final);
+	await done;
+	expect(riva.get(profile)).toMatchObject({
+		dataState: 'complete',
+		data: final,
+	});
+});
+
+test('cancel closes the request through the entry signal', async () => {
+	const profile = query(PROFILE_QUERY);
+	const riva = createRiva();
+	const s = streamingTransport();
+	provideGraphQL(riva, s.transport);
+	const settled = profile.ensure(riva).catch((e) => e);
+	s.part({ me: { __typename: 'User', id: '1' } });
+	profile.cancel(riva);
+	await settled;
+	expect(s.signal().aborted).toBe(true);
+	expect(riva.get(profile).status).toBe('idle');
+});
+
+test('a plain query never gets dataState or onPart through a custom transport', async () => {
+	const patients = query(PATIENTS_QUERY);
+	const { riva } = setup(() => ({ patients: 1 }));
+	await patients.ensure(riva, { school: 's' });
+	expect('dataState' in riva.get(patients, { school: 's' })).toBe(false);
 });

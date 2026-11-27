@@ -3,9 +3,31 @@ import type { Query, Riva } from '@softistx/riva';
 // Held on the riva's slots: a request's pending fetches die with its riva.
 const SLOT = {};
 
+const noop = () => {};
+
+/**
+ * What a suspended render waits on: `settled`, or in a browser the first
+ * data a streaming fetch publishes (`watch` listens to the entry), so a
+ * query with `@defer` renders its fast fields while the rest is coming. The
+ * server waits for `settled`: it renders and dehydrates whole data. Every
+ * outcome resolves; the next render reads the state.
+ * @internal
+ */
+export function untilData(
+	settled: PromiseLike<unknown>,
+	watch: (listener: (state: { data: unknown }) => void) => () => void,
+): Promise<void> {
+	let off = noop;
+	return new Promise<void>((resolve) => {
+		settled.then(resolve as () => void, resolve as () => void);
+		if ('document' in globalThis)
+			off = watch((state) => state.data !== undefined && resolve());
+	}).then(() => off());
+}
+
 /**
  * The one promise React waits on for a query entry: the core's `ensure`, held
- * until it settles so every render that suspends gets the same promise. A
+ * until `untilData`, so every render that suspends gets the same promise. A
  * failure is swallowed here; the next render reads it from the state.
  */
 export function suspend(
@@ -24,9 +46,12 @@ export function suspend(
 	if (!promise) {
 		const entries = map;
 		const done = () => void entries.delete(key);
-		promise = (def.ensure as (c: Riva, v: unknown) => Promise<unknown>)(
+		const settled = (def.ensure as (c: Riva, v: unknown) => Promise<unknown>)(
 			riva,
 			vars,
+		);
+		promise = untilData(settled, (listener) =>
+			riva.subscribe(def, vars, listener),
 		).then(done, done);
 		entries.set(key, promise);
 	}

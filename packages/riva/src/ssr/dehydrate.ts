@@ -54,6 +54,7 @@ export function dehydrate(riva: Riva): Snapshot {
 	for (const e of c.entries.values()) {
 		const s = peek(c, e);
 		if (s.status !== 'success' && s.status !== 'error') continue;
+		if (s.dataState === 'streaming') continue; // partial: the client fetches it
 		const data = committed(c, e);
 		if (s.status === 'success' && data === undefined) continue;
 		q.push({

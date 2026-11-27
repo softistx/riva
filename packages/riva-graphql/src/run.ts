@@ -6,4 +6,7 @@ import { transportOf } from './transport';
 export const fetchOf =
 	<Data, Vars>(operation: Operation<Data, Vars>) =>
 	async (vars: Vars, ctx: FetchContext): Promise<Data> =>
-		transportOf(ctx.riva).execute(operation, vars, { signal: ctx.signal });
+		transportOf(ctx.riva).execute(operation, vars, {
+			signal: ctx.signal,
+			...(ctx.onPart && { onPart: ctx.onPart as (data: Data) => void }),
+		});

@@ -10,6 +10,7 @@ The package's [README](../README.md) is the short path. These pages go deeper.
 | [Documents](./guide/documents.md) | You write the `graphql()` documents every call is built from, or a document is refused. |
 | [Transport](./guide/transport.md) | You wire a riva to the API (`withGraphQL(client)`), or write a transport of your own. |
 | [React hooks](../README.md#react-hooks) | You call the simple API from components (`useGraphQL`, `useGraphQLMutation`, `useGraphQLSubscription`). |
+| [`@defer` and `@stream`](./guide/incremental.md) | A query should render its fast fields first and the rest as it arrives. |
 | [Errors](./guide/errors.md) | You branch on a failure, or map errors in a transport. |
 | [Allowlist codegen](./guide/codegen.md) | A BFF must execute only known documents. |
 | [BFF mode](./guide/bff.md) | The browser must never send a document. |

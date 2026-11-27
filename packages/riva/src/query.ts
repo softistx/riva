@@ -14,6 +14,14 @@ export interface QueryState<Data> {
 	readonly isFetching: boolean;
 	/** Epoch milliseconds of the last success (0 when none). */
 	readonly updatedAt: number;
+	/**
+	 * Set by a fetch that delivers its data in parts (`ctx.onPart`, such as a
+	 * GraphQL `@defer` or `@stream`): `'streaming'` while more parts are
+	 * coming (`status` is `success` and `isFetching` true, `data` is what
+	 * arrived so far), `'complete'` once the fetch ended. A plain fetch never
+	 * sets it.
+	 */
+	readonly dataState?: 'streaming' | 'complete';
 }
 
 export interface FetchContext {
@@ -21,6 +29,14 @@ export interface FetchContext {
 	riva: Riva;
 	/** @internal Keeps what the fetch left open (a stream) until the entry is released: the last observer leaves, or it is collected or fetched again. */
 	keep?: (stop: () => true) => void;
+	/**
+	 * Publishes the data received so far, before the fetch resolves: the entry
+	 * shows it at once (`status: 'success'`, `dataState: 'streaming'`,
+	 * `isFetching: true`), and the value the fetch resolves with replaces it.
+	 * Absent when nothing observes parts (a mutation, a custom caller).
+	 * Calls after the fetch was aborted, restarted or replaced are ignored.
+	 */
+	onPart?: (data: unknown) => void;
 }
 
 /**
