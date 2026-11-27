@@ -2,6 +2,7 @@
 
 ## Now
 
+- **RxJS interop** — `@softistx/riva/rxjs` (`rxjs` ^7.8, an optional peer): riva states, queries and mutation handles as cold Observables of their full state (`toObservable`, `data$`), streams as keyed, cached, SSR-able queries (`liveQuery`), and `connect(riva, state, obs$)` to feed a state from an Observable. [#117](https://github.com/softistx/riva/issues/117), slices [#118](https://github.com/softistx/riva/issues/118), [#119](https://github.com/softistx/riva/issues/119), [#120](https://github.com/softistx/riva/issues/120)
 - **Deprecate the graphql-client cache and React layer** — consumers of `@softistx/graphql-client` are pointed to riva for caching and React bindings, once riva has its first release.
 - **Pilot in a BFF app** — riva run end to end in a server-rendered app with a backend-for-frontend, to validate the API before wider adoption.
 
@@ -26,7 +27,8 @@ Nothing yet.
 
 Landed in `develop`; released from 0.1.0 on, the simple API in the next minor release.
 
-- REST definitions from the generated operations table alone: `query(operations, 'get /invoices/{id}')` and `mutation(operations, 'post /invoices')` need no client, so a definition module imports only the generated table and the transport supplies the client at run time. The client form stays, and is the one to use for the JSON-typed data of a `decode: false` client. [#26](https://github.com/softistx/riva/issues/26)
+- Mutation handles call `mutate`, not `run`: the method is renamed to match the hooks' `mutate`, with no deprecated alias (breaking). 0.10.0. [#121](https://github.com/softistx/riva/issues/121)
+- REST definitions from the generated operations table alone (0.10.0): `query(operations, 'get /invoices/{id}')` and `mutation(operations, 'post /invoices')` need no client, so a definition module imports only the generated table and the transport supplies the client at run time. The client form stays, and is the one to use for the JSON-typed data of a `decode: false` client. [#26](https://github.com/softistx/riva/issues/26)
 - One entity store for GraphQL and REST: `normalized()`, `restEntities()` and `entities()` policies on one riva share its store, their `keys` merged per type. [#25](https://github.com/softistx/riva/issues/25)
 - Each snapshot key emitted once per request: every loader may return `riva(context)`, and a later call of a request carries only the entries and signals not sent yet or changed since. [#36](https://github.com/softistx/riva/issues/36)
 - Suspense error-boundary reset: resetting the error boundary of a failed Suspense query or resource retries it by itself, with no `onReset` workaround. [#19](https://github.com/softistx/riva/issues/19)
