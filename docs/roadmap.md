@@ -2,7 +2,6 @@
 
 ## Now
 
-- **RxJS interop** — `@softistx/riva/rxjs` (`rxjs` ^7.8, an optional peer): riva states, queries and mutation handles as cold Observables of their full state (`toObservable`, `data$`), streams as keyed, cached, SSR-able queries (`liveQuery`), and `connect(riva, state, obs$)` to feed a state from an Observable. [#117](https://github.com/softistx/riva/issues/117), slices [#118](https://github.com/softistx/riva/issues/118), [#119](https://github.com/softistx/riva/issues/119), [#120](https://github.com/softistx/riva/issues/120)
 - **Deprecate the graphql-client cache and React layer** — consumers of `@softistx/graphql-client` are pointed to riva for caching and React bindings, once riva has its first release.
 - **Pilot in a BFF app** — riva run end to end in a server-rendered app with a backend-for-frontend, to validate the API before wider adoption.
 
@@ -27,6 +26,8 @@ Nothing yet.
 
 Landed in `develop`; released from 0.1.0 on, the simple API in the next minor release.
 
+- RxJS interop (0.11.0): `@softistx/riva/rxjs`, with `rxjs` ^7.8 as an optional peer. `toObservable` and `data$` turn states, queries and mutation handles into Observables; `liveQuery` makes a stream a keyed, cached, SSR-able query; `connect(riva, state, obs$)` feeds a state from an Observable. [#117](https://github.com/softistx/riva/issues/117)
+- Progressive `@defer`/`@stream` (0.11.0): GraphQL query resources render each incremental part as it arrives, with `dataState: 'streaming' | 'complete'` on the query state and an `onPart` hook for custom fetches. [#115](https://github.com/softistx/riva/issues/115)
 - Mutation handles call `mutate`, not `run`: the method is renamed to match the hooks' `mutate`, with no deprecated alias (breaking). 0.10.0. [#121](https://github.com/softistx/riva/issues/121)
 - REST definitions from the generated operations table alone (0.10.0): `query(operations, 'get /invoices/{id}')` and `mutation(operations, 'post /invoices')` need no client, so a definition module imports only the generated table and the transport supplies the client at run time. The client form stays, and is the one to use for the JSON-typed data of a `decode: false` client. [#26](https://github.com/softistx/riva/issues/26)
 - One entity store for GraphQL and REST: `normalized()`, `restEntities()` and `entities()` policies on one riva share its store, their `keys` merged per type. [#25](https://github.com/softistx/riva/issues/25)
