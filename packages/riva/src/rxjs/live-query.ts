@@ -81,7 +81,13 @@ export function liveQuery<Vars = void, Data = unknown>(
 				else if (got && first) {
 					settle(last);
 					// a stream that failed right after its values: the error follows the value
-					if (late) setTimeout(() => riva.queries.fail(def, vars, late?.e));
+					if (late && isBrowser())
+						Promise.resolve()
+							.then(() => def.ensure(riva, vars))
+							.then(
+								() => riva.queries.fail(def, vars, late?.e),
+								() => {},
+							);
 				}
 			}),
 	});

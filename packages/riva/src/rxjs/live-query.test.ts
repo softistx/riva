@@ -331,9 +331,26 @@ describe('liveQuery in a browser', () => {
 		});
 		const riva = fakeEnv().riva();
 		expect(await q.ensure(riva)).toBe(2);
-		await new Promise((r) => setTimeout(r, 5));
+		await settle();
 		expect(riva.get(q)).toMatchObject({ status: 'error', data: 2, error: err });
 		expect(unsubscribed).toBe(1);
+	});
+
+	test('values then a synchronous error on the server resolve with the value and stay a success', async () => {
+		server();
+		const q = liveQuery<void, number>({
+			id: 'burst/error-server',
+			retry: 0,
+			observe: () =>
+				concat(
+					of(1, 2),
+					throwError(() => new Error('boom')),
+				),
+		});
+		const riva = fakeEnv().riva();
+		expect(await q.ensure(riva)).toBe(2);
+		await settle();
+		expect(riva.get(q)).toMatchObject({ status: 'success', data: 2 });
 	});
 
 	test('one stream per variables', async () => {
