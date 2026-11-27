@@ -50,6 +50,11 @@
 			"import": "./dist/data/index.js",
 			"default": "./dist/data/index.js"
 		},
+		"./rxjs": {
+			"types": "./dist/rxjs/index.d.ts",
+			"import": "./dist/rxjs/index.js",
+			"default": "./dist/rxjs/index.js"
+		},
 		"./package.json": "./package.json"
 	},
 	"keywords": [
@@ -74,8 +79,17 @@
 		"test": "bun test src",
 		"typecheck": "bun check"
 	},
+	"peerDependencies": {
+		"rxjs": "^7.8"
+	},
+	"peerDependenciesMeta": {
+		"rxjs": {
+			"optional": true
+		}
+	},
 	"devDependencies": {
-		"@types/bun": "^1.4.5"
+		"@types/bun": "^1.4.5",
+		"rxjs": "^7.8.2"
 	},
 	"nxgt": {
 		"entrypoints": [
@@ -85,7 +99,8 @@
 			"src/ssr/index.ts",
 			"src/data/index.ts",
 			"src/store/index.ts",
-			"src/resource/index.ts"
+			"src/resource/index.ts",
+			"src/rxjs/index.ts"
 		]
 	}
 }

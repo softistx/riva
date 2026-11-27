@@ -187,6 +187,21 @@ The snapshot is an opaque format: pass on what `dehydrate` returned. A fresh ent
 
 `@softistx/riva/data` is the browser's side of a `/_data` route, for a transport of your own: `postData(opts, id, variables, signal?)`. [data](./docs/guide/data.md).
 
+## RxJS
+
+`@softistx/riva/rxjs` turns riva into cold Observables (`rxjs ^7.8`, an optional peer imported only by this subpath).
+
+```ts
+import { data$, fromAsyncIterable, toObservable } from '@softistx/riva/rxjs';
+
+toObservable(riva, userQuery, { id: 1 }).subscribe((s) => s.status); // full states
+data$(riva, userQuery, { id: 1 }); // the data alone
+toObservable(riva, saveHandle); // a mutation handle's state
+toObservable(subscriptionIterable); // an AsyncIterable, aborted on unsubscribe
+```
+
+Subscribing observes a query like `useQuery` and unsubscribing releases it. An error is a value of the stream, never its end.
+
 ## Types
 
 `RivaOptions` (what `createRiva` takes), `DataOperation` and `DataSource` (a `/_data` route's operations, from the main entry), `AddContextLast` and `ReservedKey` (the store's typing helpers, from `/store`). Each subpath exports its own types, listed in its [guide](./docs/README.md).
