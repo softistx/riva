@@ -9,7 +9,9 @@ export type AsyncSource<T> =
  * A cold Observable over an async iterable (a GraphQL subscription, for one).
  * Each subscription opens its own iterator; unsubscribing calls its `return()`
  * and, when `source` is a factory, aborts the signal it was given. A failure
- * is `error`, the end is `complete`.
+ * is `error`, the end is `complete`. A bare iterable (a generator object) is
+ * single-use and shared by every subscription to it: pass a factory for a
+ * generator, so each subscription gets its own and an abort signal.
  */
 export function fromAsyncIterable<T>(source: AsyncSource<T>): Observable<T> {
 	return new Observable<T>((sub) => {

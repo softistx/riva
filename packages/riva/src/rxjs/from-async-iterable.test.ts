@@ -92,3 +92,11 @@ test('types', () => {
 	}
 	expectTypeOf(fromAsyncIterable(g())).toEqualTypeOf<Observable<number>>();
 });
+
+test('a factory that throws synchronously ends in error', () => {
+	let err: unknown;
+	fromAsyncIterable<number>(() => {
+		throw new Error('sync');
+	}).subscribe({ error: (e) => (err = e) });
+	expect((err as Error).message).toBe('sync');
+});
