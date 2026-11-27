@@ -38,6 +38,7 @@ An error is a value of the stream (`status: 'error'`), never its end.
 A mutation handle (or any `{ state, subscribe }`) emits its state:
 
 ```ts
+// riva created with `graphql: withGraphQL(client)`; SAVE_USER_MUTATION is your document
 const save = riva.graphql.mutation(SAVE_USER_MUTATION);
 toObservable(riva, save).subscribe((s) => console.log(s.status));
 await save.mutate({ id: 1 });
@@ -62,6 +63,7 @@ It takes a query or a `{ state, subscribe }` handle whose state has `data`, not 
 ```ts
 import { fromAsyncIterable } from '@softistx/riva/rxjs';
 
+// subscribeToMessages(opts): your function returning an AsyncIterable<Message>
 const messages$ = fromAsyncIterable((signal) => subscribeToMessages({ signal }));
 messages$.subscribe(console.log);
 ```
@@ -86,9 +88,11 @@ const priceQuery = liveQuery({
 On the server, in a loader: `ensure()` resolves at the first value, then unsubscribes. A stream that stays silent stops with the request's abort, and the snapshot carries the value.
 
 ```ts
-export async function loader({ context }) {
-  const riva = rivaOf(context);
-  await priceQuery.ensure(riva, 'ACME'); // first value, stream closed
+import { riva, rivaOf } from '@softistx/riva-react-router';
+import type { Route } from './+types/prices';
+
+export async function loader({ context }: Route.LoaderArgs) {
+  await priceQuery.ensure(rivaOf(context), 'ACME'); // first value, stream closed
   return riva(context);
 }
 ```
@@ -141,7 +145,13 @@ stop(); // unsubscribes; calling it again does nothing
 - An `error` ends the connection and is swallowed, so nothing is thrown into your code: the signal keeps its last value. To keep the stream alive or surface the failure, handle it upstream:
 
 ```ts
-import { catchError, EMPTY, retry } from 'rxjs';
+import { createRiva, signal } from '@softistx/riva';
+import { connect } from '@softistx/riva/rxjs';
+import { catchError, EMPTY, type Observable, retry } from 'rxjs';
+
+const riva = createRiva();
+const price = signal(0);
+declare const feed$: Observable<number>; // your stream
 
 connect(riva, price, feed$.pipe(retry({ delay: 1000 }), catchError(() => EMPTY)));
 ```
@@ -162,9 +172,16 @@ function Price({ symbol }: { symbol: string }) {
 To feed a signal from a stream for the life of a component, call `connect` in an effect and return the stop:
 
 ```tsx
-useEffect(() => connect(riva, width, resize$), [riva]);
+import { useRiva } from '@softistx/riva-react';
+import { useEffect } from 'react';
+
+function WidthWatcher() {
+  const riva = useRiva();
+  useEffect(() => connect(riva, width, resize$), [riva]); // width: a signal, resize$: Observable<number>
+  return null;
+}
 ```
 
 ## Size
 
-The subpath adds about 1 kB gzipped on top of the core, with `rxjs` left out (the app's own copy). The size budget table in the [README](../../README.md#size-budget) has the exact figures; `bun run size` checks them.
+The budget is in the [README's Size section](../../README.md#size-budget).

@@ -493,10 +493,18 @@ const sub = toObservable(riva, priceQuery, 'ACME').subscribe(render);
 
 **Why:** the stream errored (an error ends the connection and is swallowed) or `stop()` was called. A stream that completed also stops.
 
-**Fix:** turn the failure into a value or retry upstream, then connect again.
+**Fix:** turn the failure into a value or retry upstream, then connect again. To see an error that would be swallowed, tap it before `connect`.
 
 ```ts
-import { catchError, EMPTY, retry } from 'rxjs';
+import { createRiva, signal } from '@softistx/riva';
+import { connect } from '@softistx/riva/rxjs';
+import { catchError, EMPTY, type Observable, retry, tap } from 'rxjs';
+
+const riva = createRiva();
+const price = signal(0);
+declare const feed$: Observable<number>; // your stream
+
+connect(riva, price, feed$.pipe(tap({ error: console.error })));
 
 const stop = connect(riva, price, feed$.pipe(retry({ delay: 1000 }), catchError(() => EMPTY)));
 ```
