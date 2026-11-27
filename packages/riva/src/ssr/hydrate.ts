@@ -34,7 +34,7 @@ const errorOf = ({ code, status, retryable }: SnapshotError): unknown => {
 
 /** Writes a snapshot entry over an entry, through its definition's cache policy. */
 function apply(c: Ctx, e: Entry, p: SeedEntry): void {
-	e.invalidated = !!p.i || !!e.def.options.live;
+	e.invalidated = !!p.i || (!!e.def.options.live && !e.observers);
 	putData(c, e, {
 		status: p.s,
 		error: p.e && errorOf(p.e),

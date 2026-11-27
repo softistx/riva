@@ -55,8 +55,8 @@ function start(c: Ctx, e: Entry): Inflight {
 		waiters: 0,
 		prev: peek(c, e),
 	};
-	e.run = f;
 	e.stop?.();
+	e.run = f;
 	put(c, e, {
 		status: f.prev.status === 'success' ? 'success' : 'loading',
 		error: undefined,
@@ -66,7 +66,8 @@ function start(c: Ctx, e: Entry): Inflight {
 	const done = (patch: Partial<State>): unknown => {
 		if (e.run !== f) return;
 		e.run = undefined;
-		e.invalidated = false;
+		// A stream closed for want of an observer leaves the entry stale.
+		e.invalidated = !e.observers && !!e.stop?.();
 		const refused = putData(c, e, { isFetching: false, ...patch });
 		armGc(c, e);
 		return refused;

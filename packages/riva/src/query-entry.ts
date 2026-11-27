@@ -166,7 +166,6 @@ export function armGc(c: Ctx, e: Entry): void {
 	const ms = e.def.options.gcTime ?? (isBrowser() ? 300_000 : Infinity);
 	if (e.observers || ms === Infinity) return;
 	e.gc = c.sched.setTimeout(() => {
-		e.gc = undefined;
 		// A computed or listener still reading the signal keeps the entry alive.
 		if (
 			e.observers ||

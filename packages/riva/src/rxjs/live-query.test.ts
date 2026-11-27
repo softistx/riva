@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, expectTypeOf, test } from 'bun:test';
-import { Observable, Subject } from 'rxjs';
+import { EMPTY, Observable, Subject } from 'rxjs';
 import { fakeEnv, settle } from '../../test/ssr';
 import type { Query, QueryState } from '../query';
 import { dehydrate, hydrate } from '../ssr';
@@ -207,6 +207,50 @@ describe('liveQuery in a browser', () => {
 		await settle();
 		expect(riva.get(q, room)).toMatchObject({ status: 'success', data: 9 });
 		expect(count().subscribed).toBe(1);
+		off();
+	});
+
+	test('a restart in the tick of the first value closes the first stream', async () => {
+		browser();
+		const { q, last, count } = feed('same-tick');
+		const riva = fakeEnv().riva();
+		const off = riva.subscribe(q, room, () => {});
+		await settle();
+		last().next(1);
+		q.invalidate(riva, room);
+		await settle();
+		last().next(2);
+		await settle();
+		off();
+		const { subscribed, unsubscribed } = count();
+		expect(subscribed).toBeGreaterThan(1);
+		expect(unsubscribed).toBe(subscribed);
+	});
+
+	test('a stream that completes before a value rejects', async () => {
+		browser();
+		const q = liveQuery<void, number>({
+			id: 'empty',
+			retry: 0,
+			observe: () => EMPTY,
+		});
+		const riva = fakeEnv().riva();
+		await expect(q.ensure(riva)).rejects.toThrow('completed without a value');
+		expect(riva.get(q).status).toBe('error');
+	});
+
+	test('ensure with no observer closes the stream at once; a later observer subscribes', async () => {
+		browser();
+		const { q, last, count } = feed('unobserved');
+		const riva = fakeEnv().riva();
+		const p = q.ensure(riva, room);
+		last().next(3);
+		expect(await p).toBe(3);
+		await settle();
+		expect(count()).toEqual({ subscribed: 1, unsubscribed: 1 });
+		const off = riva.subscribe(q, room, () => {});
+		await settle();
+		expect(count().subscribed).toBe(2);
 		off();
 	});
 

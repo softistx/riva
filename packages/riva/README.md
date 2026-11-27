@@ -227,16 +227,30 @@ A factory that throws synchronously ends the stream with `error`.
 
 ### Live queries
 
-`liveQuery({ id, observe })` is a query fed by a stream: the same key, cache and SSR as `query`, read with `riva.get`, `riva.subscribe`, `ensure` or `useQuery(liveQuery)`.
+`liveQuery({ id, observe })` is a query fed by a stream: the same derived key, cache and SSR as `query`, read with `riva.get`, `riva.subscribe`, `priceQuery.ensure(riva, …)` or `useQuery(priceQuery, …)`.
 
 ```ts
+import { liveQuery } from '@softistx/riva/rxjs';
+import { interval, map } from 'rxjs';
+
 const priceQuery = liveQuery({
   id: 'price',
-  observe: (symbol: string) => prices$(symbol), // Observable<number>
+  // any Observable<number> per variables; here a fake ticker
+  observe: (symbol: string) => interval(1000).pipe(map((n) => 100 + n)),
 });
+
+// server (loader): resolves at the first value, then unsubscribes
+const first = await priceQuery.ensure(riva, 'ACME');
+
+// React: live while mounted
+const { data, status } = useQuery(priceQuery, 'ACME');
 ```
 
-On the server `ensure()` resolves at the first value, then unsubscribes; a stream that stays silent stops with the request's signal, and the snapshot carries the value. In a browser the stream is subscribed while the query is observed and the data stays for `gcTime` after the last release; there is no `staleTime`. An `error` keeps the last data in the error state, and `refetch()` or a new observer subscribes again; `complete` keeps the last value.
+On the server `ensure()` resolves at the first value, then unsubscribes; a stream that stays silent stops with the request's signal, and the snapshot carries the value. In a browser the stream is subscribed while the query is observed and the data stays for `gcTime` after the last release; `ensure()` with no observer closes the stream at once. `staleTime` is not accepted (an observed entry is live).
+
+- An error before the first value rejects like any query error (retry applies).
+- An error after it sets the error state and keeps the last data; the stream does not reconnect on its own, `refetch()` (or a new observer after a release) subscribes again.
+- `complete` keeps the last value and does not reconnect; a stream that completes without a value rejects.
 
 ## Types
 
@@ -244,7 +258,7 @@ On the server `ensure()` resolves at the first value, then unsubscribes; a strea
 
 ## Size budget
 
-The main entry stays within 6144 B gzipped, with `entities` or `infinite` within 8192 B each, with `ssr` or `store` within 7680 B each, with `data` within 7168 B, with `resource` within 7680 B, with every subpath within 12288 B, core + react within 9216 B, core + `@softistx/riva/rxjs` within 7168 B (1024 B on top of the core, `rxjs` left out) (`bun run size` checks every row).
+The main entry stays within 6144 B gzipped, with `entities` or `infinite` within 8192 B each, with `ssr` or `store` within 7680 B each, with `data` within 7168 B, with `resource` within 7680 B, with every subpath within 12544 B, core + react within 9216 B, core + `@softistx/riva/rxjs` within 7168 B (1024 B on top of the core, `rxjs` left out) (`bun run size` checks every row).
 
 ## Documentation
 

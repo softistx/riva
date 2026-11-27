@@ -1,4 +1,5 @@
 import { type Observable, Subscription } from 'rxjs';
+import { RivaError } from '../errors';
 import { type Query, type QueryOptions, query } from '../query';
 import { isBrowser } from '../scope';
 
@@ -32,17 +33,31 @@ export function liveQuery<Vars = void, Data = unknown>(
 		fetch: (vars, { signal, riva, keep }) =>
 			new Promise<Data>((resolve, reject) => {
 				let first = true;
+				let push = false;
 				const all = new Subscription();
 				const stop = () => (all.unsubscribe(), true as const);
 				all.add(
 					observe(vars).subscribe({
 						next(v) {
-							if (!first) return def.setData(riva, vars, v);
+							if (!first) {
+								push = true;
+								def.setData(riva, vars, v);
+								push = false;
+								return;
+							}
 							first = false;
-							signal.removeEventListener('abort', stop);
 							resolve(v);
 							if (isBrowser() && keep) keep(stop);
 							else stop();
+						},
+						complete() {
+							if (first)
+								reject(
+									new RivaError(
+										'RIVA_LIVE',
+										`The stream of the live query "${def.id}" completed without a value.`,
+									),
+								);
 						},
 						error(e) {
 							if (first) reject(e);
@@ -50,7 +65,7 @@ export function liveQuery<Vars = void, Data = unknown>(
 						},
 					}),
 				);
-				if (first) signal.addEventListener('abort', stop, { once: true });
+				signal.addEventListener('abort', () => push || stop(), { once: true });
 				if (signal.aborted) stop();
 			}),
 	});
