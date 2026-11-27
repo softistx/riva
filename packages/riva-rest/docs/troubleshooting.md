@@ -54,11 +54,11 @@ export const api = createOpenApiClient(http, operations);
 provideRest(riva, httpyzTransport(http, api)); // the api the definitions take
 ```
 
-## `riva-rest: the OpenAPI client has no operation at GET /nope; check the path as the spec writes it.`
+## `riva-rest: no OpenAPI operation at GET /nope; check the path as the spec writes it.`
 
 Code: `RIVA_DEFINITION` (`RivaError`), thrown when the definition is created.
 
-**Why:** the route is not in the client's operation table. The path is the template as the spec writes it (`/invoices/{id}`, not `/invoices/:id`), and the method is lowercase in the route (`'get /invoices/{id}'`).
+**Why:** the route is not in the operation table (the generated `operations`, or the client's). The path is the template as the spec writes it (`/invoices/{id}`, not `/invoices/:id`), and the method is lowercase in the route (`'get /invoices/{id}'`).
 
 **Fix:** copy the route from the spec. TypeScript suggests the routes the spec has.
 
@@ -232,7 +232,7 @@ Code: `RIVA_VALIDATION` (`RivaRequestError`, not retryable), thrown by the `with
 
 **Why:** a string in `invalidates` is the path of a `riva.rest.get`, as the spec writes it (`'/invoices/{id}'`, with the placeholder, for every input of it); with `withRest({ baseUrl })` it is the URL path you passed to `get` (`'/invoices/42'`). A query made with `query(api, route)` has its own entries and is not reached by a string (unless the `get` was given that definition: `riva.rest.get(def, input)` reads the definition's entries).
 
-**Fix:** pass the same path as the `get`, or the definition (`invalidates: [invoicesQuery]`) or `at(invoicesQuery, vars)` for a hand-made one. A path the spec has no `get` for throws `riva-rest: the OpenAPI client has no operation at GET /x; …` before the mutation runs.
+**Fix:** pass the same path as the `get`, or the definition (`invalidates: [invoicesQuery]`) or `at(invoicesQuery, vars)` for a hand-made one. A path the spec has no `get` for throws `riva-rest: no OpenAPI operation at GET /x; …` before the mutation runs.
 
 ## `GET /x: the reply is not JSON.`
 

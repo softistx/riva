@@ -137,18 +137,18 @@ A definition is a query or a mutation written once at module level, for what the
 
 ```ts
 import { mutation, query } from '@softistx/riva-rest';
-import { api } from './api'; // the OpenAPI client given to `withRest(api)`
+import { operations } from './generated/invoices'; // the generated table: no client imported
 
-export const invoice = query(api, 'get /invoices/{id}', { staleTime: '30s' });
-export const invoices = query(api, 'get /invoices');
-export const createInvoice = mutation(api, 'post /invoices', { invalidates: [invoices] });
+export const invoice = query(operations, 'get /invoices/{id}', { staleTime: '30s' });
+export const invoices = query(operations, 'get /invoices');
+export const createInvoice = mutation(operations, 'post /invoices', { invalidates: [invoices] });
 
 await invoice.ensure(riva, { param: { id: '7' } }); // Invoice, typed from the spec
 await createInvoice.run(riva, { json: { number: 'F-8', total: 120 } });
 riva.get(invoices); // an operation whose input is all optional takes no variables
 ```
 
-`query(api, 'method path', options?)` takes a route the spec writes (`'get /invoices/{id}'`), checked at compile time; every core option works (`staleTime`, `gcTime`, `retry`, `refetchEvery`, `cache`, and for a mutation `optimistic`, `updates`, `invalidates`). For an API with no schema, `query({ id, fetch })` takes a function that gets an `http` client. When to prefer a definition: [Advanced: shared definitions](https://github.com/softistx/riva/blob/develop/packages/riva/docs/guide/shared-definitions.md). Every option: [OpenAPI mode](./docs/guide/openapi.md), [free fetcher](./docs/guide/free-fetcher.md) and the entity [cache](./docs/guide/cache.md) (`@softistx/riva-rest/entities`'s `restEntities`).
+`query(operations, 'method path', options?)` takes a route the spec writes (`'get /invoices/{id}'`), checked at compile time, and the client comes from the transport at run time. The data is typed as the decoded reply; for a client built with `decode: false`, pass the client instead (`query(api, 'get /invoices/{id}')`) to get the JSON-typed data; every core option works (`staleTime`, `gcTime`, `retry`, `refetchEvery`, `cache`, and for a mutation `optimistic`, `updates`, `invalidates`). For an API with no schema, `query({ id, fetch })` takes a function that gets an `http` client. When to prefer a definition: [Advanced: shared definitions](https://github.com/softistx/riva/blob/develop/packages/riva/docs/guide/shared-definitions.md). Every option: [OpenAPI mode](./docs/guide/openapi.md), [free fetcher](./docs/guide/free-fetcher.md) and the entity [cache](./docs/guide/cache.md) (`@softistx/riva-rest/entities`'s `restEntities`).
 
 ## BFF mode
 

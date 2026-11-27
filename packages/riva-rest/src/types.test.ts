@@ -70,6 +70,22 @@ const types = () => {
 	expectTypeOf(fromDecoded).toEqualTypeOf<
 		Query<{ param: { id: string } }, Invoice>
 	>();
+	const fromTable = query(operations, 'get /invoices/{id}');
+	expectTypeOf(fromTable).toEqualTypeOf<
+		Query<{ param: { id: string } }, Invoice>
+	>();
+	const createFromTable = mutation(operations, 'post /invoices');
+	expectTypeOf(createFromTable).toEqualTypeOf<
+		Mutation<{ json: { number: string; total: number } }, Invoice>
+	>();
+	const atFromTable = query(dated, 'get /events');
+	expectTypeOf(atFromTable).toEqualTypeOf<Query<void, { at: Date }>>();
+	// @ts-expect-error a route the table does not have
+	query(operations, 'get /nope');
+	// @ts-expect-error a mutation route is not a query
+	query(operations, 'delete /invoices/{id}');
+	// @ts-expect-error a get is a query
+	mutation(operations, 'get /invoices');
 	const free = query({
 		id: 'free',
 		fetch: async (vars: { q: string }) => [vars.q],

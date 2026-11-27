@@ -78,10 +78,17 @@ test('running on a riva with no REST transport throws RivaScopeError', async () 
 
 test('types: operations() is a DataSource', () => {
 	expectTypeOf(operations).returns.toEqualTypeOf<DataSource>();
-	expectTypeOf<
-		Parameters<typeof operations>[0]
-	>().toEqualTypeOf<OperationsOf>();
+	expectTypeOf<Parameters<typeof operations>[0]>().toEqualTypeOf<
+		OperationsOf | object
+	>();
 	expectTypeOf<DataSource['find']>().returns.toEqualTypeOf<
 		DataOperation | undefined
 	>();
+});
+
+test('the bare operations table is read like a client', () => {
+	const source = operations(table);
+	expect(source.find('rest:getInvoice')?.kind).toBe('query');
+	expect(source.find('rest:createInvoice')?.kind).toBe('mutation');
+	expect(source.find('rest:nope')).toBeUndefined();
 });

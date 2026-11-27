@@ -156,9 +156,9 @@ describe('riva.rest.get (typed)', () => {
 			get(p: string): PromiseLike<unknown>;
 			post(p: string): Promise<unknown>;
 		};
-		expect(() => bad.get('/nope')).toThrow('no operation at GET /nope');
+		expect(() => bad.get('/nope')).toThrow('no OpenAPI operation at GET /nope');
 		await expect(bad.post('/health')).rejects.toThrow(
-			'no operation at POST /health',
+			'no OpenAPI operation at POST /health',
 		);
 	});
 
@@ -205,7 +205,7 @@ describe('riva.rest mutations (typed)', () => {
 					invalidates: ['/nope'],
 				},
 			),
-		).rejects.toThrow('no operation at GET /nope');
+		).rejects.toThrow('no OpenAPI operation at GET /nope');
 		expect(seen).toHaveLength(0);
 	});
 
@@ -225,7 +225,7 @@ describe('riva.rest mutations (typed)', () => {
 				'post',
 				'/nope',
 			),
-		).toThrow('no operation');
+		).toThrow('no OpenAPI operation');
 	});
 });
 
