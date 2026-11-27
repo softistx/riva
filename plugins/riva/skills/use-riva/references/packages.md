@@ -20,6 +20,7 @@ Core: signals, Riva, query and mutation engine, normalized and keyed cache, pagi
   - `node_modules/@softistx/riva/docs/guide/mutations.md`: Mutations
   - `node_modules/@softistx/riva/docs/guide/queries.md`: Queries
   - `node_modules/@softistx/riva/docs/guide/resources.md`: Resources
+  - `node_modules/@softistx/riva/docs/guide/rxjs.md`: RxJS
   - `node_modules/@softistx/riva/docs/guide/shared-definitions.md`: Advanced: shared definitions
   - `node_modules/@softistx/riva/docs/guide/signals.md`: Signals, computeds and effects
   - `node_modules/@softistx/riva/docs/guide/ssr.md`: Server rendering: `@softistx/riva/ssr`

@@ -12,6 +12,7 @@ The package's [README](../README.md) is the short path. These pages go deeper. T
 | [Server rendering](./guide/ssr.md) | You dehydrate, hydrate, or need the ambient scope on a server. |
 | [Errors](./guide/errors.md) | You catch riva's errors by class and code. |
 | [Data route riva](./guide/data.md) | You write a transport that posts to a `/_data` route. |
+| [RxJS](./guide/rxjs.md) | You use Observables: states as streams, a query fed by a stream, a stream written into a signal. |
 
 ## Advanced: definitions
 
