@@ -82,10 +82,13 @@ export function liveQuery<Vars = void, Data = unknown>(
 					settle(last);
 					// a stream that failed right after its values: the error follows the value
 					if (late && isBrowser())
-						Promise.resolve()
-							.then(() => def.ensure(riva, vars))
+						Promise.resolve<unknown>(0)
+							.then((): unknown => signal.aborted || def.ensure(riva, vars))
 							.then(
-								() => riva.queries.fail(def, vars, late?.e),
+								() =>
+									signal.aborted ||
+									riva.get(def, vars).isFetching ||
+									riva.queries.fail(def, vars, late?.e),
 								() => {},
 							);
 				}

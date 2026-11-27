@@ -443,7 +443,7 @@ if (error instanceof RivaGraphQLError) error.errors;
 
 ## `The stream of the live query "…" completed without a value.`
 
-**When:** `ensure()`, `useQuery` or `riva.get` on a `liveQuery` rejects with `RIVA_LIVE` and the message above, naming the query's id.
+**When:** `ensure()` on a `liveQuery` rejects with a `RIVA_LIVE` error, and `useQuery` and `riva.get` show `status: 'error'` with that error. The message above names the query's id.
 
 **Why:** the `Observable` returned by `observe` completed (an `EMPTY`, a `filter` that dropped everything, a `take(0)`) before emitting a first value. A live query's first value is its first result, so there is nothing to resolve with. A stream that completes after a value is fine: the last value is kept and it does not reconnect.
 

@@ -353,6 +353,54 @@ describe('liveQuery in a browser', () => {
 		expect(riva.get(q)).toMatchObject({ status: 'success', data: 2 });
 	});
 
+	test('a restart in the tick of a synchronous error does not put the old error on the new run', async () => {
+		browser();
+		const s = new Subject<number>();
+		let n = 0;
+		const q = liveQuery<void, number>({
+			id: 'burst/restart',
+			retry: 0,
+			observe: () =>
+				++n === 1
+					? concat(
+							of(1),
+							throwError(() => new Error('old')),
+						)
+					: s,
+		});
+		const riva = fakeEnv().riva();
+		const off = riva.subscribe(q, undefined, () => {});
+		q.invalidate(riva);
+		await settle();
+		s.next(7);
+		await settle();
+		expect(riva.get(q)).toMatchObject({ status: 'success', data: 7 });
+		off();
+	});
+
+	test('a release in the tick of a synchronous error starts no new fetch', async () => {
+		browser();
+		let n = 0;
+		const q = liveQuery<void, number>({
+			id: 'burst/release',
+			retry: 0,
+			observe: () => {
+				n++;
+				return concat(
+					of(1),
+					throwError(() => new Error('old')),
+				);
+			},
+		});
+		const riva = fakeEnv().riva();
+		const off = riva.subscribe(q, undefined, () => {});
+		off();
+		await settle();
+		await settle();
+		expect(n).toBe(1);
+		expect(riva.get(q).status).not.toBe('error');
+	});
+
 	test('one stream per variables', async () => {
 		browser();
 		const { q, count } = feed('keys');
