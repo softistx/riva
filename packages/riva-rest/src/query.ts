@@ -1,4 +1,4 @@
-import type { OperationsShape } from '@softistx/openapi-httpyz';
+import type { OperationsShape, OperationTable } from '@softistx/openapi-httpyz';
 import {
 	type CachePolicy,
 	mutation as coreMutation,
@@ -11,7 +11,7 @@ import {
 	RivaError,
 } from '@softistx/riva';
 import { toRivaError } from './errors';
-import { operationOf } from './operation';
+import { operationOf, specOf } from './operation';
 import {
 	type RestContext,
 	type Route,
@@ -78,9 +78,6 @@ const guarded =
 		}
 	};
 
-const isFree = (a: unknown): a is { id: string } =>
-	typeof a === 'object' && a !== null && !('operations' in a);
-
 function freeId(opts: { id?: unknown }, name: string): void {
 	if (typeof opts?.id !== 'string' || !opts.id)
 		throw new RivaError(
@@ -90,8 +87,13 @@ function freeId(opts: { id?: unknown }, name: string): void {
 }
 
 /**
- * A query definition. Two forms:
+ * A query definition. Three forms:
  *
+ * - `query(operations, 'get /invoices/{id}', opts?)`: from the generated
+ *   `operations` table alone, so a definition module imports no client (the
+ *   transport brings it at run time). The data is typed as the decoded reply,
+ *   what a client with the default `decode: true` returns; for a client built
+ *   with `decode: false`, use the client form to get the JSON-typed data.
  * - `query(api, 'get /invoices/{id}', opts?)`: from an OpenAPI client
  *   (`createOpenApiClient`); the variables are the operation's input and the
  *   data its 2xx reply, both typed from the spec, and the id is the route.
@@ -108,6 +110,14 @@ export function query<
 	route: R,
 	opts?: RestQueryOptions<InputOf<Ops, R>, DataOf<Ops, R, DecodedOf<Ops, Api>>>,
 ): Query<InputOf<Ops, R>, DataOf<Ops, R, DecodedOf<Ops, Api>>>;
+export function query<
+	Ops extends OperationsShape<Ops>,
+	R extends QueryRoute<Ops>,
+>(
+	table: OperationTable<Ops>,
+	route: R,
+	opts?: RestQueryOptions<InputOf<Ops, R>, DataOf<Ops, R, true>>,
+): Query<InputOf<Ops, R>, DataOf<Ops, R, true>>;
 export function query<Vars = void, Data = unknown>(
 	opts: FreeQueryOptions<Vars, Data>,
 ): Query<Vars, Data>;
@@ -116,15 +126,16 @@ export function query(
 	route?: string,
 	opts: { id?: string } = {},
 ): unknown {
-	if (isFree(first)) {
-		freeId(first, 'query');
+	const spec = specOf(first);
+	if (!spec) {
+		freeId(first as { id?: unknown }, 'query');
 		const { fetch, ...rest } = first as unknown as FreeQueryOptions<
 			unknown,
 			unknown
 		>;
 		return coreQuery({ ...rest, fetch: guarded(fetch) });
 	}
-	const op = operationOf(first as never, route as never, 'query');
+	const op = operationOf(spec, route as never, 'query');
 	return coreQuery({
 		...(opts as object),
 		id: opts.id ?? op.id,
@@ -133,8 +144,9 @@ export function query(
 }
 
 /**
- * A mutation definition, in the same two forms as `query`:
- * `mutation(api, 'post /invoices', opts?)` or `mutation({ id, run })`.
+ * A mutation definition, in the same three forms as `query`:
+ * `mutation(operations, 'post /invoices', opts?)`, `mutation(api, 'post /invoices', opts?)`
+ * or `mutation({ id, run })`.
  */
 export function mutation<
 	Ops extends OperationsShape<Ops>,
@@ -148,6 +160,14 @@ export function mutation<
 		DataOf<Ops, R, DecodedOf<Ops, Api>>
 	>,
 ): Mutation<InputOf<Ops, R>, DataOf<Ops, R, DecodedOf<Ops, Api>>>;
+export function mutation<
+	Ops extends OperationsShape<Ops>,
+	R extends MutationRoute<Ops>,
+>(
+	table: OperationTable<Ops>,
+	route: R,
+	opts?: RestMutationOptions<InputOf<Ops, R>, DataOf<Ops, R, true>>,
+): Mutation<InputOf<Ops, R>, DataOf<Ops, R, true>>;
 export function mutation<Vars = void, Data = unknown>(
 	opts: FreeMutationOptions<Vars, Data>,
 ): Mutation<Vars, Data>;
@@ -156,15 +176,16 @@ export function mutation(
 	route?: string,
 	opts: { id?: string } = {},
 ): unknown {
-	if (isFree(first)) {
-		freeId(first, 'mutation');
+	const spec = specOf(first);
+	if (!spec) {
+		freeId(first as { id?: unknown }, 'mutation');
 		const { run, ...rest } = first as unknown as FreeMutationOptions<
 			unknown,
 			unknown
 		>;
 		return coreMutation({ ...rest, run: guarded(run) });
 	}
-	const op = operationOf(first as never, route as never, 'mutation');
+	const op = operationOf(spec, route as never, 'mutation');
 	return coreMutation({
 		...(opts as object),
 		id: opts.id ?? op.id,

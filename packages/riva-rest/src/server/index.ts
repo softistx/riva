@@ -1,4 +1,5 @@
 import type { DataOperation, DataSource } from '@softistx/riva';
+import { specOf } from '../operation';
 import { type Route, transportOf } from '../transport';
 import { PREFIX, SAFE } from '../wire';
 
@@ -19,13 +20,13 @@ export { PREFIX };
 
 /**
  * The server side of `bffTransport`: runs the operations of an OpenAPI client
- * (`createOpenApiClient`) through the request riva's REST transport
+ * (`createOpenApiClient`) or of the generated `operations` table alone through the request riva's REST transport
  * (`provideRest`), under the id `rest:<operationId>`. Only the spec's
  * operations are known; the browser sends an id and its input, never a URL. A
  * GET, HEAD or OPTIONS is a query, any other method a mutation.
  */
-export function operations(api: OperationsOf): DataSource {
-	const table = (api?.operations ?? {}) as Record<string, Entry>;
+export function operations(api: OperationsOf | object): DataSource {
+	const table = (specOf(api)?.operations ?? {}) as Record<string, Entry>;
 	const made = new Map<string, DataOperation>();
 	return {
 		find(id) {

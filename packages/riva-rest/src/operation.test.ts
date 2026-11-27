@@ -1,7 +1,7 @@
 import { expect, test } from 'bun:test';
 import { RivaError } from '@softistx/riva';
 import { operations } from '../test/fixtures';
-import { operationOf } from './operation';
+import { operationOf, specOf } from './operation';
 
 const spec = { operations };
 const of = (route: string, kind: 'query' | 'mutation' = 'query') =>
@@ -31,7 +31,7 @@ test('refuses what is not a route', () => {
 
 test('refuses a route the spec has no operation for', () => {
 	expect(() => of('get /nope')).toThrow(
-		'riva-rest: the OpenAPI client has no operation at GET /nope',
+		'riva-rest: no OpenAPI operation at GET /nope',
 	);
 	expect(() => operationOf({} as never, 'get /x' as never, 'query')).toThrow(
 		RivaError,
@@ -55,4 +55,19 @@ test('a POST can be a query (a search)', () => {
 	expect(operationOf(s as never, 'post /search' as never, 'query').id).toBe(
 		'post /search',
 	);
+});
+
+test('specOf reads a client or spec as is, a bare table wrapped, free options as nothing', () => {
+	expect(specOf(spec)).toBe(spec);
+	expect(specOf(operations)).toEqual({ operations });
+	expect(specOf({ id: 'x', fetch: async () => 1 })).toBeUndefined();
+	expect(specOf({ id: 'x', run: async () => 1 })).toBeUndefined();
+	expect(specOf({ id: 'x' })).toBeUndefined();
+	expect(specOf({})).toBeUndefined();
+	expect(specOf(undefined)).toBeUndefined();
+	expect(specOf('get /x')).toBeUndefined();
+	// free options win even when a value looks like an entry
+	expect(
+		specOf({ id: 'x', fetch: async () => 1, a: { method: 'get', path: '/' } }),
+	).toBeUndefined();
 });

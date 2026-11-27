@@ -37,7 +37,7 @@ Code: `RIVA_SCOPE` (`RivaScopeError`).
 
 Code: `RIVA_REST_UNWIRED` (`RivaRequestError`, never retried).
 
-**When:** an OpenAPI definition (`query(api, 'get /x')`) ran through `httpyzTransport(http)` made without `api`.
+**When:** an OpenAPI definition (`query(api, 'get /x')` or `query(operations, 'get /x')`) ran through `httpyzTransport(http)` made without `api`.
 
 **Fix:** pass the client `createOpenApiClient(http, operations)` made as the second argument.
 
@@ -47,20 +47,28 @@ Code: `RIVA_REST_UNWIRED` (`RivaRequestError`, never retried), thrown when the q
 
 **Why:** the transport's `api` is not the client the definition came from: it has no operation at that method and path (two specs, or a client made over another `operations` table).
 
-**Fix:** build the transport over the same client the definitions use, with the same `decode` setting: the data types follow the definitions' client, while the call runs on the transport's.
+**Fix:** build the transport over the same spec (the client or the table the definitions use), with the same `decode` setting: the data types follow the definitions' client, while the call runs on the transport's.
 
 ```ts
 export const api = createOpenApiClient(http, operations);
 provideRest(riva, httpyzTransport(http, api)); // the api the definitions take
 ```
 
-## `riva-rest: the OpenAPI client has no operation at GET /nope; check the path as the spec writes it.`
+## `riva-rest: no OpenAPI operation at GET /nope; check the path as the spec writes it.`
 
 Code: `RIVA_DEFINITION` (`RivaError`), thrown when the definition is created.
 
-**Why:** the route is not in the client's operation table. The path is the template as the spec writes it (`/invoices/{id}`, not `/invoices/:id`), and the method is lowercase in the route (`'get /invoices/{id}'`).
+**Why:** the route is not in the operation table (the generated `operations`, or the client's). The path is the template as the spec writes it (`/invoices/{id}`, not `/invoices/:id`), and the method is lowercase in the route (`'get /invoices/{id}'`).
 
 **Fix:** copy the route from the spec. TypeScript suggests the routes the spec has.
+
+## `riva-rest: query() needs an id; a function has no name to derive one from.` from `query(operations, …)`
+
+Code: `RIVA_DEFINITION` (`RivaError`), thrown when the definition is created.
+
+**Why:** an empty or malformed table (no entry with a `method` and a `path`) is read as free options, so the error is the free form's.
+
+**Fix:** pass the generated `operations` table, not `{}` or a stale import.
 
 ## `riva-rest: "invoices" is not a route; write it as '<method> <path>' (get /invoices/{id}).`
 
@@ -232,7 +240,7 @@ Code: `RIVA_VALIDATION` (`RivaRequestError`, not retryable), thrown by the `with
 
 **Why:** a string in `invalidates` is the path of a `riva.rest.get`, as the spec writes it (`'/invoices/{id}'`, with the placeholder, for every input of it); with `withRest({ baseUrl })` it is the URL path you passed to `get` (`'/invoices/42'`). A query made with `query(api, route)` has its own entries and is not reached by a string (unless the `get` was given that definition: `riva.rest.get(def, input)` reads the definition's entries).
 
-**Fix:** pass the same path as the `get`, or the definition (`invalidates: [invoicesQuery]`) or `at(invoicesQuery, vars)` for a hand-made one. A path the spec has no `get` for throws `riva-rest: the OpenAPI client has no operation at GET /x; …` before the mutation runs.
+**Fix:** pass the same path as the `get`, or the definition (`invalidates: [invoicesQuery]`) or `at(invoicesQuery, vars)` for a hand-made one. A path the spec has no `get` for throws `riva-rest: no OpenAPI operation at GET /x; …` before the mutation runs.
 
 ## `GET /x: the reply is not JSON.`
 
