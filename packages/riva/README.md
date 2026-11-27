@@ -182,7 +182,7 @@ The snapshot is an opaque format: pass on what `dehydrate` returned. A fresh ent
 
 ## Errors
 
-`RivaError` (with a `code`) is the base class, defined once here so `instanceof` holds. `RivaScopeError` (`RIVA_SCOPE`), `RivaRequestError` (`status?`, `retryable`), `RivaHttpError` (`HTTP_<status>`), `RivaNetworkError` (`RIVA_NETWORK`), `RivaAbortError` (`RIVA_ABORT`); `RivaGraphQLError` (with its `GraphQLErrorEntry` type, both from `@softistx/riva/resource`) for a GraphQL response with `errors`; `isRetryableStatus(status)` tells whether an HTTP status is worth retrying (5xx, 408, 429); `RIVA_CYCLE`, `RIVA_LOOP`, `RIVA_DURATION`, `RIVA_KEY`, `RIVA_CACHE`, `RIVA_STORE` and `RIVA_SSR` are plain `RivaError`s. [errors](./docs/guide/errors.md), [troubleshooting](./docs/troubleshooting.md).
+`RivaError` (with a `code`) is the base class, defined once here so `instanceof` holds. `RivaScopeError` (`RIVA_SCOPE`), `RivaRequestError` (`status?`, `retryable`), `RivaHttpError` (`HTTP_<status>`), `RivaNetworkError` (`RIVA_NETWORK`), `RivaAbortError` (`RIVA_ABORT`); `RivaGraphQLError` (with its `GraphQLErrorEntry` type, both from `@softistx/riva/resource`) for a GraphQL response with `errors`; `isRetryableStatus(status)` tells whether an HTTP status is worth retrying (5xx, 408, 429); `RIVA_CYCLE`, `RIVA_LOOP`, `RIVA_DURATION`, `RIVA_KEY`, `RIVA_LIVE`, `RIVA_CACHE`, `RIVA_STORE` and `RIVA_SSR` are plain `RivaError`s. [errors](./docs/guide/errors.md), [troubleshooting](./docs/troubleshooting.md).
 
 ## Data route riva
 
@@ -190,89 +190,50 @@ The snapshot is an opaque format: pass on what `dehydrate` returned. A fresh ent
 
 ## RxJS
 
-`@softistx/riva/rxjs` turns riva into cold Observables. `rxjs ^7.8` is an optional peer that only this subpath needs; the main entry never imports it, and importing `@softistx/riva/rxjs` without it installed fails at import.
+`@softistx/riva/rxjs` turns riva into cold Observables. `rxjs ^7.8` is an optional peer that only this subpath needs; importing the subpath without it installed fails at import.
 
 ```sh
 bun add rxjs
 ```
 
 ```ts
-import { createRiva, query } from '@softistx/riva';
-import { connect, data$, fromAsyncIterable, liveQuery, toObservable } from '@softistx/riva/rxjs';
+import { createRiva, query, signal } from '@softistx/riva';
+import { useQuery } from '@softistx/riva-react';
+import { connect, data$, liveQuery, toObservable } from '@softistx/riva/rxjs';
+import { fromEvent, interval, map } from 'rxjs';
 
 const riva = createRiva();
-const userQuery = query({ id: 'user', fetch: async (id: number) => ({ id }) });
-
-// Full states: { status, data, error, isFetching, updatedAt }
-const sub = toObservable(riva, userQuery, 1).subscribe(console.log);
-sub.unsubscribe(); // releases the query
-
-data$(riva, userQuery, 1).subscribe(console.log); // the data alone, no repeats
-
-// A mutation handle (e.g. `riva.graphql.mutation(DOC)` or `mutationHandle`): its state
-// toObservable(riva, saveHandle).subscribe(console.log);
-```
-
-Subscribing observes a query like `useQuery` and unsubscribing releases it. An error is a value of the stream, never its end. `toObservable` also takes a signal or computed (its value). `data$` takes a query or a `{ state, subscribe }` handle whose state has `data`, not a signal or computed.
-
-### Async streams
-
-`fromAsyncIterable(source)` (or `toObservable(source)`) takes an `AsyncSource<T>`: an `AsyncIterable<T>`, or a factory `(signal: AbortSignal) => AsyncIterable<T>`. Unsubscribing calls the iterator's `return()`; only the factory form also gets an abort, through its `signal`. A bare generator object is single-use and shared by every subscription to it, so prefer the factory form for generators:
-
-```ts
-const messages$ = fromAsyncIterable((signal) => subscribeToMessages({ signal }));
-```
-
-A factory that throws synchronously ends the stream with `error`.
-
-### Live queries
-
-`liveQuery({ id, observe })` is a query fed by a stream: the same derived key, cache and SSR as `query`, read with `riva.get`, `riva.subscribe`, `priceQuery.ensure(riva, …)` or `useQuery(priceQuery, …)`.
-
-```ts
-import { liveQuery } from '@softistx/riva/rxjs';
-import { interval, map } from 'rxjs';
-
-const priceQuery = liveQuery({
-  id: 'price',
-  // any Observable<number> per variables; here a fake ticker
-  observe: (symbol: string) => interval(1000).pipe(map((n) => 100 + n)),
+const userQuery = query({
+	id: 'user',
+	fetch: async (id: number) => ({ id }),
 });
 
-// server (loader): resolves at the first value, then unsubscribes
-const first = await priceQuery.ensure(riva, 'ACME');
+// A query as an Observable of full states; unsubscribing releases it
+const sub = toObservable(riva, userQuery, 1).subscribe(console.log);
+sub.unsubscribe();
 
-// React: live while mounted
-const { data, status } = useQuery(priceQuery, 'ACME');
-```
+// The data alone, no repeats
+data$(riva, userQuery, 1).subscribe(console.log);
 
-On the server `ensure()` resolves at the first value, then unsubscribes; a stream that stays silent stops with the request's signal, and the snapshot carries the value. In a browser the stream is subscribed while the query is observed and the data stays for `gcTime` after the last release; `ensure()` with no observer closes the stream at once. `staleTime` is not accepted (an observed entry is live).
+// A query fed by a stream: same key, cache and SSR as `query`
+const priceQuery = liveQuery({
+	id: 'price',
+	observe: (symbol: string) => interval(1000).pipe(map((n) => 100 + n)),
+});
+const first = await priceQuery.ensure(riva, 'ACME'); // resolves at the first value
+const { data, status } = useQuery(priceQuery, 'ACME'); // in a component: live while mounted
 
-- An error before the first value rejects like any query error (retry applies).
-- An error after it sets the error state and keeps the last data; the stream does not reconnect on its own, `refetch()` (or a new observer after a release) subscribes again.
-- `complete` keeps the last value and does not reconnect; a stream that completes without a value rejects.
-
-### Connecting a stream to a state
-
-`connect(riva, state, obs$)` writes each value of an Observable into a signal of that riva and returns the stop. The Observable's type must match the signal's.
-
-```ts
-import { createRiva, signal } from '@softistx/riva';
-import { connect } from '@softistx/riva/rxjs';
-import { fromEvent, map } from 'rxjs';
-
+// A stream written into a signal of this riva
 const width = signal(0);
-const riva = createRiva();
-
 const stop = connect(
-  riva,
-  width,
-  fromEvent(window, 'resize').pipe(map(() => window.innerWidth)),
+	riva,
+	width,
+	fromEvent(window, 'resize').pipe(map(() => window.innerWidth)),
 );
-stop(); // unsubscribes; calling it again does nothing
+stop();
 ```
 
-`complete` leaves the last value. An `error` ends the connection and is swallowed: the signal keeps its last value, so turn failures into values upstream with `catchError`. The full guide is [RxJS](./docs/guide/rxjs.md).
+An error is a value of the stream, never its end. `fromAsyncIterable` wraps an async iterable, a `liveQuery` error after its first value keeps the last data, and `connect` swallows an upstream `error`. All of it, with the options: [RxJS](./docs/guide/rxjs.md).
 
 ## Types
 
@@ -280,7 +241,7 @@ stop(); // unsubscribes; calling it again does nothing
 
 ## Size budget
 
-The main entry stays within 6272 B gzipped, with `entities` or `infinite` within 8192 B each, with `ssr` or `store` within 7680 B each, with `data` within 7168 B, with `resource` within 7808 B, with every subpath within 12544 B, core + react within 9344 B, core + `@softistx/riva/rxjs` within 7168 B (1024 B on top of the core, `rxjs` left out) (`bun run size` checks every row).
+The main entry stays within 6272 B gzipped, with `entities` within 8736 B, `infinite` within 8192 B, `ssr` or `store` within 7680 B each, `data` within 7168 B, `resource` within 7808 B, `@softistx/riva/rxjs` within 7168 B (`rxjs` left out), every subpath within 12544 B, and core + react within 9344 B (`bun run size` checks every row).
 
 ## Documentation
 

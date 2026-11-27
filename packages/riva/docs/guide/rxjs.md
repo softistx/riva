@@ -173,6 +173,7 @@ To feed a signal from a stream for the life of a component, call `connect` in an
 
 ```tsx
 import { useRiva } from '@softistx/riva-react';
+import { connect } from '@softistx/riva/rxjs';
 import { useEffect } from 'react';
 
 function WidthWatcher() {

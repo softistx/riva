@@ -216,7 +216,7 @@ When to prefer one, and how both live on one riva: [Advanced: shared definitions
 
 Exported types: `TrackedInput` (the core type of a call input, re-exported), `GraphQLApi`, `GraphQLQueryCall`, `GraphQLMutateCall`, `GraphQLSubscribeCall`, `GraphQLSimpleOptions`, `GraphQLTransport`, `Operation`, `OperationKind`, `VarsOf` and `GraphQLQueryOptions`, `GraphQLMutationOptions`, `OperationCache` (main entry); `NormalizedOptions`, `PossibleTypes` (`/cache`); `GraphQLInfiniteOptions` (`/infinite`); `AllowlistConfig`, `AllowlistEntry`, `AllowlistManifest` (`/codegen`); `BffTransportOptions` (`/bff`); `AllowlistInput`, `DataOperation`, `DataSource` (`/server`).
 
-riva + riva-graphql stays under 8 kB gzipped, and with the entities and the cache under 12 kB (12288 B; `/bff` 9728 B) (checked by the repo's size budget), `@softistx/graphql-client` and `graphql` not counted.
+riva + riva-graphql stays within 9728 B gzipped, with the cache within 14336 B, and riva + `/bff` within 11296 B (checked by the repo's size budget), `@softistx/graphql-client` and `graphql` not counted.
 
 ## Documentation
 

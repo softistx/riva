@@ -55,6 +55,8 @@ then `riva.graphql.query(DOC, vars)` and `riva.rest.get(path, input)`.
 | REST through a BFF | `@softistx/riva-rest/server`, `/bff` |
 | Polling, `gcTime`, optimistic updates, cursor pagination, one setting shared by call sites | definitions: `query()`, `mutation()`, `infinite()`, `useQuery`, `useMutation`, `useInfiniteQuery` |
 
+Progressive `@defer` / `@stream` results: `dataState` on the query state and `onPart`, in `packages/riva-graphql/docs/guide/incremental.md`.
+
 The peers each package adds, with their ranges, are in
 `references/packages.md` and in each README's install section.
 

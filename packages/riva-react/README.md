@@ -245,7 +245,7 @@ A hook never starts a fetch during a server render, except through `suspense: tr
 
 Types: `MutationResult` (what every mutation hook returns), `RivaProviderProps`, `SuspendedState` and `UseQueryOptions` (main entry), `InfiniteResult` and `UseInfiniteQueryOptions` (`/infinite`), `UseResourceOptions`, `CallResourceOptions`, `ResourceCall`, `StableInput` and `SuspendedState` (`/resource`; `MutationResult` is exported there too).
 
-Core plus the main entry stays under 9 kB gzipped; the subpaths cost nothing until imported.
+Core plus the main entry stays within 9344 B gzipped; the subpaths cost nothing until imported.
 
 ## Documentation
 
