@@ -7,7 +7,7 @@ import {
 } from '@softistx/riva/resource';
 import { useCallback, useMemo, useRef, useSyncExternalStore } from 'react';
 import { useRiva } from '../context';
-import { retryOnReset } from '../suspend';
+import { retryOnReset, untilData } from '../suspend';
 
 export interface UseResourceOptions {
 	/** Suspends while there is no data and throws an error to the nearest error boundary. Needs an awaitable resource. Default false. */
@@ -49,7 +49,11 @@ export function suspenseStaleTime(
 const SLOT = {};
 
 /** The one promise React waits on for a key, so every render that suspends gets the same one. */
-function suspendOn(riva: Riva, key: string, res: PromiseLike<unknown>) {
+function suspendOn(
+	riva: Riva,
+	key: string,
+	res: PromiseLike<unknown> & Pick<Resource<unknown>, 'subscribe'>,
+) {
 	let map = riva.slots.get(SLOT) as Map<string, PromiseLike<void>> | undefined;
 	if (!map) {
 		map = new Map();
@@ -59,7 +63,10 @@ function suspendOn(riva: Riva, key: string, res: PromiseLike<unknown>) {
 	if (!promise) {
 		const entries = map;
 		const done = () => void entries.delete(key);
-		promise = res.then(done, done);
+		promise = untilData(res, (listener) => res.subscribe(listener)).then(
+			done,
+			done,
+		);
 		entries.set(key, promise);
 	}
 	return promise;

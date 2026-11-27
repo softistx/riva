@@ -18,7 +18,8 @@ type Missing = typeof missing;
  * Denormalizes a query's result by its selection: fragments, aliases,
  * arguments and `@skip`/`@include` applied, each entity read through its signal
  * (so the caller's computed is notified). Any field or entity missing makes
- * the whole result `undefined`.
+ * the whole result `undefined`, except a field only a `@defer` fragment
+ * selects: it is left out until its part arrives.
  */
 export function readResult(
 	walk: Walk,
@@ -42,7 +43,7 @@ function readObject(
 	root = false,
 ): Record<string, unknown> | Missing {
 	const typename = source['__typename'];
-	const { fields, undecided } = collectFields(
+	const { fields, undecided, deferred } = collectFields(
 		sets,
 		typeof typename === 'string' ? typename : undefined,
 		// The root has no `__typename`: a fragment on the root type applies.
@@ -52,7 +53,11 @@ function readObject(
 	const result: Record<string, unknown> = {};
 	for (const [responseKey, nodes] of fields) {
 		const key = fieldKey(nodes[0] as FieldNode, reader.variables);
-		if (!Object.hasOwn(source, key)) return missing;
+		if (!Object.hasOwn(source, key)) {
+			// A deferred field whose part has not arrived: the rest reads.
+			if (deferred.has(responseKey)) continue;
+			return missing;
+		}
 		const value = readValue(reader, source[key], subSelections(nodes));
 		if (value === missing) return missing;
 		result[responseKey] = value;

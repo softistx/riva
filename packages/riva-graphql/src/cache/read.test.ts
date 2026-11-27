@@ -147,3 +147,48 @@ describe('readResult', () => {
 		).toBeUndefined();
 	});
 });
+
+describe('readResult with @defer', () => {
+	const deferred = 'query { me { __typename id ... @defer { name } } plain }';
+	const store = () => {
+		const s = newStore();
+		return s;
+	};
+
+	test('a field only a @defer fragment selects is left out until its part arrives', () => {
+		const s = store();
+		const first = writeInto(s, walkOf(deferred), {
+			me: { __typename: 'User', id: '1' },
+			plain: 1,
+		});
+		expect(readResult(walkOf(deferred), s, first)).toEqual({
+			me: { __typename: 'User', id: '1' },
+			plain: 1,
+		});
+		const second = writeInto(s, walkOf(deferred), {
+			me: { __typename: 'User', id: '1', name: 'Ada' },
+			plain: 1,
+		});
+		expect(readResult(walkOf(deferred), s, second)).toEqual({
+			me: { __typename: 'User', id: '1', name: 'Ada' },
+			plain: 1,
+		});
+	});
+
+	test('a missing field outside a @defer fragment still makes the read undefined', () => {
+		const s = store();
+		const root = writeInto(s, walkOf(deferred), {
+			me: { __typename: 'User', id: '1' },
+		});
+		expect(readResult(walkOf(deferred), s, root)).toBeUndefined();
+	});
+
+	test('@defer(if: false) is a plain selection', () => {
+		const q = 'query { me { __typename id ... @defer(if: false) { name } } }';
+		const s = store();
+		const root = writeInto(s, walkOf(q), {
+			me: { __typename: 'User', id: '1' },
+		});
+		expect(readResult(walkOf(q), s, root)).toBeUndefined();
+	});
+});

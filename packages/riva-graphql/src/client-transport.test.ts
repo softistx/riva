@@ -141,3 +141,132 @@ test('a subscription yields each result and ends with the signal', async () => {
 		seen.push(d);
 	expect(seen).toEqual([{ n: 1 }, { n: 2 }]);
 });
+
+const PROFILE = parse(
+	'query Profile { me { id ... @defer { name } } }',
+) as never;
+
+/** A multipart/mixed answer whose parts are written when the test says so. */
+function multipart() {
+	const enc = new TextEncoder();
+	let out!: ReadableStreamDefaultController<Uint8Array>;
+	const body = new ReadableStream<Uint8Array>({
+		start(c) {
+			out = c;
+			c.enqueue(enc.encode('\r\n---'));
+		},
+	});
+	const part = (json: unknown, last = false) =>
+		out.enqueue(
+			enc.encode(
+				`\r\ncontent-type: application/json; charset=utf-8\r\n\r\n${JSON.stringify(json)}\r\n${last ? '-----\r\n' : '---'}`,
+			),
+		);
+	const response = new Response(body, {
+		headers: {
+			'content-type': 'multipart/mixed; boundary="-"; deferSpec=20220824',
+		},
+	});
+	return {
+		response,
+		first: () => part({ data: { me: { id: '1' } }, hasNext: true }),
+		last: (errors?: unknown[]) =>
+			part(
+				{
+					incremental: [
+						{ data: { name: 'Ada' }, path: ['me'], ...(errors && { errors }) },
+					],
+					hasNext: false,
+				},
+				true,
+			),
+		close: () => out.close(),
+	};
+}
+const tick = () => new Promise((r) => setTimeout(r, 20));
+
+test('a deferred query publishes each part, then resolves with the final data', async () => {
+	const m = multipart();
+	handle = () => m.response;
+	const parts: unknown[] = [];
+	const done = transport().execute(
+		operationOf(PROFILE),
+		{},
+		{
+			signal: new AbortController().signal,
+			onPart: (d) => void parts.push(d),
+		},
+	);
+	m.first();
+	await tick();
+	expect(parts).toEqual([{ me: { id: '1' } }]);
+	m.last();
+	m.close();
+	expect(await done).toEqual({ me: { id: '1', name: 'Ada' } } as never);
+	expect(parts).toEqual([{ me: { id: '1' } }]);
+});
+
+test('a deferred query without onPart resolves with the final data', async () => {
+	const m = multipart();
+	handle = () => m.response;
+	const done = send2(transport());
+	m.first();
+	m.last();
+	m.close();
+	expect(await done).toEqual({ me: { id: '1', name: 'Ada' } } as never);
+});
+
+const send2 = (t: ReturnType<typeof transport>, onPart?: () => void) =>
+	t.execute(
+		operationOf(PROFILE),
+		{},
+		{ signal: new AbortController().signal, ...(onPart && { onPart }) },
+	);
+
+test('a deferred query answered as plain JSON resolves with no part', async () => {
+	handle = () => json({ data: { me: { id: '1', name: 'Ada' } } });
+	const parts: unknown[] = [];
+	const data = await send2(transport(), () => void parts.push(1));
+	expect(data).toEqual({ me: { id: '1', name: 'Ada' } } as never);
+	expect(parts).toEqual([]);
+});
+
+test('the signal closes a deferred request', async () => {
+	const m = multipart();
+	handle = () => m.response;
+	const ctl = new AbortController();
+	const parts: unknown[] = [];
+	const done = transport()
+		.execute(
+			operationOf(PROFILE),
+			{},
+			{ signal: ctl.signal, onPart: (d) => void parts.push(d) },
+		)
+		.catch((x) => x);
+	m.first();
+	await tick();
+	ctl.abort();
+	expect(await done).toBeInstanceOf(RivaAbortError);
+	expect(parts).toHaveLength(1);
+});
+
+test('a GraphQL error in the last part rejects as a plain query does', async () => {
+	const m = multipart();
+	handle = () => m.response;
+	const done = send2(transport(), () => {}).catch((x) => x);
+	m.first();
+	m.last([{ message: 'late failure' }]);
+	m.close();
+	expect(await done).toBeInstanceOf(Error);
+});
+
+test('a plain query is not iterated and never calls onPart', async () => {
+	handle = () => json({ data: { echo: 1 } });
+	const parts: unknown[] = [];
+	await transport().execute(
+		operationOf(PATIENTS_QUERY),
+		{ school: 's' },
+		{ signal: new AbortController().signal, onPart: () => void parts.push(1) },
+	);
+	expect(parts).toEqual([]);
+});

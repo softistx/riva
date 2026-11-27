@@ -9,6 +9,7 @@ import {
 	peek,
 	put,
 	putData,
+	putStored,
 	type State,
 	unreadable,
 	view,
@@ -20,6 +21,10 @@ async function loop(c: Ctx, e: Entry, f: Inflight): Promise<unknown> {
 	const { fetch, retry, retryDelay: delay } = e.def.options;
 	for (let failures = 0; ; ) {
 		const ctl = f.ctl;
+		// A part of an aborted attempt (cancel, restart, replaced) is dropped.
+		const onPart = (data: unknown) =>
+			ctl.signal.aborted ||
+			putData(c, e, { status: 'success', data, dataState: 'streaming' });
 		let ok = false;
 		let v: unknown;
 		try {
@@ -28,6 +33,7 @@ async function loop(c: Ctx, e: Entry, f: Inflight): Promise<unknown> {
 					signal: ctl.signal,
 					riva: c.riva,
 					keep: (s) => (e.stop = s),
+					onPart,
 				}),
 				ctl.signal,
 			);
@@ -68,7 +74,11 @@ function start(c: Ctx, e: Entry): Inflight {
 		e.run = undefined;
 		// A stream closed for want of an observer leaves the entry stale.
 		e.invalidated = !e.observers && !!e.stop?.();
-		const refused = putData(c, e, { isFetching: false, ...patch });
+		const refused = putData(c, e, {
+			isFetching: false,
+			...(peek(c, e).dataState && { dataState: 'complete' as const }),
+			...patch,
+		});
 		armGc(c, e);
 		return refused;
 	};
@@ -116,7 +126,7 @@ export function cancel(c: Ctx, e: Entry): void {
 	if (!f) return;
 	e.run = undefined;
 	f.ctl.abort();
-	put(c, e, f.prev);
+	putStored(c, e, f.prev); // releases the parts a stream stored
 	armGc(c, e);
 }
 

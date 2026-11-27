@@ -23,7 +23,9 @@ riva.get(user, { id: '1' }); // { status, data, error, isFetching, updatedAt }: 
 const off = riva.subscribe(user, { id: '1' }, (state) => console.log(state.status));
 ```
 
-`Vars` and `Data` are inferred from `fetch`. Variables are optional at call sites when the fetcher takes none.
+`Vars` and `Data` are inferred from `fetch`.
+
+A fetch that receives its data in parts (a GraphQL `@defer`, a streamed body) can publish each part with `ctx.onPart(data)` before it resolves. The entry then reads `status: 'success'` with `isFetching: true`, `data` set to the parts so far and `dataState: 'streaming'`; when the fetch resolves, its value replaces the data and `dataState` becomes `'complete'`. A part after an abort, a restart or a cancel is dropped. A fetch that never calls it has no `dataState`. Variables are optional at call sites when the fetcher takes none.
 
 ## Reading and driving a query
 

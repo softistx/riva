@@ -10,7 +10,16 @@ export interface GraphQLTransport {
 	execute<Data, Vars>(
 		operation: Operation<Data, Vars>,
 		variables: Vars,
-		options: { signal: AbortSignal },
+		options: {
+			signal: AbortSignal;
+			/**
+			 * Passed to a query only. A transport that receives an operation in
+			 * parts (`@defer`, `@stream`) calls it with the data so far on each
+			 * part before the last, then resolves with the final data. One that
+			 * ignores it just resolves: the query renders when it does.
+			 */
+			onPart?: (data: Data) => void;
+		},
 	): Promise<Data>;
 	/**
 	 * Optional: opens a subscription and yields each result's data until the

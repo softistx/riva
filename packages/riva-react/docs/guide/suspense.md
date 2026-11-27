@@ -27,6 +27,10 @@ export function Page({ school }: { school: string }) {
 
 `ErrorBoundary` is the one of [react-error-boundary](https://www.npmjs.com/package/react-error-boundary); any error boundary works.
 
+## Data that arrives in parts
+
+A query whose fetch publishes parts with `ctx.onPart` (a GraphQL `@defer` or `@stream`, see [`@defer` and `@stream`](https://github.com/softistx/riva/blob/develop/packages/riva-graphql/docs/guide/incremental.md)) suspends only until its first part. The component then renders it, and later parts update `data` without suspending again. On the server the render waits for the whole result.
+
 ## Behaviour
 
 - What a Suspense render fetched is not fetched again when the component mounts, whatever the query's `staleTime` (the hooks fetch with a `staleTime` of at least 1000 ms: the call's, else the definition's, else the riva's default; never below 1 s). An invalid duration string throws `RIVA_DURATION`.

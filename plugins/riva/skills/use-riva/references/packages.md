@@ -41,6 +41,7 @@ GraphQL transport for riva over @softistx/graphql-client, with persisted ids and
   - `node_modules/@softistx/riva-graphql/docs/guide/codegen.md`: Allowlist codegen
   - `node_modules/@softistx/riva-graphql/docs/guide/documents.md`: Documents
   - `node_modules/@softistx/riva-graphql/docs/guide/errors.md`: Errors
+  - `node_modules/@softistx/riva-graphql/docs/guide/incremental.md`: `@defer` and `@stream`
   - `node_modules/@softistx/riva-graphql/docs/guide/infinite.md`: Infinite lists
   - `node_modules/@softistx/riva-graphql/docs/guide/mutations.md`: Mutations
   - `node_modules/@softistx/riva-graphql/docs/guide/queries.md`: Queries
