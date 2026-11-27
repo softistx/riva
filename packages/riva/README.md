@@ -41,7 +41,7 @@ books.state; // { status: 'idle' | 'loading' | 'success' | 'error', data, error,
 | `@softistx/riva/resource` | reactive resources: tracked variables, `enabled`, built-in `idle / loading / success / error` | [resources](./docs/guide/resources.md) |
 | `@softistx/riva/ssr` | dehydrate, hydrate, scope resolver | [ssr](./docs/guide/ssr.md) |
 | `@softistx/riva/data` | the browser's `/_data` riva | [data](./docs/guide/data.md) |
-| `@softistx/riva/rxjs` | cold Observables of states (`toObservable`, `data$`, `fromAsyncIterable`), needs `rxjs` | [RxJS](#rxjs) |
+| `@softistx/riva/rxjs` | cold Observables of states (`toObservable`, `data$`, `fromAsyncIterable`) and `liveQuery`, needs `rxjs` | [RxJS](#rxjs) |
 
 ## Extensions
 
@@ -198,7 +198,7 @@ bun add rxjs
 
 ```ts
 import { createRiva, query } from '@softistx/riva';
-import { data$, fromAsyncIterable, toObservable } from '@softistx/riva/rxjs';
+import { data$, fromAsyncIterable, liveQuery, toObservable } from '@softistx/riva/rxjs';
 
 const riva = createRiva();
 const userQuery = query({ id: 'user', fetch: async (id: number) => ({ id }) });
@@ -225,13 +225,40 @@ const messages$ = fromAsyncIterable((signal) => subscribeToMessages({ signal }))
 
 A factory that throws synchronously ends the stream with `error`.
 
+### Live queries
+
+`liveQuery({ id, observe })` is a query fed by a stream: the same derived key, cache and SSR as `query`, read with `riva.get`, `riva.subscribe`, `priceQuery.ensure(riva, …)` or `useQuery(priceQuery, …)`.
+
+```ts
+import { liveQuery } from '@softistx/riva/rxjs';
+import { interval, map } from 'rxjs';
+
+const priceQuery = liveQuery({
+  id: 'price',
+  // any Observable<number> per variables; here a fake ticker
+  observe: (symbol: string) => interval(1000).pipe(map((n) => 100 + n)),
+});
+
+// server (loader): resolves at the first value, then unsubscribes
+const first = await priceQuery.ensure(riva, 'ACME');
+
+// React: live while mounted
+const { data, status } = useQuery(priceQuery, 'ACME');
+```
+
+On the server `ensure()` resolves at the first value, then unsubscribes; a stream that stays silent stops with the request's signal, and the snapshot carries the value. In a browser the stream is subscribed while the query is observed and the data stays for `gcTime` after the last release; `ensure()` with no observer closes the stream at once. `staleTime` is not accepted (an observed entry is live).
+
+- An error before the first value rejects like any query error (retry applies).
+- An error after it sets the error state and keeps the last data; the stream does not reconnect on its own, `refetch()` (or a new observer after a release) subscribes again.
+- `complete` keeps the last value and does not reconnect; a stream that completes without a value rejects.
+
 ## Types
 
 `RivaOptions` (what `createRiva` takes), `DataOperation` and `DataSource` (a `/_data` route's operations, from the main entry), `AddContextLast` and `ReservedKey` (the store's typing helpers, from `/store`). Each subpath exports its own types, listed in its [guide](./docs/README.md).
 
 ## Size budget
 
-The main entry stays within 6144 B gzipped, with `entities` or `infinite` within 8192 B each, with `ssr` or `store` within 7680 B each, with `data` within 7168 B, with `resource` within 7680 B, with every subpath within 12288 B, core + react within 9216 B, `@softistx/riva/rxjs` within 1024 B with `rxjs` left out (`bun run size` checks every row).
+The main entry stays within 6272 B gzipped, with `entities` or `infinite` within 8192 B each, with `ssr` or `store` within 7680 B each, with `data` within 7168 B, with `resource` within 7808 B, with every subpath within 12544 B, core + react within 9344 B, core + `@softistx/riva/rxjs` within 7168 B (1024 B on top of the core, `rxjs` left out) (`bun run size` checks every row).
 
 ## Documentation
 

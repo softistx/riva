@@ -24,7 +24,11 @@ async function loop(c: Ctx, e: Entry, f: Inflight): Promise<unknown> {
 		let v: unknown;
 		try {
 			v = await raceAbort(
-				fetch(e.vars, { signal: ctl.signal, riva: c.riva }),
+				fetch(e.vars, {
+					signal: ctl.signal,
+					riva: c.riva,
+					keep: (s) => (e.stop = s),
+				}),
 				ctl.signal,
 			);
 			ok = true;
@@ -51,6 +55,7 @@ function start(c: Ctx, e: Entry): Inflight {
 		waiters: 0,
 		prev: peek(c, e),
 	};
+	e.stop?.();
 	e.run = f;
 	put(c, e, {
 		status: f.prev.status === 'success' ? 'success' : 'loading',
@@ -61,7 +66,8 @@ function start(c: Ctx, e: Entry): Inflight {
 	const done = (patch: Partial<State>): unknown => {
 		if (e.run !== f) return;
 		e.run = undefined;
-		e.invalidated = false;
+		// A stream closed for want of an observer leaves the entry stale.
+		e.invalidated = !e.observers && !!e.stop?.();
 		const refused = putData(c, e, { isFetching: false, ...patch });
 		armGc(c, e);
 		return refused;

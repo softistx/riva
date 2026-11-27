@@ -71,6 +71,7 @@
         "@types/react-dom": "^19.0.0",
         "react": "^19.0.0",
         "react-dom": "^19.0.0",
+        "rxjs": "^7.8.2",
       },
       "peerDependencies": {
         "@softistx/riva": "^0.10.0",

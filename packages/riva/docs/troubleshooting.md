@@ -440,3 +440,17 @@ import { RivaGraphQLError } from '@softistx/riva/resource';
 
 if (error instanceof RivaGraphQLError) error.errors;
 ```
+
+## `The stream of the live query "…" completed without a value.`
+
+**When:** `ensure()` on a `liveQuery` rejects with a `RIVA_LIVE` error, and `useQuery` and `riva.get` show `status: 'error'` with that error. The message above names the query's id.
+
+**Why:** the `Observable` returned by `observe` completed (an `EMPTY`, a `filter` that dropped everything, a `take(0)`) before emitting a first value. A live query's first value is its first result, so there is nothing to resolve with. A stream that completes after a value is fine: the last value is kept and it does not reconnect.
+
+**Fix:** make the stream emit before it completes, for instance `startWith(initial)`, or `defaultIfEmpty(initial)` when it may be empty.
+
+```ts
+import { defaultIfEmpty } from 'rxjs';
+
+liveQuery({ id: 'prices', observe: (symbol: string) => prices$(symbol).pipe(defaultIfEmpty(0)) });
+```

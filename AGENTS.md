@@ -25,7 +25,7 @@ departure.
   state; a server read with no riva in scope throws (the SSR leak guard).
 - Keys are derived (definition id + stable-serialized variables), never
   handwritten.
-- Size budget: core <= 6 kB gzipped, core + react <= 9 kB.
+- Size budget: core <= 6.125 kB (6272 B) gzipped, core + react <= 9344 B (owner-approved 2026-11-27).
 - Type inference is covered by type tests (`expectTypeOf`).
 - A spec sits beside every source file (`x.ts` and `x.test.ts`).
 - [docs/spec.md](./docs/spec.md) is the decision record (D1 to D16); only the

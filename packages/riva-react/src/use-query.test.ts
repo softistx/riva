@@ -5,7 +5,9 @@ import {
 	RivaScopeError,
 	signal,
 } from '@softistx/riva';
+import { liveQuery } from '@softistx/riva/rxjs';
 import { Component, type ReactNode, StrictMode, Suspense } from 'react';
+import { Observable, Subject } from 'rxjs';
 import { deferred, flush, h, mount, newRiva } from '../test/render';
 import { RivaProvider } from './context';
 import { useQuery } from './use-query';
@@ -498,4 +500,36 @@ test('a failure after a reset reaches the boundary again', async () => {
 	expect(calls).toBe(2);
 	await m.unmount();
 	log.mockRestore();
+});
+
+test('a live query shows what its stream pushes and unsubscribes on unmount', async () => {
+	const feed = new Subject<number>();
+	let subscribed = 0;
+	let unsubscribed = 0;
+	const def = liveQuery<void, number>({
+		id: 'uq/live',
+		retry: 0,
+		observe: () =>
+			new Observable<number>((sub) => {
+				subscribed++;
+				const inner = feed.subscribe(sub);
+				return () => {
+					unsubscribed++;
+					inner.unsubscribe();
+				};
+			}),
+	});
+	function Price() {
+		const q = useQuery(def);
+		return h('p', null, `${q.status}:${q.data ?? '-'}`);
+	}
+	const m = await mount(h(Price), newRiva());
+	expect(m.text()).toBe('loading:-');
+	await flush(() => feed.next(1));
+	expect(m.text()).toBe('success:1');
+	await flush(() => feed.next(2));
+	expect(m.text()).toBe('success:2');
+	expect(subscribed).toBe(1);
+	await m.unmount();
+	expect(unsubscribed).toBe(1);
 });
