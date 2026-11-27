@@ -31,6 +31,8 @@ const gql = createGraphQLClient({
 });
 ```
 
+For an operation that selects `@defer` or `@stream`, it iterates the call instead: each state before the last goes to the query as a part, so `useGraphQL` renders progressively ([guide](./incremental.md)). Other operations are unchanged.
+
 ## A transport of your own
 
 Any object with `execute(operation, variables, { signal })` is a transport. The `operation` carries:
@@ -42,6 +44,8 @@ Any object with `execute(operation, variables, { signal })` is a transport. The 
 | `kind` | `'query'`, `'mutation'` or `'subscription'`. |
 | `persistedId` | The preset's hash, when there is one. |
 | `id` | The persisted id, else the name. |
+
+`execute` also receives an optional `onPart(data)` for a query: call it with the data so far for each part of an incremental answer before the last, and resolve with the final data ([`@defer` and `@stream`](./incremental.md)). Ignoring it is fine.
 
 `subscribe(operation, variables, { signal })` is optional: it returns an `AsyncIterable` of results that ends when the signal aborts, and `riva.graphql.subscribe` throws without it. A transport must not define `mutate`: `withGraphQL()` takes an object that has one for a `@softistx/graphql-client` client. A transport that only posts an id and variables to a BFF route fits. Map its failures with `toRivaError(error, signal?)`.
 

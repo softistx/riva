@@ -8,8 +8,8 @@ One entry per package: what it is, its entry points, its peers and the docs its 
 
 Core: signals, Riva, query and mutation engine, normalized and keyed cache, pagination, optimistic layer, dehydrate and hydrate. Pure TypeScript, no DOM, no React.
 
-- Entry points: `@softistx/riva`, `@softistx/riva/entities`, `@softistx/riva/infinite`, `@softistx/riva/ssr`, `@softistx/riva/store`, `@softistx/riva/resource`, `@softistx/riva/data`
-- Peers: none
+- Entry points: `@softistx/riva`, `@softistx/riva/entities`, `@softistx/riva/infinite`, `@softistx/riva/ssr`, `@softistx/riva/store`, `@softistx/riva/resource`, `@softistx/riva/data`, `@softistx/riva/rxjs`
+- Peers: `rxjs` `^7.8` (optional)
 - Read first: `node_modules/@softistx/riva/README.md` (one example per section, links to the guides)
 - Shipped docs:
   - `node_modules/@softistx/riva/docs/README.md`: @softistx/riva docs
@@ -20,6 +20,7 @@ Core: signals, Riva, query and mutation engine, normalized and keyed cache, pagi
   - `node_modules/@softistx/riva/docs/guide/mutations.md`: Mutations
   - `node_modules/@softistx/riva/docs/guide/queries.md`: Queries
   - `node_modules/@softistx/riva/docs/guide/resources.md`: Resources
+  - `node_modules/@softistx/riva/docs/guide/rxjs.md`: RxJS
   - `node_modules/@softistx/riva/docs/guide/shared-definitions.md`: Advanced: shared definitions
   - `node_modules/@softistx/riva/docs/guide/signals.md`: Signals, computeds and effects
   - `node_modules/@softistx/riva/docs/guide/ssr.md`: Server rendering: `@softistx/riva/ssr`
@@ -31,7 +32,7 @@ Core: signals, Riva, query and mutation engine, normalized and keyed cache, pagi
 GraphQL transport for riva over @softistx/graphql-client, with persisted ids and the allowlist codegen plugin.
 
 - Entry points: `@softistx/riva-graphql`, `@softistx/riva-graphql/infinite`, `@softistx/riva-graphql/cache`, `@softistx/riva-graphql/codegen`, `@softistx/riva-graphql/server`, `@softistx/riva-graphql/bff`, `@softistx/riva-graphql/react`
-- Peers: `@softistx/riva` `^0.10.0`, `@softistx/graphql-client` `^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0`, `@graphql-typed-document-node/core` `^3.2.0` (optional), `graphql` `^16.11.0 || ^17.0.0` (optional), `react` `^19.0.0` (optional), `@softistx/riva-react` `^0.10.0` (optional)
+- Peers: `@softistx/riva` `^0.10.0`, `@softistx/graphql-client` `^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0`, `@graphql-typed-document-node/core` `^3.2.0` (optional), `graphql` `^16.11.0 || ^17.0.0` (optional), `react` `^19.0.0` (optional), `@softistx/riva-react` `^0.10.0` (optional)
 - Read first: `node_modules/@softistx/riva-graphql/README.md` (one example per section, links to the guides)
 - Shipped docs:
   - `node_modules/@softistx/riva-graphql/docs/README.md`: riva-graphql docs
@@ -40,6 +41,7 @@ GraphQL transport for riva over @softistx/graphql-client, with persisted ids and
   - `node_modules/@softistx/riva-graphql/docs/guide/codegen.md`: Allowlist codegen
   - `node_modules/@softistx/riva-graphql/docs/guide/documents.md`: Documents
   - `node_modules/@softistx/riva-graphql/docs/guide/errors.md`: Errors
+  - `node_modules/@softistx/riva-graphql/docs/guide/incremental.md`: `@defer` and `@stream`
   - `node_modules/@softistx/riva-graphql/docs/guide/infinite.md`: Infinite lists
   - `node_modules/@softistx/riva-graphql/docs/guide/mutations.md`: Mutations
   - `node_modules/@softistx/riva-graphql/docs/guide/queries.md`: Queries

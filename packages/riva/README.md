@@ -41,6 +41,7 @@ books.state; // { status: 'idle' | 'loading' | 'success' | 'error', data, error,
 | `@softistx/riva/resource` | reactive resources: tracked variables, `enabled`, built-in `idle / loading / success / error` | [resources](./docs/guide/resources.md) |
 | `@softistx/riva/ssr` | dehydrate, hydrate, scope resolver | [ssr](./docs/guide/ssr.md) |
 | `@softistx/riva/data` | the browser's `/_data` riva | [data](./docs/guide/data.md) |
+| `@softistx/riva/rxjs` | cold Observables of states (`toObservable`, `data$`, `fromAsyncIterable`), `liveQuery` and `connect` (a stream into a signal), needs `rxjs` | [RxJS](#rxjs) |
 
 ## Extensions
 
@@ -181,11 +182,58 @@ The snapshot is an opaque format: pass on what `dehydrate` returned. A fresh ent
 
 ## Errors
 
-`RivaError` (with a `code`) is the base class, defined once here so `instanceof` holds. `RivaScopeError` (`RIVA_SCOPE`), `RivaRequestError` (`status?`, `retryable`), `RivaHttpError` (`HTTP_<status>`), `RivaNetworkError` (`RIVA_NETWORK`), `RivaAbortError` (`RIVA_ABORT`); `RivaGraphQLError` (with its `GraphQLErrorEntry` type, both from `@softistx/riva/resource`) for a GraphQL response with `errors`; `isRetryableStatus(status)` tells whether an HTTP status is worth retrying (5xx, 408, 429); `RIVA_CYCLE`, `RIVA_LOOP`, `RIVA_DURATION`, `RIVA_KEY`, `RIVA_CACHE`, `RIVA_STORE` and `RIVA_SSR` are plain `RivaError`s. [errors](./docs/guide/errors.md), [troubleshooting](./docs/troubleshooting.md).
+`RivaError` (with a `code`) is the base class, defined once here so `instanceof` holds. `RivaScopeError` (`RIVA_SCOPE`), `RivaRequestError` (`status?`, `retryable`), `RivaHttpError` (`HTTP_<status>`), `RivaNetworkError` (`RIVA_NETWORK`), `RivaAbortError` (`RIVA_ABORT`); `RivaGraphQLError` (with its `GraphQLErrorEntry` type, both from `@softistx/riva/resource`) for a GraphQL response with `errors`; `isRetryableStatus(status)` tells whether an HTTP status is worth retrying (5xx, 408, 429); `RIVA_CYCLE`, `RIVA_LOOP`, `RIVA_DURATION`, `RIVA_KEY`, `RIVA_LIVE`, `RIVA_CACHE`, `RIVA_STORE` and `RIVA_SSR` are plain `RivaError`s. [errors](./docs/guide/errors.md), [troubleshooting](./docs/troubleshooting.md).
 
 ## Data route riva
 
 `@softistx/riva/data` is the browser's side of a `/_data` route, for a transport of your own: `postData(opts, id, variables, signal?)`. [data](./docs/guide/data.md).
+
+## RxJS
+
+`@softistx/riva/rxjs` turns riva into cold Observables. `rxjs ^7.8` is an optional peer that only this subpath needs; importing the subpath without it installed fails at import.
+
+```sh
+bun add rxjs
+```
+
+```ts
+import { createRiva, query, signal } from '@softistx/riva';
+import { useQuery } from '@softistx/riva-react';
+import { connect, data$, liveQuery, toObservable } from '@softistx/riva/rxjs';
+import { fromEvent, interval, map } from 'rxjs';
+
+const riva = createRiva();
+const userQuery = query({
+	id: 'user',
+	fetch: async (id: number) => ({ id }),
+});
+
+// A query as an Observable of full states; unsubscribing releases it
+const sub = toObservable(riva, userQuery, 1).subscribe(console.log);
+sub.unsubscribe();
+
+// The data alone, no repeats
+data$(riva, userQuery, 1).subscribe(console.log);
+
+// A query fed by a stream: same key, cache and SSR as `query`
+const priceQuery = liveQuery({
+	id: 'price',
+	observe: (symbol: string) => interval(1000).pipe(map((n) => 100 + n)),
+});
+const first = await priceQuery.ensure(riva, 'ACME'); // resolves at the first value
+const { data, status } = useQuery(priceQuery, 'ACME'); // in a component: live while mounted
+
+// A stream written into a signal of this riva
+const width = signal(0);
+const stop = connect(
+	riva,
+	width,
+	fromEvent(window, 'resize').pipe(map(() => window.innerWidth)),
+);
+stop();
+```
+
+An error is a value of the stream, never its end. `fromAsyncIterable` wraps an async iterable, a `liveQuery` error after its first value keeps the last data, and `connect` swallows an upstream `error`. All of it, with the options: [RxJS](./docs/guide/rxjs.md).
 
 ## Types
 
@@ -193,7 +241,7 @@ The snapshot is an opaque format: pass on what `dehydrate` returned. A fresh ent
 
 ## Size budget
 
-The main entry stays within 6144 B gzipped, with `entities` or `infinite` within 8192 B each, with `ssr` or `store` within 7680 B each, with `data` within 7168 B, with `resource` within 7680 B, with every subpath within 12288 B, core + react within 9216 B (`bun run size` checks every row).
+The main entry stays within 6272 B gzipped, with `entities` within 8736 B, `infinite` within 8192 B, `ssr` or `store` within 7680 B each, `data` within 7168 B, `resource` within 7808 B, `@softistx/riva/rxjs` within 7168 B (`rxjs` left out), every subpath within 12544 B, and core + react within 9344 B (`bun run size` checks every row).
 
 ## Documentation
 

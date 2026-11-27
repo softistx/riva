@@ -9,6 +9,8 @@ import {
 	peek,
 	put,
 	putData,
+	putStored,
+	releaseKept,
 	type State,
 	unreadable,
 	view,
@@ -20,11 +22,28 @@ async function loop(c: Ctx, e: Entry, f: Inflight): Promise<unknown> {
 	const { fetch, retry, retryDelay: delay } = e.def.options;
 	for (let failures = 0; ; ) {
 		const ctl = f.ctl;
+		// A part of an aborted attempt (cancel, restart, replaced) is dropped.
+		const onPart = (data: unknown) => {
+			if (ctl.signal.aborted || e.run !== f) return;
+			f.parted = true;
+			// The data the run replaces stays stored until it settles: a cancel restores it.
+			putData(
+				c,
+				e,
+				{ status: 'success', data, dataState: 'streaming' },
+				f.prev.data,
+			);
+		};
 		let ok = false;
 		let v: unknown;
 		try {
 			v = await raceAbort(
-				fetch(e.vars, { signal: ctl.signal, riva: c.riva }),
+				fetch(e.vars, {
+					signal: ctl.signal,
+					riva: c.riva,
+					keep: (s) => (e.stop = s),
+					onPart,
+				}),
 				ctl.signal,
 			);
 			ok = true;
@@ -51,6 +70,7 @@ function start(c: Ctx, e: Entry): Inflight {
 		waiters: 0,
 		prev: peek(c, e),
 	};
+	e.stop?.();
 	e.run = f;
 	put(c, e, {
 		status: f.prev.status === 'success' ? 'success' : 'loading',
@@ -61,8 +81,15 @@ function start(c: Ctx, e: Entry): Inflight {
 	const done = (patch: Partial<State>): unknown => {
 		if (e.run !== f) return;
 		e.run = undefined;
-		e.invalidated = false;
-		const refused = putData(c, e, { isFetching: false, ...patch });
+		// A stream closed for want of an observer leaves the entry stale.
+		e.invalidated = !e.observers && !!e.stop?.();
+		const refused = putData(c, e, {
+			isFetching: false,
+			...(peek(c, e).dataState && { dataState: 'complete' as const }),
+			...patch,
+		});
+		// The run is over: the data it kept for a cancel is not needed any more.
+		releaseKept(c, e, f, peek(c, e).data);
 		armGc(c, e);
 		return refused;
 	};
@@ -87,7 +114,12 @@ function start(c: Ctx, e: Entry): Inflight {
 			return e.def.options.cache ? (view(c, e).data ?? data) : data;
 		},
 		(error) => {
-			if (f.set) return f.set.v;
+			if (f.set) {
+				// A value pushed in the tick the fetch resolved: the run ended in `setData`.
+				if (!e.run && !e.observers && e.stop?.()) e.invalidated = true;
+				armGc(c, e);
+				return f.set.v;
+			}
 			done({ status: 'error', error });
 			throw error;
 		},
@@ -110,7 +142,9 @@ export function cancel(c: Ctx, e: Entry): void {
 	if (!f) return;
 	e.run = undefined;
 	f.ctl.abort();
-	put(c, e, f.prev);
+	// Releases the last part a stream stored; the previous data was kept.
+	// `dataState` is written even when absent: a part's `streaming` must not outlive the run.
+	putStored(c, e, { ...f.prev, dataState: f.prev.dataState } as Partial<State>);
 	armGc(c, e);
 }
 

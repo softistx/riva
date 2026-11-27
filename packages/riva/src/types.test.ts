@@ -3,6 +3,8 @@ import {
 	type Computed,
 	computed,
 	createRiva,
+	type FetchContext,
+	type QueryState,
 	type Riva,
 	type RivaExtension,
 	type RivaOptions,
@@ -59,4 +61,13 @@ test('options widened to RivaOptions type as a plain Riva', () => {
 	// An inferred literal keeps its extensions.
 	const inferred = { graphql: { install: () => 1 } };
 	expectTypeOf(createRiva(inferred).graphql).toEqualTypeOf<number>();
+});
+
+test('a parted fetch: dataState is optional, onPart takes the data so far', () => {
+	expectTypeOf<QueryState<string>['dataState']>().toEqualTypeOf<
+		'streaming' | 'complete' | undefined
+	>();
+	expectTypeOf<FetchContext['onPart']>().toEqualTypeOf<
+		((data: unknown) => void) | undefined
+	>();
 });

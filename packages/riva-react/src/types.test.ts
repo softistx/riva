@@ -31,6 +31,10 @@ const types = () => {
 	// @ts-expect-error wrong variables
 	useQuery(users, { school: 1 });
 
+	expectTypeOf(q.dataState).toEqualTypeOf<
+		'streaming' | 'complete' | undefined
+	>();
+
 	const s = useQuery(users, { school: 's' }, { suspense: true });
 	expectTypeOf(s.data).toEqualTypeOf<string[]>();
 	expectTypeOf(s.status).toEqualTypeOf<

@@ -28,6 +28,8 @@ export interface Collected {
 	readonly fields: Map<string, FieldNode[]>;
 	/** Fragments whose type condition could not be decided: read only when whole. */
 	readonly undecided: SelectionSetNode[];
+	/** Response keys selected only inside a `@defer` fragment: absent until their part arrives. */
+	readonly deferred: Set<string>;
 }
 
 /** The operation and fragments of a document; throws a `RivaError` (`RIVA_DEFINITION`) when it holds no operation. */
@@ -74,13 +76,22 @@ export function collectFields(
 	walk: Walk,
 	undecidedApply: boolean,
 ): Collected {
-	const collected: Collected = { fields: new Map(), undecided: [] };
+	const collected: Collected = {
+		fields: new Map(),
+		undecided: [],
+		deferred: new Set(),
+	};
+	const seenPlain = new Set<string>();
 	const seen = new Set<string>();
-	const visit = (set: SelectionSetNode) => {
+	const visit = (set: SelectionSetNode, lazy: boolean) => {
 		for (const selection of set.selections) {
 			if (!included(selection, walk.variables)) continue;
 			if (selection.kind === 'Field') {
 				const key = selection.alias?.value ?? selection.name.value;
+				if (!lazy) {
+					seenPlain.add(key);
+					collected.deferred.delete(key);
+				} else if (!seenPlain.has(key)) collected.deferred.add(key);
 				const group = collected.fields.get(key);
 				if (group) group.push(selection);
 				else collected.fields.set(key, [selection]);
@@ -89,11 +100,13 @@ export function collectFields(
 			const fragment = fragmentOf(selection, walk, seen);
 			if (!fragment) continue;
 			const match = walk.matches(fragment.condition, typename);
-			if (match || (match === undefined && undecidedApply)) visit(fragment.set);
+			const part = lazy || deferring(selection, walk.variables);
+			if (match || (match === undefined && undecidedApply))
+				visit(fragment.set, part);
 			else if (match === undefined) collected.undecided.push(fragment.set);
 		}
 	};
-	for (const set of sets) visit(set);
+	for (const set of sets) visit(set, false);
 	return collected;
 }
 
@@ -129,6 +142,17 @@ function fragmentOf(
 		condition: definition.typeCondition.name.value,
 		set: definition.selectionSet,
 	};
+}
+
+/** A fragment with `@defer` (a literal or variable `if: false` switches it off). */
+function deferring(
+	selection: Exclude<SelectionNode, FieldNode>,
+	variables: Variables,
+): boolean {
+	const directive = selection.directives?.find((d) => d.name.value === 'defer');
+	if (!directive) return false;
+	const argument = directive.arguments?.find((a) => a.name.value === 'if');
+	return !argument || valueNode(argument.value, variables) !== false;
 }
 
 /** `@skip(if:)` and `@include(if:)`, read from the variables. */

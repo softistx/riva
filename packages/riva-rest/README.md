@@ -179,7 +179,7 @@ export default function Root() {
 - `@softistx/riva-rest/server`: `operations(api)` (a `DataSource` for `dataRoute`; `api` is the OpenAPI client or the bare generated `operations` table), the constant `PREFIX` (`'rest:'`, the prefix of every id the route serves: `rest:<operationId>`) and the types `DataSource`, `DataOperation`, `OperationsOf`.
 - `@softistx/riva-rest/bff`: `bffTransport(opts)` and the type `BffTransportOptions`.
 
-Size: riva + riva-rest stays under 8 kB gzipped, and riva + `/bff` under 9 kB, httpyz and openapi-httpyz not counted.
+Size: riva + riva-rest stays within 9600 B gzipped, and riva + `/bff` within 11296 B, httpyz and openapi-httpyz not counted.
 
 ## Documentation
 

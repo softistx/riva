@@ -14,11 +14,29 @@ export interface QueryState<Data> {
 	readonly isFetching: boolean;
 	/** Epoch milliseconds of the last success (0 when none). */
 	readonly updatedAt: number;
+	/**
+	 * Set by a fetch that delivers its data in parts (`ctx.onPart`, such as a
+	 * GraphQL `@defer` or `@stream`): `'streaming'` while more parts are
+	 * coming (`status` is `success` and `isFetching` true, `data` is what
+	 * arrived so far), `'complete'` once the fetch ended. A plain fetch never
+	 * sets it.
+	 */
+	readonly dataState?: 'streaming' | 'complete';
 }
 
 export interface FetchContext {
 	signal: AbortSignal;
 	riva: Riva;
+	/** @internal Keeps what the fetch left open (a stream) until the entry is released: the last observer leaves, or it is collected or fetched again. */
+	keep?: (stop: () => true) => void;
+	/**
+	 * Publishes the data received so far, before the fetch resolves: the entry
+	 * shows it at once (`status: 'success'`, `dataState: 'streaming'`,
+	 * `isFetching: true`), and the value the fetch resolves with replaces it.
+	 * Absent when nothing observes parts (a mutation, a custom caller).
+	 * Calls after the fetch was aborted, restarted or replaced are ignored.
+	 */
+	onPart?: (data: unknown) => void;
 }
 
 /**
@@ -59,6 +77,8 @@ export interface QueryOptions<Vars, Data> {
 	refetchEvery?: Duration;
 	/** How the data is stored. Default: as is (a keyed cache). */
 	cache?: CachePolicy;
+	/** @internal The fetch keeps a subscription (`ctx.keep`): a hydrated live entry is stale, so its first observer subscribes. */
+	live?: boolean;
 	/** @internal Shapes the state readers see, last (after the policy and the layers); read inside a computed. */
 	derive?: (riva: Riva, state: QueryState<Data>, vars: Vars) => unknown;
 }
@@ -99,6 +119,7 @@ export interface Query<
 		readonly refetchEvery: number | undefined;
 		readonly cache: CachePolicy | undefined;
 		readonly derive: QueryOptions<Vars, Data>['derive'];
+		readonly live: boolean | undefined;
 	};
 	/** Fetches when missing or stale and awaits; resolves the cache when fresh. */
 	ensure(

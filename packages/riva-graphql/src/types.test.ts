@@ -16,6 +16,10 @@ import type { VarsOf } from './types';
 
 // Type tests only: nothing here runs.
 const types = () => {
+	type ExecuteOptions = Parameters<GraphQLTransport['execute']>[2];
+	expectTypeOf<ExecuteOptions['onPart']>().toEqualTypeOf<
+		((data: unknown) => void) | undefined
+	>();
 	const patients = query(PATIENTS_QUERY);
 	expectTypeOf(patients).toEqualTypeOf<Query<PatientsVars, PatientsData>>();
 	const viewer = query(VIEWER_QUERY);
