@@ -24,7 +24,14 @@ async function loop(c: Ctx, e: Entry, f: Inflight): Promise<unknown> {
 		let v: unknown;
 		try {
 			v = await raceAbort(
-				fetch(e.vars, { signal: ctl.signal, riva: c.riva }),
+				fetch(e.vars, {
+					signal: ctl.signal,
+					riva: c.riva,
+					keep: (s) => {
+						e.stop?.();
+						e.stop = s;
+					},
+				}),
 				ctl.signal,
 			);
 			ok = true;

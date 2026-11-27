@@ -19,6 +19,8 @@ export interface QueryState<Data> {
 export interface FetchContext {
 	signal: AbortSignal;
 	riva: Riva;
+	/** @internal Keeps what the fetch left open (a stream) until the entry is released: the last observer leaves, or it is collected or fetched again. */
+	keep?: (stop: () => void) => void;
 }
 
 /**
@@ -59,6 +61,8 @@ export interface QueryOptions<Vars, Data> {
 	refetchEvery?: Duration;
 	/** How the data is stored. Default: as is (a keyed cache). */
 	cache?: CachePolicy;
+	/** @internal The fetch keeps a subscription (`ctx.keep`): the entry is stale while none is held. */
+	live?: boolean;
 	/** @internal Shapes the state readers see, last (after the policy and the layers); read inside a computed. */
 	derive?: (riva: Riva, state: QueryState<Data>, vars: Vars) => unknown;
 }
@@ -99,6 +103,7 @@ export interface Query<
 		readonly refetchEvery: number | undefined;
 		readonly cache: CachePolicy | undefined;
 		readonly derive: QueryOptions<Vars, Data>['derive'];
+		readonly live: boolean | undefined;
 	};
 	/** Fetches when missing or stale and awaits; resolves the cache when fresh. */
 	ensure(

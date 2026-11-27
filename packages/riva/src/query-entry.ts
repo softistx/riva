@@ -45,6 +45,8 @@ export interface Entry {
 	invalidated?: boolean;
 	run?: Inflight | undefined;
 	gc?: unknown;
+	/** Closes what the fetch kept open (`ctx.keep`). */
+	stop?: (() => void) | undefined;
 	poll?: unknown;
 }
 
@@ -155,6 +157,7 @@ export const stale = (
 ): boolean =>
 	peek(c, e).status !== 'success' ||
 	e.invalidated ||
+	(e.def.options.live && !e.stop) ||
 	c.sched.now() - peek(c, e).updatedAt >= staleTime ||
 	unreadable(c, e);
 
@@ -176,6 +179,7 @@ export function armGc(c: Ctx, e: Entry): void {
 			return armGc(c, e);
 		if (c.entries.get(e.key) !== e) return;
 		c.entries.delete(e.key);
+		e.stop?.();
 		const stored = peek(c, e).data;
 		if (stored !== undefined) e.def.options.cache?.release(c.riva, stored);
 	}, ms);

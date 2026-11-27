@@ -41,7 +41,7 @@ books.state; // { status: 'idle' | 'loading' | 'success' | 'error', data, error,
 | `@softistx/riva/resource` | reactive resources: tracked variables, `enabled`, built-in `idle / loading / success / error` | [resources](./docs/guide/resources.md) |
 | `@softistx/riva/ssr` | dehydrate, hydrate, scope resolver | [ssr](./docs/guide/ssr.md) |
 | `@softistx/riva/data` | the browser's `/_data` riva | [data](./docs/guide/data.md) |
-| `@softistx/riva/rxjs` | cold Observables of states (`toObservable`, `data$`, `fromAsyncIterable`), needs `rxjs` | [RxJS](#rxjs) |
+| `@softistx/riva/rxjs` | cold Observables of states (`toObservable`, `data$`, `fromAsyncIterable`) and `liveQuery`, needs `rxjs` | [RxJS](#rxjs) |
 
 ## Extensions
 
@@ -198,7 +198,7 @@ bun add rxjs
 
 ```ts
 import { createRiva, query } from '@softistx/riva';
-import { data$, fromAsyncIterable, toObservable } from '@softistx/riva/rxjs';
+import { data$, fromAsyncIterable, liveQuery, toObservable } from '@softistx/riva/rxjs';
 
 const riva = createRiva();
 const userQuery = query({ id: 'user', fetch: async (id: number) => ({ id }) });
@@ -224,6 +224,19 @@ const messages$ = fromAsyncIterable((signal) => subscribeToMessages({ signal }))
 ```
 
 A factory that throws synchronously ends the stream with `error`.
+
+### Live queries
+
+`liveQuery({ id, observe })` is a query fed by a stream: the same key, cache and SSR as `query`, read with `riva.get`, `riva.subscribe`, `ensure` or `useQuery(liveQuery)`.
+
+```ts
+const priceQuery = liveQuery({
+  id: 'price',
+  observe: (symbol: string) => prices$(symbol), // Observable<number>
+});
+```
+
+On the server `ensure()` resolves at the first value, then unsubscribes; a stream that stays silent stops with the request's signal, and the snapshot carries the value. In a browser the stream is subscribed while the query is observed and the data stays for `gcTime` after the last release; there is no `staleTime`. An `error` keeps the last data in the error state, and `refetch()` or a new observer subscribes again; `complete` keeps the last value.
 
 ## Types
 

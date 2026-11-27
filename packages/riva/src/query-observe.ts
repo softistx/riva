@@ -90,6 +90,8 @@ export function observe(
 		if (--e.observers === 0) {
 			c.sched.clearTimeout(e.poll);
 			e.poll = undefined;
+			e.stop?.();
+			e.stop = undefined;
 			abandon(c, e, e.run);
 			armGc(c, e);
 		}
