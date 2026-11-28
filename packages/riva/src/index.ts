@@ -49,6 +49,7 @@ export {
 	query,
 	type VarsArgs,
 } from './query';
+export { FRESH_FLOOR_MS } from './query-fresh';
 export { setDefaultRiva } from './scope';
 export {
 	type Listener,

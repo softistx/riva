@@ -109,7 +109,7 @@ export default function Patients({ params }: Route.ComponentProps) {
 }
 ```
 
-A fresh entry is not fetched again at hydration, so give the definition a `staleTime`.
+A fresh entry is not fetched again at hydration: with no `staleTime` set, a hydrated entry is fresh for 1 s, so give the definition a `staleTime` for a longer window.
 
 The component can read the same entry through the simple API's hook: `const patientsState = useGraphQL(patients, { school: params.school })` (from `@softistx/riva-graphql/react`).
 

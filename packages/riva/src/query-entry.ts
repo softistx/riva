@@ -45,6 +45,8 @@ export interface Entry {
 	out: Readable<State>;
 	observers: number;
 	invalidated?: boolean;
+	/** Set when `hydrate` seeded data: the `updatedAt` it wrote and when. @internal */
+	seeded?: { u: number; t: number };
 	run?: Inflight | undefined;
 	gc?: unknown;
 	/** Closes what the fetch kept open (`ctx.keep`); returns true. */
@@ -181,17 +183,6 @@ export function putData(
 /** Writes a patch over the current state (one notification). */
 export const put = (c: Ctx, e: Entry, patch: Partial<State>): void =>
 	c.riva.set(e.signal, { ...peek(c, e), ...patch });
-
-/** Whether the entry must be fetched: not a success, invalidated, or older than `staleTime`. */
-export const stale = (
-	c: Ctx,
-	e: Entry,
-	staleTime: number = e.def.options.staleTime ?? c.riva.staleTime,
-): boolean =>
-	peek(c, e).status !== 'success' ||
-	e.invalidated ||
-	c.sched.now() - peek(c, e).updatedAt >= staleTime ||
-	unreadable(c, e);
 
 /** Schedules the removal of an unobserved entry after `gcTime` (never on the server by default). */
 export function armGc(c: Ctx, e: Entry): void {

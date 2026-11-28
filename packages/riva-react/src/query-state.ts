@@ -1,4 +1,5 @@
 import {
+	FRESH_FLOOR_MS,
 	type Query,
 	type QueryState,
 	type Riva,
@@ -6,7 +7,6 @@ import {
 } from '@softistx/riva';
 import { useCallback, useRef, useSyncExternalStore } from 'react';
 import { useRiva } from './context';
-import { suspenseStaleTime } from './resource/use-resource';
 import { handoff } from './suspend';
 
 // biome-ignore lint/suspicious/noExplicitAny: any query definition
@@ -60,9 +60,7 @@ export function useQueryState<S extends QueryState<unknown>>(
 				stable.vars,
 				notify,
 				// What a Suspense render just fetched is not fetched again on mount.
-				suspense
-					? { staleTime: suspenseStaleTime(riva, undefined, def) }
-					: undefined,
+				suspense ? { minFresh: FRESH_FLOOR_MS } : undefined,
 			);
 			// This observer now keeps the entry (and its stream) open.
 			handoff(riva, stable.key);

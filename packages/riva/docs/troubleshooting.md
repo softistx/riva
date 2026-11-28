@@ -305,9 +305,9 @@ hydrate(riva, JSON.parse(payload) as Snapshot);
 
 **When:** the page renders with the server's data, then the same requests go out again as soon as a component subscribes.
 
-**Why:** hydrated entries keep their age. A query's `staleTime` defaults to 0, so data of any age is already stale and a subscription fetches it.
+**Why:** hydrated entries keep their age. Where no `staleTime` is set, they are fresh for 1 s after the hydration; a mount later than that, or an explicit `staleTime: 0`, finds data of any age already stale and fetches it.
 
-**Fix:** give the query a `staleTime` that covers the render, e.g. `staleTime: '30s'`. Fresh hydrated data is never fetched again.
+**Fix:** hydrate right before the render, and give the query a `staleTime` that covers it, e.g. `staleTime: '30s'`. Fresh hydrated data is never fetched again.
 
 ```ts
 const invoices = query({ id: 'invoices', staleTime: '30s', fetch });

@@ -23,6 +23,8 @@ export interface SubscribeOptions {
 	 * to fetch on subscribing. Later invalidations and polls are unaffected.
 	 */
 	staleTime?: Duration;
+	/** @internal Never fresh for less than this many ms (Suspense's floor). */
+	minFresh?: number;
 }
 
 export interface RivaOptions {
@@ -32,7 +34,7 @@ export interface RivaOptions {
 	events?: RivaEvents;
 	/** Riva-wide defaults, under a definition's own options. */
 	defaults?: {
-		/** Used by a query that sets no `staleTime`; built-in default 0. */
+		/** Used by a query that sets no `staleTime`; built-in default 0 (1 s for an entry `hydrate` seeded). */
 		staleTime?: Duration;
 	};
 }
@@ -61,9 +63,13 @@ export class Riva {
 	readonly slots = new Map<unknown, unknown>();
 	/** @internal Default `staleTime` (ms) of a query that sets none. */
 	readonly staleTime: number;
+	/** @internal `defaults.staleTime` when the options set it, else undefined. */
+	readonly staleTimeSet: number | undefined;
 
 	constructor(options: RivaOptions = {}) {
 		this.staleTime = ms(options.defaults?.staleTime, 0) as number;
+		this.staleTimeSet =
+			options.defaults?.staleTime === undefined ? undefined : this.staleTime;
 		this.queries = createQueryCache(
 			this,
 			options.scheduler ?? defaultScheduler,

@@ -61,7 +61,8 @@ test('suspense raises staleTime to at least 1000 ms and the data is there', asyn
 		{ k: 1 },
 		riva,
 	);
-	expect(calls[0]?.call.staleTime).toBe(1000);
+	expect(calls[0]?.call.minFresh).toBe(1000);
+	expect(calls[0]?.call.staleTime).toBe(10);
 });
 
 test('enabled false is idle', async () => {

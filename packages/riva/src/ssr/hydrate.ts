@@ -40,6 +40,7 @@ function apply(c: Ctx, e: Entry, p: SeedEntry): void {
 		error: p.e && errorOf(p.e),
 		...(p.d !== undefined && { data: decode(p.d), updatedAt: p.at }),
 	});
+	if (p.d !== undefined) e.seeded = { u: p.at, t: p.at + p.u };
 }
 
 /**

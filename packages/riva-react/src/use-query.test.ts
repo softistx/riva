@@ -7,6 +7,7 @@ import {
 	signal,
 } from '@softistx/riva';
 import { liveQuery } from '@softistx/riva/rxjs';
+import { dehydrate, hydrate } from '@softistx/riva/ssr';
 import { Component, type ReactNode, StrictMode, Suspense } from 'react';
 import { Observable, Subject } from 'rxjs';
 import {
@@ -483,7 +484,7 @@ test('a Suspense mount fetches once at the default staleTime', async () => {
 	await m.unmount();
 });
 
-test("a Suspense mount trusts the definition's own staleTime", async () => {
+test("a Suspense mount passes the 1 s freshness floor and leaves the definition's staleTime to the core", async () => {
 	const def = query<{ school: string }, string>({
 		id: 'uq/suspense-def-stale',
 		retry: 0,
@@ -507,7 +508,7 @@ test("a Suspense mount trusts the definition's own staleTime", async () => {
 	await flush();
 	expect(m.text()).toBe('x');
 	const opts = (sub.mock.calls as unknown[][]).map((c) => c[3]);
-	expect(opts).toContainEqual({ staleTime: 300_000 });
+	expect(opts).toContainEqual({ minFresh: 1000 });
 	await m.unmount();
 });
 
@@ -795,5 +796,51 @@ test('suspense resolves at the first part; later parts update without suspending
 	expect(m.text()).toBe('fast:slow:complete');
 	expect(suspended).toBe(before);
 	expect(s.calls()).toBe(1);
+	await m.unmount();
+});
+
+test('a hydrated query mounts without a refetch', async () => {
+	let calls = 0;
+	const def = users('uq/hydrated', async ({ school }) => {
+		calls++;
+		return `data-${school}`;
+	});
+	const server = newRiva();
+	await def.ensure(server, { school: 'a' });
+	const snap = JSON.parse(JSON.stringify(dehydrate(server)));
+	calls = 0;
+	const browser = newRiva();
+	hydrate(browser, snap);
+	const m = await mount(h(Show, { def, school: 'a' }), browser);
+	await flush();
+	expect(m.text()).toBe('success:data-a:false');
+	expect(calls).toBe(0);
+	await m.unmount();
+});
+
+test('a hydrated query mounts under Suspense without a refetch, even when its snapshot is old', async () => {
+	let calls = 0;
+	const def = users('uq/hydrated-suspense', async ({ school }) => {
+		calls++;
+		return `data-${school}`;
+	});
+	const server = newRiva();
+	await def.ensure(server, { school: 'a' });
+	const snap = JSON.parse(JSON.stringify(dehydrate(server)));
+	snap.q[0].u = 30_000;
+	calls = 0;
+	const browser = newRiva();
+	hydrate(browser, snap);
+	function Page() {
+		const q = useQuery(def, { school: 'a' }, { suspense: true });
+		return h('p', null, q.data);
+	}
+	const m = await mount(
+		h(Suspense, { fallback: h('p', null, 'loading') }, h(Page)),
+		browser,
+	);
+	await flush();
+	expect(m.text()).toBe('data-a');
+	expect(calls).toBe(0);
 	await m.unmount();
 });

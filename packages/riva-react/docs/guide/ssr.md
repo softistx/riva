@@ -29,7 +29,7 @@ export async function handle(school: string): Promise<Response> {
 - A hook never starts a fetch during a server render, except through `suspense: true`, which waits for it and streams the result (`renderToReadableStream` and `renderToPipeableStream`).
 - Effects and subscriptions run in the browser only.
 - To hand the server's cache to the browser, use `dehydrate` and `hydrate` from `@softistx/riva/ssr`, or `@softistx/riva-react-router`, which does both. Until the browser has the snapshot, it fetches what it does not have.
-- Data hydrated with a `staleTime` of 0 is refetched at once: give the riva a `defaults: { staleTime }`, or the query its own.
+- Data hydrated with no `staleTime` set is fresh for 1 s, under Suspense too; with an explicit `staleTime` of 0 it is refetched at once, except under Suspense, which keeps its 1 s floor. For a longer window give the riva a `defaults: { staleTime }`, or the query its own.
 - With a definition, `await patients.ensure(riva, { school })` fills the riva the same way, and the component reads it with `useGraphQL(patients, vars)` ([shared definitions](https://github.com/softistx/riva/blob/develop/packages/riva/docs/guide/shared-definitions.md)).
 
 See the core's [ssr guide](https://github.com/softistx/riva/blob/develop/packages/riva/docs/guide/ssr.md).

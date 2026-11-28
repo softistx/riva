@@ -41,7 +41,7 @@ await Promise.all([
 ]);
 ```
 
-The awaited call fills the request riva; the entry is fresh for `staleTime`, so the hydrating browser reads it instead of fetching again. Set `defaults: { staleTime }` on the riva ([setup](./setup.md)). With a query definition, `await def.ensure(rivaOf(context), vars)` does the same: [shared definitions](https://github.com/softistx/riva/blob/develop/packages/riva/docs/guide/shared-definitions.md).
+The awaited call fills the request riva; the entry is fresh for `staleTime`, so the hydrating browser reads it instead of fetching again. With no `staleTime` set, a hydrated entry is fresh for 1 s; set `defaults: { staleTime }` on the riva for longer ([setup](./setup.md)). With a query definition, `await def.ensure(rivaOf(context), vars)` does the same: [shared definitions](https://github.com/softistx/riva/blob/develop/packages/riva/docs/guide/shared-definitions.md).
 
 ## The API
 

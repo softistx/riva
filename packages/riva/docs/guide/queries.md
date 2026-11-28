@@ -107,6 +107,6 @@ Exported types: `Query`, `QueryOptions`, `QueryState`, `QueryStatus`, `EnsureOpt
 
 ## Traps
 
-- With the default `staleTime` of 0, every `ensure` and every new observer refetches. Set a `staleTime` (or `createRiva({ defaults: { staleTime } })` for every query) for data that may be reused, especially data hydrated from the server.
+- With the default `staleTime` of 0, every `ensure` and every new observer refetches. Set a `staleTime` (or `createRiva({ defaults: { staleTime } })` for every query) for data that may be reused. Data hydrated from the server is fresh for 1 s when none is set; set one for a longer window.
 - Two definitions with one `id` share a cache entry.
 - `invalidate` only refetches at once what is observed; an unobserved entry refetches on its next read.

@@ -1,4 +1,4 @@
-import type { Duration, Riva } from '@softistx/riva';
+import { type Duration, FRESH_FLOOR_MS, type Riva } from '@softistx/riva';
 import {
 	type Resource,
 	type ResourceState,
@@ -25,9 +25,6 @@ export type SuspendedState<D> = Extract<
 /** The state of a disabled resource. */
 export type IdleState = Extract<ResourceState<never>, { status: 'idle' }>;
 
-/** What a Suspense mount trusts as fresh at least: the data its own render just fetched is not fetched again. */
-const SUSPENSE_FRESH = 1000;
-
 /**
  * The `staleTime` of a suspending fetch: the call's, else the definition's
  * (`def`), else the riva's default, but at least 1000 ms. An invalid duration
@@ -42,7 +39,7 @@ export function suspenseStaleTime(
 		staleTime === undefined
 			? (def?.options.staleTime ?? riva.staleTime)
 			: toMs(staleTime);
-	return Math.max(own, SUSPENSE_FRESH);
+	return Math.max(own, FRESH_FLOOR_MS);
 }
 
 // Held on the riva's slots: a request's pending loads die with its riva.

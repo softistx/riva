@@ -15,6 +15,8 @@ export interface ResourceOptions {
 	keepPrevious?: boolean;
 	/** Replaces the definition's `staleTime` for this resource's fetch decisions. */
 	staleTime?: Duration;
+	/** @internal Never fresh for less than this many ms (Suspense's floor). */
+	minFresh?: number;
 }
 
 /** A reactive, awaitable view of one query entry. */
@@ -50,7 +52,7 @@ export function resource<Vars, Data>(
 	source: () => readonly [def: Query<Vars, Data>, vars: Vars],
 	opts: ResourceOptions = {},
 ): Resource<Data> {
-	const { enabled = true, keepPrevious = true, staleTime } = opts;
+	const { enabled = true, keepPrevious = true, staleTime, minFresh } = opts;
 	const target = computed<Target | undefined>(
 		() => {
 			if (typeof enabled === 'function' ? !enabled() : !enabled) return;
@@ -114,7 +116,10 @@ export function resource<Vars, Data>(
 		},
 		{ equals: sameState },
 	);
-	const o = staleTime === undefined ? {} : { staleTime };
+	const o = {
+		...(staleTime === undefined ? {} : { staleTime }),
+		...(minFresh === undefined ? {} : { minFresh }),
+	};
 	const watch = lazy(riva, view, target, (t, touch) =>
 		riva.subscribe(t.def as Query<unknown, unknown>, t.vars, touch, o),
 	);

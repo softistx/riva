@@ -52,9 +52,9 @@ For REST operations (`operations(api)` from `@softistx/riva-rest/server`, listed
 
 **When:** the browser fetches a query it received from the loader.
 
-**Why:** the entry's age travels with the snapshot, so its freshness is the definition's `staleTime` minus that age. With the default `staleTime` of 0 the data is stale the moment it lands.
+**Why:** the entry's age travels with the snapshot, so its freshness is the definition's `staleTime` minus that age. Where no `staleTime` is set, hydrated data is fresh for 1 s after the hydration; past that, or with an explicit `staleTime` of 0 (the definition's, the call's or `defaults.staleTime`), it is stale the moment it is read.
 
-**Fix:** give the definition a `staleTime` that covers the navigation.
+**Fix:** give the definition a `staleTime` that covers the navigation (hydrated data with none set is fresh for 1 s only).
 
 ```ts
 import { query } from '@softistx/riva-graphql';
