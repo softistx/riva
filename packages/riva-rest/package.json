@@ -65,7 +65,7 @@
 		"typecheck": "bun check"
 	},
 	"devDependencies": {
-		"@happy-dom/global-registrator": "^20.0.0",
+		"@happy-dom/global-registrator": "^21.0.4",
 		"@softistx/httpyz": "^0.6.1",
 		"@softistx/openapi-httpyz": "^0.4.1",
 		"@softistx/riva": "workspace:*",

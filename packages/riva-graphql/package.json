@@ -78,7 +78,7 @@
 		"@graphql-codegen/cli": "^8.0.0",
 		"@graphql-codegen/client-preset": "^7.0.1",
 		"@graphql-typed-document-node/core": "^3.2.0",
-		"@happy-dom/global-registrator": "^20.0.0",
+		"@happy-dom/global-registrator": "^21.0.4",
 		"@softistx/graphql-client": "^0.13.0",
 		"@softistx/riva": "workspace:*",
 		"@softistx/riva-react": "workspace:*",
