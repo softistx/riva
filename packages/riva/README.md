@@ -178,7 +178,7 @@ const snapshot = dehydrate(riva); // on the server, once the loaders are done
 hydrate(riva, snapshot); // in the browser, before the first render
 ```
 
-The snapshot is an opaque format: pass on what `dehydrate` returned. A fresh entry is not fetched again, so give hydrated queries a `staleTime`. Escaping, `deferObserved` and `setScopeResolver`: [ssr](./docs/guide/ssr.md).
+The snapshot is an opaque format: pass on what `dehydrate` returned. A fresh entry is not fetched again: with no `staleTime` set, hydrated entries are fresh for 1 s, so give hydrated queries a `staleTime` for longer. Escaping, `deferObserved` and `setScopeResolver`: [ssr](./docs/guide/ssr.md).
 
 ## Errors
 

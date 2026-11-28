@@ -45,6 +45,8 @@ export interface Entry {
 	out: Readable<State>;
 	observers: number;
 	invalidated?: boolean;
+	/** Set when `hydrate` seeded data: the `updatedAt` it wrote and when. @internal */
+	seeded?: { u: number; t: number };
 	run?: Inflight | undefined;
 	gc?: unknown;
 	/** Closes what the fetch kept open (`ctx.keep`); returns true. */
@@ -182,16 +184,32 @@ export function putData(
 export const put = (c: Ctx, e: Entry, patch: Partial<State>): void =>
 	c.riva.set(e.signal, { ...peek(c, e), ...patch });
 
-/** Whether the entry must be fetched: not a success, invalidated, or older than `staleTime`. */
-export const stale = (
-	c: Ctx,
-	e: Entry,
-	staleTime: number = e.def.options.staleTime ?? c.riva.staleTime,
-): boolean =>
-	peek(c, e).status !== 'success' ||
-	e.invalidated ||
-	c.sched.now() - peek(c, e).updatedAt >= staleTime ||
-	unreadable(c, e);
+/** How long hydrated entries are fresh when no `staleTime` is set anywhere (the suspense floor). */
+export const HYDRATED_STALE_MS = 1000;
+
+/** Whether `hydrate` seeded the entry's current data less than `HYDRATED_STALE_MS` ago. */
+const freshlySeeded = (c: Ctx, e: Entry): boolean =>
+	!!e.seeded &&
+	e.seeded.u === peek(c, e).updatedAt &&
+	c.sched.now() - e.seeded.t < HYDRATED_STALE_MS;
+
+/**
+ * Whether the entry must be fetched: not a success, invalidated, or older than
+ * `staleTime` (the call's, the definition's, the riva's default). With none of
+ * the three set, an entry `hydrate` seeded stays fresh for `HYDRATED_STALE_MS`
+ * after its seeding, so a hydrated page does not refetch on mount.
+ */
+export const stale = (c: Ctx, e: Entry, staleTime?: number): boolean => {
+	const st = staleTime ?? e.def.options.staleTime ?? c.riva.staleTimeSet;
+	return (
+		peek(c, e).status !== 'success' ||
+		!!e.invalidated ||
+		(st === undefined
+			? !freshlySeeded(c, e)
+			: c.sched.now() - peek(c, e).updatedAt >= st) ||
+		unreadable(c, e)
+	);
+};
 
 /** Schedules the removal of an unobserved entry after `gcTime` (never on the server by default). */
 export function armGc(c: Ctx, e: Entry): void {

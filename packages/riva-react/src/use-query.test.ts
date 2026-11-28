@@ -6,6 +6,7 @@ import {
 	signal,
 } from '@softistx/riva';
 import { liveQuery } from '@softistx/riva/rxjs';
+import { dehydrate, hydrate } from '@softistx/riva/ssr';
 import { Component, type ReactNode, StrictMode, Suspense } from 'react';
 import { Observable, Subject } from 'rxjs';
 import { deferred, flush, h, mount, newRiva } from '../test/render';
@@ -681,5 +682,24 @@ test('suspense resolves at the first part; later parts update without suspending
 	expect(m.text()).toBe('fast:slow:complete');
 	expect(suspended).toBe(before);
 	expect(s.calls()).toBe(1);
+	await m.unmount();
+});
+
+test('a hydrated query mounts without a refetch', async () => {
+	let calls = 0;
+	const def = users('uq/hydrated', async ({ school }) => {
+		calls++;
+		return `data-${school}`;
+	});
+	const server = newRiva();
+	await def.ensure(server, { school: 'a' });
+	const snap = JSON.parse(JSON.stringify(dehydrate(server)));
+	calls = 0;
+	const browser = newRiva();
+	hydrate(browser, snap);
+	const m = await mount(h(Show, { def, school: 'a' }), browser);
+	await flush();
+	expect(m.text()).toBe('success:data-a:false');
+	expect(calls).toBe(0);
 	await m.unmount();
 });

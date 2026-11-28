@@ -15,7 +15,7 @@ const snapshot = dehydrate(riva); // JSON-safe, hand it to the page
 hydrate(riva, snapshot);
 ```
 
-What a server fills is what travels. The simple API fills it: `await riva.graphql.query(DOC, vars)` and `await riva.rest.get(path, input)` settle an entry, `dehydrate` writes it, and the browser's `hydrate` seeds it. Give the hydrating riva a `defaults: { staleTime }` (`createRiva({ ..., defaults: { staleTime: '30s' } })`), or the browser fetches the entry again at once. A query definition does the same through `def.ensure` ([shared definitions](./shared-definitions.md)).
+What a server fills is what travels. The simple API fills it: `await riva.graphql.query(DOC, vars)` and `await riva.rest.get(path, input)` settle an entry, `dehydrate` writes it, and the browser's `hydrate` seeds it. An entry `hydrate` seeds stays fresh for 1 s after the hydration when no `staleTime` is set (the call's, the definition's or `defaults.staleTime`), so a hydrated page does not refetch on mount. For a longer window give the hydrating riva a `defaults: { staleTime }` (`createRiva({ ..., defaults: { staleTime: '30s' } })`); an explicit `staleTime`, 0 included, always wins. A query definition does the same through `def.ensure` ([shared definitions](./shared-definitions.md)).
 
 The snapshot's fields are an opaque format that may change: never build or edit one, only pass on what `dehydrate` returned. With React Router, `@softistx/riva-react-router` does both for you.
 
@@ -44,7 +44,7 @@ const html = `<script id="riva" type="application/json">${json}</script>`;
 
 - It seeds entries and signals the riva has not created yet, at the moment their definition is first used, so the hydrating code needs none of the definitions.
 - An entry the riva already has is replaced only by a newer snapshot, and never while it is fetching or carries optimistic layers. An existing signal is never overwritten.
-- A fresh entry is not fetched again: data hydrated with the definition's `staleTime` stays fresh for it. The default `staleTime` is 0, so set one for hydrated data (see [troubleshooting](../troubleshooting.md#data-refetches-right-after-hydration)).
+- A fresh entry is not fetched again: data hydrated with the definition's `staleTime` stays fresh for it. The default `staleTime` is 0, but hydrated data with none set is fresh for 1 s; set one for a longer window (see [troubleshooting](../troubleshooting.md#data-refetches-right-after-hydration)).
 - A failed entry comes back as a `RivaError` (a `RivaRequestError` when it had a status) with an empty message; `RIVA_NETWORK`, `HTTP_<n>` and `RIVA_ABORT` come back as `RivaNetworkError`, `RivaHttpError` and `RivaAbortError`.
 
 ## The ambient scope: `setScopeResolver(fn)`

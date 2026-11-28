@@ -15,12 +15,12 @@ import { query } from '../query';
 import { signal } from '../signal';
 import { dehydrate, hydrate } from './index';
 
-function counted(id = 'items', staleTime: number | undefined = 60_000) {
+function counted(id = 'items', staleTime: number | 'none' = 60_000) {
 	const calls: number[] = [];
 	const q = query<{ page: number }, { n: number; at: Date }>({
 		id,
 		retry: 0,
-		...(staleTime !== undefined && { staleTime }),
+		...(staleTime !== 'none' && { staleTime }),
 		fetch: async ({ page }) => {
 			calls.push(page);
 			return { n: page, at: new Date('2026-03-04T00:00:00Z') };
@@ -500,5 +500,92 @@ describe('requests stay apart', () => {
 		expect(a.get(secret)).toBe('alice');
 		expect(dehydrate(a).a).toEqual({ who: 'alice' });
 		expect(dehydrate(b).a).toEqual({ who: 'bob' });
+	});
+});
+
+describe('default freshness of hydrated entries', () => {
+	async function setup(
+		defaults?: { staleTime: number },
+		defStale?: number,
+		callStale?: number,
+	) {
+		const env = fakeEnv();
+		const server = env.riva();
+		const { q, calls } = counted('hs', defStale ?? 'none');
+		await q.ensure(server, { page: 1 });
+		env.sched.advance(30_000);
+		const snap = roundTrip(dehydrate(server));
+		calls.length = 0;
+		const browser = createRiva({
+			scheduler: env.sched,
+			...(defaults && { defaults }),
+		});
+		hydrate(browser, snap);
+		const mount = async () => {
+			const off = browser.subscribe(
+				q,
+				{ page: 1 },
+				() => {},
+				callStale === undefined ? undefined : { staleTime: callStale },
+			);
+			await settle();
+			off();
+		};
+		return { env, browser, q, calls, mount };
+	}
+
+	test('mounting within 1 s of hydrating does not refetch', async () => {
+		const { env, calls, mount } = await setup();
+		env.sched.advance(900);
+		await mount();
+		expect(calls).toEqual([]);
+	});
+
+	test('mounting after 1 s refetches', async () => {
+		const { env, calls, mount } = await setup();
+		env.sched.advance(1_000);
+		await mount();
+		expect(calls).toEqual([1]);
+	});
+
+	test('defaults.staleTime: 0 refetches at once', async () => {
+		const { calls, mount } = await setup({ staleTime: 0 });
+		await mount();
+		expect(calls).toEqual([1]);
+	});
+
+	test('the definition staleTime wins over the hydrated default', async () => {
+		const { calls, mount } = await setup(undefined, 0);
+		await mount();
+		expect(calls).toEqual([1]);
+	});
+
+	test('a call staleTime wins over the hydrated default', async () => {
+		const { calls, mount } = await setup(undefined, undefined, 0);
+		await mount();
+		expect(calls).toEqual([1]);
+	});
+
+	test('a fetched entry is no longer hydrated: staleTime is 0 again', async () => {
+		const { env, browser, q, calls, mount } = await setup();
+		env.sched.advance(1_000);
+		await mount();
+		expect(calls).toEqual([1]);
+		await mount();
+		expect(calls).toEqual([1, 1]);
+		void browser;
+		void q;
+	});
+
+	test('an entry that was never hydrated keeps staleTime 0', async () => {
+		const env = fakeEnv();
+		const browser = env.riva();
+		const { q, calls } = counted('plain', 'none');
+		await q.ensure(browser, { page: 1 });
+		calls.length = 0;
+		const off = browser.subscribe(q, { page: 1 }, () => {});
+		await settle();
+		off();
+		expect(calls).toEqual([1]);
 	});
 });
