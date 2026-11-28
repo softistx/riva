@@ -107,9 +107,10 @@ The peers each package adds, with their ranges, are in
 
 ## 4. Traps
 
-- `staleTime` defaults to 0: data a loader awaited is refetched at once in the
-  browser unless the riva has `defaults: { staleTime }` (or the call a
-  `staleTime`).
+- `staleTime` defaults to 0, but an entry `hydrate` seeded is fresh for 1 s
+  when none is set, so a hydrated page does not refetch on mount. For a
+  longer window set `defaults: { staleTime }` (or the call a `staleTime`);
+  an explicit `staleTime`, 0 included, always wins.
 - A document passed to the simple API and a definition are separate cache
   entries: a loader and its component use the same kind
   (`riva.graphql.query(DOC)` with `useGraphQL(DOC)`, `def.ensure` with

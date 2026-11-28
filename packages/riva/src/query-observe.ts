@@ -11,9 +11,9 @@ import {
 	INCOMPLETE,
 	put,
 	type State,
-	stale,
 	unreadable,
 } from './query-entry';
+import { stale } from './query-fresh';
 import { abandon, join, pin } from './query-run';
 import { isBrowser } from './scope';
 import type { Listener, Unsubscribe } from './signal';
@@ -21,6 +21,8 @@ import type { Listener, Unsubscribe } from './signal';
 export interface ObserveOptions {
 	/** Replaces the definition's `staleTime` for this observer's first fetch decision only. */
 	staleTime?: Duration | undefined;
+	/** @internal Never fresh for less than this many ms (Suspense's floor); with no `staleTime` set, a hydrated entry is fresh too. */
+	minFresh?: number | undefined;
 }
 
 function poll(c: Ctx, e: Entry): void {
@@ -80,7 +82,7 @@ export function observe(
 		listener(s);
 		complete(c, e, s);
 	});
-	if (stale(c, e, ms(opts?.staleTime))) join(c, e);
+	if (stale(c, e, ms(opts?.staleTime), opts?.minFresh)) join(c, e);
 	let done = false;
 	return () => {
 		if (done) return;

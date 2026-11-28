@@ -87,6 +87,8 @@ export interface EnsureOptions {
 	signal?: AbortSignal;
 	/** Replaces the definition's `staleTime` (and the riva's default) for this call's freshness check. */
 	staleTime?: Duration;
+	/** @internal Never fresh for less than this many ms (Suspense's floor). */
+	minFresh?: number;
 }
 
 /** The variables argument, optional when `Vars` is `void` or `undefined`. */

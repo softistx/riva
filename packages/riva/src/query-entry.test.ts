@@ -3,7 +3,7 @@ import { createRiva } from './client';
 import { entities } from './entities/policy';
 import type { Scheduler } from './env';
 import { type CachePolicy, query } from './query';
-import { armGc, type Ctx, entryOf, peek, put, stale } from './query-entry';
+import { armGc, type Ctx, entryOf, peek, put } from './query-entry';
 
 function setup(gcTime?: number) {
 	let t = 1000;
@@ -63,19 +63,6 @@ test('put merges a patch over the current state', () => {
 		data: 'x',
 		isFetching: true,
 	});
-});
-
-test('stale: idle, invalidated and aged entries are stale; a fresh success is not', () => {
-	const { c, q, tick } = setup();
-	const e = entryOf(c, q, 1);
-	expect(stale(c, e)).toBe(true);
-	put(c, e, { status: 'success', updatedAt: 1000 });
-	expect(stale(c, e)).toBe(false);
-	tick(100);
-	expect(stale(c, e)).toBe(true);
-	put(c, e, { updatedAt: 1100 });
-	e.invalidated = true;
-	expect(stale(c, e)).toBe(true);
 });
 
 test('armGc removes an unobserved entry after gcTime, but not while observed', () => {

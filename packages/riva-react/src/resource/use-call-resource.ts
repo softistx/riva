@@ -1,7 +1,7 @@
-import type { Duration, Riva } from '@softistx/riva';
+import { type Duration, FRESH_FLOOR_MS, type Riva } from '@softistx/riva';
 import type { Resource, ResourceState } from '@softistx/riva/resource';
 import { useStableInput } from './use-input';
-import { suspenseStaleTime, useResource } from './use-resource';
+import { useResource } from './use-resource';
 
 /** The options an adapter's query hook takes, `suspense` included. */
 export interface CallResourceOptions {
@@ -20,13 +20,15 @@ export interface ResourceCall {
 	enabled: boolean | (() => boolean);
 	keepPrevious?: boolean;
 	staleTime?: Duration;
+	/** @internal Suspense's floor. */
+	minFresh?: number;
 }
 
 /**
  * The state of an adapter query call (`riva.graphql.query`, `riva.rest.get`)
  * for these variables, fetched while the component is mounted. `id` names the
  * operation; `make` builds the call's resource from the stabilised `input` and
- * the options (`enabled`, `keepPrevious`, and `staleTime` raised for Suspense).
+ * the options (`enabled`, `keepPrevious`, and a Suspense floor).
  */
 export function useCallResource<D>(
 	id: string,
@@ -42,11 +44,8 @@ export function useCallResource<D>(
 			make(riva, stable.input, {
 				enabled: stable.enabled,
 				...(keepPrevious === undefined ? {} : { keepPrevious }),
-				...(suspense
-					? { staleTime: suspenseStaleTime(riva, staleTime) }
-					: staleTime === undefined
-						? {}
-						: { staleTime }),
+				...(suspense ? { minFresh: FRESH_FLOOR_MS } : {}),
+				...(staleTime === undefined ? {} : { staleTime }),
 			}),
 		{ suspense, ...(keepPrevious === undefined ? {} : { keepPrevious }) },
 	) as ResourceState<D>;

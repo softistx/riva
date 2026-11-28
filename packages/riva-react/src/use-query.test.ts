@@ -703,3 +703,30 @@ test('a hydrated query mounts without a refetch', async () => {
 	expect(calls).toBe(0);
 	await m.unmount();
 });
+
+test('a hydrated query mounts under Suspense without a refetch, even when its snapshot is old', async () => {
+	let calls = 0;
+	const def = users('uq/hydrated-suspense', async ({ school }) => {
+		calls++;
+		return `data-${school}`;
+	});
+	const server = newRiva();
+	await def.ensure(server, { school: 'a' });
+	const snap = JSON.parse(JSON.stringify(dehydrate(server)));
+	snap.q[0].u = 30_000;
+	calls = 0;
+	const browser = newRiva();
+	hydrate(browser, snap);
+	function Page() {
+		const q = useQuery(def, { school: 'a' }, { suspense: true });
+		return h('p', null, q.data);
+	}
+	const m = await mount(
+		h(Suspense, { fallback: h('p', null, 'loading') }, h(Page)),
+		browser,
+	);
+	await flush();
+	expect(m.text()).toBe('data-a');
+	expect(calls).toBe(0);
+	await m.unmount();
+});

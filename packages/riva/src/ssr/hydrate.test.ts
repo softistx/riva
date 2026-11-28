@@ -567,14 +567,12 @@ describe('default freshness of hydrated entries', () => {
 	});
 
 	test('a fetched entry is no longer hydrated: staleTime is 0 again', async () => {
-		const { env, browser, q, calls, mount } = await setup();
+		const { env, calls, mount } = await setup();
 		env.sched.advance(1_000);
 		await mount();
 		expect(calls).toEqual([1]);
 		await mount();
 		expect(calls).toEqual([1, 1]);
-		void browser;
-		void q;
 	});
 
 	test('an entry that was never hydrated keeps staleTime 0', async () => {
@@ -584,6 +582,104 @@ describe('default freshness of hydrated entries', () => {
 		await q.ensure(browser, { page: 1 });
 		calls.length = 0;
 		const off = browser.subscribe(q, { page: 1 }, () => {});
+		await settle();
+		off();
+		expect(calls).toEqual([1]);
+	});
+
+	test('invalidate within the window refetches the observed entry', async () => {
+		const { env, browser, q, calls } = await setup();
+		env.sched.advance(100);
+		const off = browser.subscribe(q, { page: 1 }, () => {});
+		await settle();
+		expect(calls).toEqual([]);
+		q.invalidate(browser, { page: 1 });
+		await settle();
+		off();
+		expect(calls).toEqual([1]);
+	});
+
+	test('setData after hydrate lapses the seeding', async () => {
+		const { browser, q, calls, mount } = await setup();
+		q.setData(browser, { page: 1 }, { n: 9, at: new Date(0) });
+		await mount();
+		expect(calls).toEqual([1]);
+	});
+
+	test('a second hydrate re-arms the window', async () => {
+		const env = fakeEnv();
+		const server = env.riva();
+		const { q, calls } = counted('rearm', 'none');
+		await q.ensure(server, { page: 1 });
+		const snap = roundTrip(dehydrate(server));
+		calls.length = 0;
+		const browser = env.riva();
+		hydrate(browser, snap);
+		const off = browser.subscribe(q, { page: 1 }, () => {});
+		await settle();
+		off();
+		env.sched.advance(5_000);
+		hydrate(browser, roundTrip(dehydrate(server)));
+		env.sched.advance(10);
+		const off2 = browser.subscribe(q, { page: 1 }, () => {});
+		await settle();
+		off2();
+		expect(calls).toEqual([]);
+	});
+
+	test('an entry seeded lazily, first used more than 1 s after hydrate, refetches', async () => {
+		const { env, calls, mount } = await setup();
+		env.sched.advance(5_000);
+		await mount();
+		expect(calls).toEqual([1]);
+	});
+
+	test('with deferObserved the window counts from the render, and a later pass re-arms it', async () => {
+		const env = fakeEnv();
+		const server = env.riva();
+		const { q, calls } = counted('defer', 'none');
+		await q.ensure(server, { page: 1 });
+		const snap = roundTrip(dehydrate(server));
+		calls.length = 0;
+		const browser = env.riva();
+		const deferred = hydrate(browser, snap, { deferObserved: true });
+		const off = browser.subscribe(q, { page: 1 }, () => {});
+		await settle();
+		expect(calls).toEqual([]);
+		env.sched.advance(10);
+		if (deferred) hydrate(browser, deferred);
+		await settle();
+		off();
+		expect(calls).toEqual([]);
+	});
+
+	test('refetchOnFocus within the window does not refetch, after it does', async () => {
+		const env = fakeEnv();
+		let focus: (() => void) | undefined;
+		const browser = createRiva({
+			scheduler: env.sched,
+			events: {
+				onFocus: (cb) => {
+					focus = cb;
+					return () => {};
+				},
+				onReconnect: () => () => {},
+			},
+		});
+		const server = env.riva();
+		const { q, calls } = counted('focus', 'none');
+		await q.ensure(server, { page: 1 });
+		const snap = roundTrip(dehydrate(server));
+		calls.length = 0;
+		hydrate(browser, snap);
+		const off = browser.subscribe(q, { page: 1 }, () => {});
+		await settle();
+		env.sched.advance(500);
+		focus?.();
+		await settle();
+		expect(calls).toEqual([]);
+		env.sched.advance(600);
+		focus?.();
 		await settle();
 		off();
 		expect(calls).toEqual([1]);

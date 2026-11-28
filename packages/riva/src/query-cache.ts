@@ -16,11 +16,11 @@ import {
 	put,
 	putStored,
 	releaseKept,
-	stale,
 	toStored,
 	unreadable,
 	view,
 } from './query-entry';
+import { stale } from './query-fresh';
 import { type ObserveOptions, observe } from './query-observe';
 import { abandon, cancel, join, pin, restart } from './query-run';
 import { raceAbort } from './retry';
@@ -64,7 +64,7 @@ export function createQueryCache(
 			const signal = opts?.signal;
 			if (signal?.aborted) return Promise.reject(new RivaAbortError());
 			const e = entryOf(c, def, vars);
-			if (!stale(c, e, ms(opts?.staleTime)))
+			if (!stale(c, e, ms(opts?.staleTime), opts?.minFresh))
 				return Promise.resolve(view(c, e).data as D);
 			const f = join(c, e);
 			f.waiters++;

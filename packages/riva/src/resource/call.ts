@@ -10,6 +10,8 @@ export interface CallOptions {
 	enabled?: boolean | (() => boolean);
 	keepPrevious?: boolean;
 	staleTime?: Duration;
+	/** @internal Never fresh for less than this many ms (Suspense's floor). */
+	minFresh?: number;
 }
 
 /** The resource of one adapter query call: `def` over the tracked `read` variables, with the call's options and abort `signal`. */
