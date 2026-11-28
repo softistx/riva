@@ -6,12 +6,26 @@ const SLOT = {};
 const noop = () => {};
 
 /**
- * How long the watcher outlives the first data. It is the entry's only
- * observer until the suspended component mounts and observes; releasing it
- * sooner would close a kept stream (a live query) and make the mount open a
- * second one.
+ * How long a resource's watcher outlives its first data: the mounted
+ * component's own subscription takes over by then. (A query's watcher is
+ * handed off on the event instead, see `handoff`.)
  */
 export const HANDOFF_MS = 1000;
+
+// The pending watchers per riva and key: released when the entry gains another observer.
+const WATCHERS = {};
+
+type Watchers = Map<string, () => void>;
+
+/**
+ * Releases the watcher a suspended render left on `key`: the entry has
+ * another observer now, so closing the watcher no longer closes a kept stream
+ * (a live query). Call it after subscribing. A no-op when none is pending.
+ * @internal
+ */
+export function handoff(riva: Riva, key: string): void {
+	(riva.slots.get(WATCHERS) as Watchers | undefined)?.get(key)?.();
+}
 
 /**
  * What a suspended render waits on: `settled`, or in a browser the first
@@ -19,11 +33,17 @@ export const HANDOFF_MS = 1000;
  * query with `@defer` renders its fast fields while the rest is coming. The
  * server waits for `settled`: it renders and dehydrates whole data. Every
  * outcome resolves; the next render reads the state.
+ *
+ * Once resolved, the watcher stays as the entry's only observer until the
+ * suspended component mounts and observes (`handoff`): releasing it sooner
+ * would close a kept stream and make the mount open a second one. A
+ * component that never mounts releases it through `hold`.
  * @internal
  */
 export function untilData(
 	settled: PromiseLike<unknown>,
 	watch: (listener: (state: { data: unknown }) => void) => () => void,
+	hold: (release: () => void) => void = noop,
 ): Promise<void> {
 	let off = noop;
 	return new Promise<void>((resolve) => {
@@ -31,7 +51,13 @@ export function untilData(
 		if ('document' in globalThis)
 			off = watch((state) => state.data !== undefined && resolve());
 	}).then(() => {
-		if (off !== noop) setTimeout(off, HANDOFF_MS);
+		if (off === noop) return;
+		let done = false;
+		hold(() => {
+			if (done) return;
+			done = true;
+			off();
+		});
 	});
 }
 
@@ -60,12 +86,45 @@ export function suspend(
 			riva,
 			vars,
 		);
-		promise = untilData(settled, (listener) =>
-			riva.subscribe(def, vars, listener),
+		promise = untilData(
+			settled,
+			(listener) => riva.subscribe(def, vars, listener),
+			(release) => keep(riva, def, key, release),
 		).then(done, done);
 		entries.set(key, promise);
 	}
 	return promise;
+}
+
+/**
+ * Holds a resolved watcher's release until `handoff`, or until the entry's
+ * `gcTime` passes with nobody mounted (a component that never mounts), on
+ * riva's scheduler. No timer when the gcTime is infinite (the server's).
+ */
+function keep(
+	riva: Riva,
+	// biome-ignore lint/suspicious/noExplicitAny: any query definition
+	def: Query<any, any, any>,
+	key: string,
+	release: () => void,
+): void {
+	let held = riva.slots.get(WATCHERS) as Watchers | undefined;
+	if (!held) {
+		held = new Map();
+		riva.slots.set(WATCHERS, held);
+	}
+	const watchers = held;
+	const { sched } = riva.queries;
+	const ms = def.options.gcTime ?? 300_000;
+	let timer: unknown;
+	const free = () => {
+		sched.clearTimeout(timer);
+		if (watchers.get(key) === free) watchers.delete(key);
+		release();
+	};
+	watchers.get(key)?.();
+	watchers.set(key, free);
+	if (ms !== Infinity) timer = sched.setTimeout(free, ms);
 }
 
 // The errors a suspense hook threw, per riva: false until a later task arms them.

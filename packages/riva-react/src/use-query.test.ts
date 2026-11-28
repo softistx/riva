@@ -223,6 +223,48 @@ test('suspense on a live query subscribes to its source once', async () => {
 	await m.unmount();
 });
 
+test('suspense on a live query still subscribes once when a sibling holds the boundary past a second', async () => {
+	const feed = new Subject<number>();
+	let subscribed = 0;
+	let closed = 0;
+	const def = liveQuery<void, number>({
+		id: 'uq/live-suspense-slow',
+		retry: 0,
+		observe: () =>
+			new Observable<number>((sub) => {
+				subscribed++;
+				const s = feed.subscribe(sub);
+				return () => {
+					closed++;
+					s.unsubscribe();
+				};
+			}),
+	});
+	const slow = deferred<void>();
+	let slowDone = false;
+	function Slow() {
+		if (!slowDone) throw slow.promise;
+		return h('i', null, 'slow');
+	}
+	function C() {
+		const q = useQuery(def, undefined, { suspense: true });
+		return h('p', null, `got:${q.data}`);
+	}
+	const m = await mount(
+		h(Suspense, { fallback: h('p', null, 'loading') }, h(C), h(Slow)),
+		newRiva(),
+	);
+	await flush(() => feed.next(1));
+	await new Promise((r) => setTimeout(r, 1200));
+	slowDone = true;
+	await flush(() => slow.resolve());
+	expect(m.text()).toBe('got:1slow');
+	expect(subscribed).toBe(1);
+	expect(closed).toBe(0);
+	await m.unmount();
+	expect(closed).toBe(1);
+});
+
 test('suspense throws an error with no data to the error boundary', async () => {
 	const log = spyOn(console, 'error').mockImplementation(() => {});
 	const def = users('uq/suspense-err', () => Promise.reject(new Error('bad')));
