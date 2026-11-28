@@ -1,6 +1,7 @@
 import { expect, spyOn, test } from 'bun:test';
 import {
 	type CachePolicy,
+	createRiva,
 	query,
 	RivaScopeError,
 	signal,
@@ -8,7 +9,14 @@ import {
 import { liveQuery } from '@softistx/riva/rxjs';
 import { Component, type ReactNode, StrictMode, Suspense } from 'react';
 import { Observable, Subject } from 'rxjs';
-import { deferred, flush, h, mount, newRiva } from '../test/render';
+import {
+	deferred,
+	fakeScheduler,
+	flush,
+	h,
+	mount,
+	newRiva,
+} from '../test/render';
 import { RivaProvider } from './context';
 import { useQuery } from './use-query';
 
@@ -221,6 +229,112 @@ test('suspense on a live query subscribes to its source once', async () => {
 	await flush(() => feed.next(2));
 	expect(m.text()).toBe('got:2');
 	await m.unmount();
+});
+
+test('suspense on a live query subscribes once under StrictMode', async () => {
+	const feed = new Subject<number>();
+	let subscribed = 0;
+	const def = liveQuery<void, number>({
+		id: 'uq/live-suspense-strict',
+		retry: 0,
+		observe: () =>
+			new Observable<number>((sub) => {
+				subscribed++;
+				return feed.subscribe(sub);
+			}),
+	});
+	function C() {
+		const q = useQuery(def, undefined, { suspense: true });
+		return h('p', null, `got:${q.data}`);
+	}
+	const m = await mount(
+		h(
+			StrictMode,
+			null,
+			h(Suspense, { fallback: h('p', null, 'loading') }, h(C)),
+		),
+		newRiva(),
+	);
+	await flush(() => feed.next(1));
+	await flush();
+	await new Promise((r) => setTimeout(r, 20));
+	expect(m.text()).toBe('got:1');
+	expect(subscribed).toBe(1);
+	await m.unmount();
+});
+
+test('a rejected suspense query behind an error boundary stops polling', async () => {
+	const log = spyOn(console, 'error').mockImplementation(() => {});
+	const sched = fakeScheduler();
+	let calls = 0;
+	const def = query<{ school: string }, string>({
+		id: 'uq/suspense-err-poll',
+		retry: 0,
+		refetchEvery: '1s',
+		fetch: () => {
+			calls++;
+			return Promise.reject(new Error('bad'));
+		},
+	});
+	function C() {
+		useQuery(def, { school: 's' }, { suspense: true });
+		return h('p', null, 'unreachable');
+	}
+	const m = await mount(
+		h(Boundary, null, h(Suspense, { fallback: h('p', null, 'loading') }, h(C))),
+		createRiva({ scheduler: sched }),
+	);
+	await flush();
+	expect(m.text()).toBe('caught:bad');
+	await flush(() => sched.advance(10_000));
+	expect(calls).toBe(1);
+	await m.unmount();
+	log.mockRestore();
+});
+
+test('suspense on a live query still subscribes once when a sibling holds the boundary past a second', async () => {
+	const feed = new Subject<number>();
+	let subscribed = 0;
+	let closed = 0;
+	const def = liveQuery<void, number>({
+		id: 'uq/live-suspense-slow',
+		retry: 0,
+		observe: () =>
+			new Observable<number>((sub) => {
+				subscribed++;
+				const s = feed.subscribe(sub);
+				return () => {
+					closed++;
+					s.unsubscribe();
+				};
+			}),
+	});
+	const slow = deferred<void>();
+	let slowDone = false;
+	function Slow() {
+		if (!slowDone) throw slow.promise;
+		return h('i', null, 'slow');
+	}
+	function C() {
+		const q = useQuery(def, undefined, { suspense: true });
+		return h('p', null, `got:${q.data}`);
+	}
+	const m = await mount(
+		h(Suspense, { fallback: h('p', null, 'loading') }, h(C), h(Slow)),
+		newRiva(),
+	);
+	await flush(() => feed.next(1));
+	// Real time on purpose: the old release was a global setTimeout of 1 s, which a
+	// fake scheduler cannot see, so only a real wait fails on the old code.
+	await new Promise((r) => setTimeout(r, 1200));
+	slowDone = true;
+	await flush(() => slow.resolve());
+	expect(m.text()).toBe('got:1slow');
+	expect(subscribed).toBe(1);
+	expect(closed).toBe(0);
+	await flush(); // the handoff lands one tick after the mount
+	await m.unmount();
+	expect(closed).toBe(1);
 });
 
 test('suspense throws an error with no data to the error boundary', async () => {

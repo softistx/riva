@@ -7,7 +7,7 @@ import {
 } from '@softistx/riva/resource';
 import { useCallback, useMemo, useRef, useSyncExternalStore } from 'react';
 import { useRiva } from '../context';
-import { retryOnReset, untilData } from '../suspend';
+import { HANDOFF_MS, retryOnReset, untilData } from '../suspend';
 
 export interface UseResourceOptions {
 	/** Suspends while there is no data and throws an error to the nearest error boundary. Needs an awaitable resource. Default false. */
@@ -63,10 +63,11 @@ function suspendOn(
 	if (!promise) {
 		const entries = map;
 		const done = () => void entries.delete(key);
-		promise = untilData(res, (listener) => res.subscribe(listener)).then(
-			done,
-			done,
-		);
+		promise = untilData(
+			res,
+			(listener) => res.subscribe(listener),
+			(release) => void riva.queries.sched.setTimeout(release, HANDOFF_MS),
+		).then(done, done);
 		entries.set(key, promise);
 	}
 	return promise;

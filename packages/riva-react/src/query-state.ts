@@ -7,6 +7,7 @@ import {
 import { useCallback, useRef, useSyncExternalStore } from 'react';
 import { useRiva } from './context';
 import { suspenseStaleTime } from './resource/use-resource';
+import { handoff } from './suspend';
 
 // biome-ignore lint/suspicious/noExplicitAny: any query definition
 export type AnyQuery = Query<any, any, any>;
@@ -52,18 +53,21 @@ export function useQueryState<S extends QueryState<unknown>>(
 	const riva = useRiva();
 	const stable = useStableVars(def.id, vars);
 	const subscribe = useCallback(
-		(notify: () => void) =>
-			enabled
-				? riva.subscribe(
-						def,
-						stable.vars,
-						notify,
-						// What a Suspense render just fetched is not fetched again on mount.
-						suspense
-							? { staleTime: suspenseStaleTime(riva, undefined, def) }
-							: undefined,
-					)
-				: NOOP,
+		(notify: () => void) => {
+			if (!enabled) return NOOP;
+			const off = riva.subscribe(
+				def,
+				stable.vars,
+				notify,
+				// What a Suspense render just fetched is not fetched again on mount.
+				suspense
+					? { staleTime: suspenseStaleTime(riva, undefined, def) }
+					: undefined,
+			);
+			// This observer now keeps the entry (and its stream) open.
+			handoff(riva, stable.key);
+			return off;
+		},
 		[riva, def, stable, enabled, suspense],
 	);
 	const read = () => (enabled ? riva.get(def, stable.vars) : DISABLED) as S;
