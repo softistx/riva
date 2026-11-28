@@ -23,6 +23,8 @@ export interface SubscribeOptions {
 	 * to fetch on subscribing. Later invalidations and polls are unaffected.
 	 */
 	staleTime?: Duration;
+	/** @internal Never fresh for less than this many ms (Suspense's floor). */
+	minFresh?: number;
 }
 
 export interface RivaOptions {

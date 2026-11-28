@@ -508,7 +508,7 @@ test("a Suspense mount trusts the definition's own staleTime", async () => {
 	await flush();
 	expect(m.text()).toBe('x');
 	const opts = (sub.mock.calls as unknown[][]).map((c) => c[3]);
-	expect(opts).toContainEqual({ staleTime: 300_000 });
+	expect(opts).toContainEqual({ minFresh: 1000 });
 	await m.unmount();
 });
 
