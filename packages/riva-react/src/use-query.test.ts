@@ -484,7 +484,7 @@ test('a Suspense mount fetches once at the default staleTime', async () => {
 	await m.unmount();
 });
 
-test("a Suspense mount trusts the definition's own staleTime", async () => {
+test("a Suspense mount passes the 1 s freshness floor and leaves the definition's staleTime to the core", async () => {
 	const def = query<{ school: string }, string>({
 		id: 'uq/suspense-def-stale',
 		retry: 0,
