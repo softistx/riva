@@ -53,7 +53,7 @@
 	},
 	"devDependencies": {
 		"@graphql-typed-document-node/core": "^3.2.0",
-		"@happy-dom/global-registrator": "^20.0.0",
+		"@happy-dom/global-registrator": "^21.0.4",
 		"@softistx/riva": "workspace:*",
 		"@softistx/riva-graphql": "workspace:*",
 		"@softistx/riva-react": "workspace:*",

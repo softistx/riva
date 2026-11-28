@@ -34,6 +34,7 @@ A query whose fetch publishes parts with `ctx.onPart` (a GraphQL `@defer` or `@s
 ## Behaviour
 
 - What a Suspense render fetched is not fetched again when the component mounts, whatever the query's `staleTime` (the hooks fetch with a `staleTime` of at least 1000 ms: the call's, else the definition's, else the riva's default; never below 1 s). An invalid duration string throws `RIVA_DURATION`.
+- A suspended query's render keeps the entry observed until the component mounts and takes it over (however long the boundary waits on other children), so a live query's stream opens once. The handoff happens one tick after the component observes (StrictMode's remount never closes the stream). A failed fetch lets go at once; a component that never mounts lets go at the entry's `gcTime` (at most 5 minutes), on riva's scheduler.
 - After an entity is evicted, a suspending component suspends again while the query refetches.
 - On the server, `suspense: true` waits for the fetch and streams the result (`renderToReadableStream` and `renderToPipeableStream`).
 - A failure with no data is thrown to the boundary. Resetting the boundary (a retry button, `resetErrorBoundary`) refetches it by itself and suspends on the new fetch; a new failure reaches the boundary again. `useResource` with `suspense` does the same.

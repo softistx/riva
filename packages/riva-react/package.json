@@ -65,7 +65,7 @@
 		"typecheck": "bun check"
 	},
 	"devDependencies": {
-		"@happy-dom/global-registrator": "^20.0.0",
+		"@happy-dom/global-registrator": "^21.0.4",
 		"@softistx/riva": "workspace:*",
 		"@types/bun": "^1.4.5",
 		"@types/react": "^19.3.3",
