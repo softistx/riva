@@ -15,7 +15,7 @@
     },
     "packages/riva": {
       "name": "@softistx/riva",
-      "version": "0.11.0",
+      "version": "0.12.0",
       "devDependencies": {
         "@types/bun": "^1.4.5",
         "rxjs": "^7.8.2",
@@ -29,7 +29,7 @@
     },
     "packages/riva-graphql": {
       "name": "@softistx/riva-graphql",
-      "version": "0.11.0",
+      "version": "0.12.0",
       "devDependencies": {
         "@graphql-codegen/cli": "^8.0.0",
         "@graphql-codegen/client-preset": "^7.0.1",
@@ -48,8 +48,8 @@
       "peerDependencies": {
         "@graphql-typed-document-node/core": "^3.2.0",
         "@softistx/graphql-client": "^0.9.0 || ^0.10.0 || ^0.11.0 || ^0.12.0 || ^0.13.0",
-        "@softistx/riva": "^0.11.0",
-        "@softistx/riva-react": "^0.11.0",
+        "@softistx/riva": "^0.12.0",
+        "@softistx/riva-react": "^0.12.0",
         "graphql": "^16.11.0 || ^17.0.0",
         "react": "^19.0.0",
       },
@@ -62,7 +62,7 @@
     },
     "packages/riva-react": {
       "name": "@softistx/riva-react",
-      "version": "0.11.0",
+      "version": "0.12.0",
       "devDependencies": {
         "@happy-dom/global-registrator": "^21.0.4",
         "@softistx/riva": "workspace:*",
@@ -74,13 +74,13 @@
         "rxjs": "^7.8.2",
       },
       "peerDependencies": {
-        "@softistx/riva": "^0.11.0",
+        "@softistx/riva": "^0.12.0",
         "react": "^19.0.0",
       },
     },
     "packages/riva-react-router": {
       "name": "@softistx/riva-react-router",
-      "version": "0.11.0",
+      "version": "0.12.0",
       "devDependencies": {
         "@graphql-typed-document-node/core": "^3.2.0",
         "@happy-dom/global-registrator": "^21.0.4",
@@ -98,8 +98,8 @@
       },
       "peerDependencies": {
         "@softistx/alxia-react-router": "^0.83.1 || ^0.84.0 || ^0.85.0 || ^0.86.0",
-        "@softistx/riva": "^0.11.0",
-        "@softistx/riva-react": "^0.11.0",
+        "@softistx/riva": "^0.12.0",
+        "@softistx/riva-react": "^0.12.0",
         "react": "^19.0.0",
         "react-router": "^8.0.0",
       },
@@ -109,7 +109,7 @@
     },
     "packages/riva-rest": {
       "name": "@softistx/riva-rest",
-      "version": "0.11.0",
+      "version": "0.12.0",
       "devDependencies": {
         "@happy-dom/global-registrator": "^21.0.4",
         "@softistx/httpyz": "^0.6.1",
@@ -125,8 +125,8 @@
       "peerDependencies": {
         "@softistx/httpyz": "^0.6.1",
         "@softistx/openapi-httpyz": "^0.4.1",
-        "@softistx/riva": "^0.11.0",
-        "@softistx/riva-react": "^0.11.0",
+        "@softistx/riva": "^0.12.0",
+        "@softistx/riva-react": "^0.12.0",
         "react": "^19.0.0",
       },
       "optionalPeers": [

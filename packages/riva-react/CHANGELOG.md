@@ -1,5 +1,13 @@
 # @softistx/riva-react
 
+## 0.12.0
+
+### Patch Changes
+
+- [#136](https://github.com/softistx/riva/pull/136) [`b5ca9e9`](https://github.com/softistx/riva/commit/b5ca9e991b7acbff1d60636fd9e4cfb88459f358) Thanks [@SteveGT96](https://github.com/SteveGT96)! - A suspended `useQuery(liveQuery(...), { suspense: true })` keeps its single subscription however long the Suspense boundary waits: the render's watcher is released when the mounted component observes the entry, not after a fixed second. A component that never mounts releases it at the entry's `gcTime`, on riva's scheduler (no timer on the server).
+- Updated dependencies [[`efdd7eb`](https://github.com/softistx/riva/commit/efdd7eb01c56661020ebe780e178d4603feae55a)]:
+  - @softistx/riva@0.12.0
+
 ## 0.11.0
 
 ### Minor Changes
