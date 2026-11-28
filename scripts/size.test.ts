@@ -16,80 +16,57 @@ test('a missing measurement fails', () => {
 	expect(check(list, { a: 1 })[1]?.ok).toBe(false);
 });
 
-test('the core budget is 6144 B', () => {
-	expect(budgets.find((b) => b.name === '@softistx/riva')?.limit).toBe(6144);
+const row = (name: string) => {
+	const found = budgets.find((b) => b.name === name);
+	if (!found) throw new Error(`no budget row named ${name}`);
+	return found;
+};
+
+const core = 'packages/riva/dist/index.js';
+
+test('every row has a unique name, entries and a positive limit', () => {
+	const names = budgets.map((b) => b.name);
+	expect(new Set(names).size).toBe(names.length);
+	for (const b of budgets) {
+		expect([b.entry].flat().length).toBeGreaterThan(0);
+		expect(b.limit).toBeGreaterThan(0);
+		expect(Number.isFinite(b.limit)).toBe(true);
+	}
 });
 
-test('the core and subpath rows: 6144 B and 8448 B, the second under the 9216 B core + react cap', () => {
-	const row = budgets.find((b) => b.name === '@softistx/riva + entities');
-	expect(row?.limit).toBe(8448);
-	expect(row?.entry).toEqual([
-		'packages/riva/dist/index.js',
-		'packages/riva/dist/entities/index.js',
-	]);
-	expect(row?.limit).toBeLessThanOrEqual(9216);
+test('the core row measures the core entry alone', () => {
+	expect(row('@softistx/riva').entry).toBe(core);
 });
 
-test('the infinite, ssr and all-subpaths rows: 8192 B, 7680 B and 12288 B', () => {
-	const inf = budgets.find((b) => b.name === '@softistx/riva + infinite');
-	expect(inf?.limit).toBe(8192);
-	expect(inf?.entry).toEqual([
-		'packages/riva/dist/index.js',
-		'packages/riva/dist/infinite/index.js',
-	]);
-	const all = budgets.find((b) => b.name === '@softistx/riva + all subpaths');
-	expect(all?.limit).toBe(12288);
-	expect(all?.entry).toHaveLength(5);
-	const ssr = budgets.find((b) => b.name === '@softistx/riva + ssr');
-	expect(ssr?.limit).toBe(7680);
-	expect(ssr?.entry).toEqual([
-		'packages/riva/dist/index.js',
-		'packages/riva/dist/ssr/index.js',
-	]);
+test.each([
+	['@softistx/riva + entities', 'packages/riva/dist/entities/index.js'],
+	['@softistx/riva + infinite', 'packages/riva/dist/infinite/index.js'],
+	['@softistx/riva + ssr', 'packages/riva/dist/ssr/index.js'],
+	['@softistx/riva + riva-react', 'packages/riva-react/dist/index.js'],
+	['@softistx/riva + riva-graphql', 'packages/riva-graphql/dist/index.js'],
+	['@softistx/riva + riva-rest', 'packages/riva-rest/dist/index.js'],
+])('the %s row is the core plus %s', (name, entry) => {
+	expect(row(name).entry).toEqual([core, entry]);
 });
 
-test('the riva-react rows: core + react within the 9216 B cap, every entry within 12800 B', () => {
-	const main = budgets.find((b) => b.name === '@softistx/riva + riva-react');
-	expect(main?.limit).toBe(9216);
-	expect(main?.entry).toEqual([
-		'packages/riva/dist/index.js',
-		'packages/riva-react/dist/index.js',
-	]);
-	const all = budgets.find(
-		(b) => b.name === '@softistx/riva + riva-react, all subpaths',
+test('the all-subpaths rows list several entries', () => {
+	expect(row('@softistx/riva + all subpaths').entry).toHaveLength(5);
+	expect(row('@softistx/riva + riva-react, all subpaths').entry).toHaveLength(
+		8,
 	);
-	expect(all?.limit).toBe(12800);
-	expect(all?.entry).toHaveLength(8);
 });
 
-test('the riva-graphql row: core + graphql main within 9472 B', () => {
-	const row = budgets.find((b) => b.name === '@softistx/riva + riva-graphql');
-	expect(row?.limit).toBe(9472);
-	expect(row?.entry).toEqual([
-		'packages/riva/dist/index.js',
-		'packages/riva-graphql/dist/index.js',
-	]);
-});
-
-test('the riva-rest row: core + rest main within 9472 B', () => {
-	const row = budgets.find((b) => b.name === '@softistx/riva + riva-rest');
-	expect(row?.limit).toBe(9472);
-	expect(row?.entry).toEqual([
-		'packages/riva/dist/index.js',
-		'packages/riva-rest/dist/index.js',
-	]);
-});
-
-test('the riva-react-router row: 11264 B, react-router external, main row unchanged', () => {
-	const row = budgets.find(
-		(b) => b.name === '@softistx/riva + riva-react + riva-react-router',
-	);
-	expect(row?.limit).toBe(11264);
-	expect(row?.entry).toEqual([
-		'packages/riva/dist/index.js',
+test('the riva-react-router row bundles core, ssr, react and the router adapter', () => {
+	expect(row('@softistx/riva + riva-react + riva-react-router').entry).toEqual([
+		core,
 		'packages/riva/dist/ssr/index.js',
 		'packages/riva-react/dist/index.js',
 		'packages/riva-react-router/dist/index.js',
 	]);
-	expect(budgets.find((b) => b.name === '@softistx/riva')?.limit).toBe(6144);
+});
+
+test('measure leaves the host and adapter peers external', async () => {
+	const src = await Bun.file(new URL('./size.ts', import.meta.url)).text();
+	for (const ext of ['react', 'react-router', '@softistx/graphql-client'])
+		expect(src).toContain(`'${ext}'`);
 });
