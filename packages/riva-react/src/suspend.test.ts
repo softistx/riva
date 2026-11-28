@@ -1,8 +1,8 @@
 import { expect, test } from 'bun:test';
-import { createRiva, query, type Scheduler } from '@softistx/riva';
+import { createRiva, query } from '@softistx/riva';
 import { liveQuery } from '@softistx/riva/rxjs';
 import { Observable, Subject } from 'rxjs';
-import { deferred, newRiva } from '../test/render';
+import { deferred, fakeScheduler, newRiva } from '../test/render';
 import { handoff, retryOnReset, suspend } from './suspend';
 
 test('the same riva and key get the same promise until it settles', async () => {
@@ -67,30 +67,7 @@ test('an error read again after the tick counts as a reset, even from a late sec
 	expect(retryOnReset(riva, err)).toBe(false);
 });
 
-function fakeScheduler() {
-	let t = 0;
-	let id = 0;
-	const timers = new Map<number, { at: number; fn: () => void }>();
-	const sched: Scheduler & { advance(ms: number): void } = {
-		now: () => t,
-		setTimeout(fn, ms) {
-			timers.set(++id, { at: t + ms, fn });
-			return id;
-		},
-		clearTimeout: (h) => void timers.delete(h as number),
-		advance(ms) {
-			t += ms;
-			for (const [k, x] of [...timers])
-				if (x.at <= t) {
-					timers.delete(k);
-					x.fn();
-				}
-		},
-	};
-	return sched;
-}
-
-function live(id: string, gcTime?: '1m') {
+function live(id: string, gcTime?: '1m' | number) {
 	const feed = new Subject<number>();
 	let closed = 0;
 	const def = liveQuery<void, number>({
@@ -133,8 +110,56 @@ test('another observer takes the entry over: the watcher is released with no tim
 	expect(closed()).toBe(0);
 	const off = riva.subscribe(def, undefined, () => {});
 	handoff(riva, 'k');
-	expect(closed()).toBe(0); // the stream stays open under the new observer
 	handoff(riva, 'k'); // idempotent
+	expect(closed()).toBe(0); // released one tick later
+	sched.advance(0);
+	expect(closed()).toBe(0); // the stream stays open under the new observer
 	off();
+	expect(closed()).toBe(1);
+});
+
+test('a watcher whose entry already has another observer is released at once, not at the cap', async () => {
+	const sched = fakeScheduler();
+	const riva = createRiva({ scheduler: sched });
+	const { def, feed, closed } = live('suspend/resuspend', '1m');
+	const mounted = riva.subscribe(def, undefined, () => {});
+	const p = suspend(riva, def, 'k', undefined);
+	feed.next(1);
+	await p;
+	sched.advance(0);
+	expect(closed()).toBe(0);
+	mounted();
+	expect(closed()).toBe(1); // well before the 1 m cap
+});
+
+test('a rejected fetch releases the watcher at once', async () => {
+	const sched = fakeScheduler();
+	const riva = createRiva({ scheduler: sched });
+	let calls = 0;
+	const q = query<void, number>({
+		id: 'suspend/rejected',
+		retry: 0,
+		refetchEvery: '1s',
+		fetch: () => {
+			calls++;
+			return Promise.reject(new Error('x'));
+		},
+	});
+	await suspend(riva, q, 'k', undefined);
+	sched.advance(10_000);
+	await new Promise((r) => setTimeout(r, 0));
+	expect(calls).toBe(1);
+});
+
+test('an infinite gcTime still caps the watcher', async () => {
+	const sched = fakeScheduler();
+	const riva = createRiva({ scheduler: sched });
+	const { def, feed, closed } = live('suspend/inf', Infinity);
+	const p = suspend(riva, def, 'k', undefined);
+	feed.next(1);
+	await p;
+	sched.advance(299_000);
+	expect(closed()).toBe(0);
+	sched.advance(2_000);
 	expect(closed()).toBe(1);
 });

@@ -103,7 +103,7 @@ export const budgets: Budget[] = [
 			'packages/riva-react/dist/index.js',
 			'packages/riva-react/dist/resource/index.js',
 		],
-		limit: 9600,
+		limit: 9728,
 	},
 	{
 		name: '@softistx/riva + riva-graphql/react hooks',

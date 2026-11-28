@@ -1,4 +1,4 @@
-import { createRiva, type Riva } from '@softistx/riva';
+import { createRiva, type Riva, type Scheduler } from '@softistx/riva';
 import { act, createElement, type ReactElement } from 'react';
 import { createRoot } from 'react-dom/client';
 import { RivaProvider } from '../src/context';
@@ -55,4 +55,28 @@ export function deferred<T>() {
 		reject = rej;
 	});
 	return { promise, resolve, reject };
+}
+
+/** A scheduler whose clock moves only by `advance`. */
+export function fakeScheduler() {
+	let t = 0;
+	let id = 0;
+	const timers = new Map<number, { at: number; fn: () => void }>();
+	const sched: Scheduler & { advance(ms: number): void } = {
+		now: () => t,
+		setTimeout(fn, ms) {
+			timers.set(++id, { at: t + ms, fn });
+			return id;
+		},
+		clearTimeout: (h) => void timers.delete(h as number),
+		advance(ms) {
+			t += ms;
+			for (const [k, x] of [...timers])
+				if (x.at <= t) {
+					timers.delete(k);
+					x.fn();
+				}
+		},
+	};
+	return sched;
 }

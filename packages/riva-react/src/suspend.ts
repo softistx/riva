@@ -1,4 +1,4 @@
-import type { Query, Riva } from '@softistx/riva';
+import { type Query, type Riva, stableKey } from '@softistx/riva';
 
 // Held on the riva's slots: a request's pending fetches die with its riva.
 const SLOT = {};
@@ -37,7 +37,8 @@ export function handoff(riva: Riva, key: string): void {
  * Once resolved, the watcher stays as the entry's only observer until the
  * suspended component mounts and observes (`handoff`): releasing it sooner
  * would close a kept stream and make the mount open a second one. A
- * component that never mounts releases it through `hold`.
+ * component that never mounts releases it through `hold`. A rejected fetch
+ * releases it at once.
  * @internal
  */
 export function untilData(
@@ -46,12 +47,18 @@ export function untilData(
 	hold: (release: () => void) => void = noop,
 ): Promise<void> {
 	let off = noop;
+	let failed = false;
 	return new Promise<void>((resolve) => {
-		settled.then(resolve as () => void, resolve as () => void);
+		settled.then(resolve as () => void, () => {
+			failed = true;
+			resolve();
+		});
 		if ('document' in globalThis)
 			off = watch((state) => state.data !== undefined && resolve());
 	}).then(() => {
 		if (off === noop) return;
+		// A failed fetch keeps nothing: its polling and refetches stop now.
+		if (failed) return off();
 		let done = false;
 		hold(() => {
 			if (done) return;
@@ -89,7 +96,7 @@ export function suspend(
 		promise = untilData(
 			settled,
 			(listener) => riva.subscribe(def, vars, listener),
-			(release) => keep(riva, def, key, release),
+			(release) => keep(riva, def, key, vars, release),
 		).then(done, done);
 		entries.set(key, promise);
 	}
@@ -97,15 +104,26 @@ export function suspend(
 }
 
 /**
- * Holds a resolved watcher's release until `handoff`, or until the entry's
- * `gcTime` passes with nobody mounted (a component that never mounts), on
- * riva's scheduler. No timer when the gcTime is infinite (the server's).
+ * The longest a watcher outlives its first data with nobody mounted. It
+ * mirrors the core's default `gcTime` for a browser entry, and also caps a
+ * longer or infinite one so a component that never mounts cannot leak it.
+ */
+const CAP_MS = 300_000;
+
+/**
+ * Holds a resolved watcher's release until `handoff`, or until the cap (the
+ * entry's `gcTime`, at most `CAP_MS`) passes with nobody mounted, on riva's
+ * scheduler. The handoff releases one tick later, so a StrictMode cleanup
+ * and resubscribe (observers dipping to the watcher alone) never closes the
+ * stream. When the entry already has an observer besides the watcher (a
+ * mounted component that suspended again), it is handed off right away.
  */
 function keep(
 	riva: Riva,
 	// biome-ignore lint/suspicious/noExplicitAny: any query definition
 	def: Query<any, any, any>,
 	key: string,
+	vars: unknown,
 	release: () => void,
 ): void {
 	let held = riva.slots.get(WATCHERS) as Watchers | undefined;
@@ -115,16 +133,23 @@ function keep(
 	}
 	const watchers = held;
 	const { sched } = riva.queries;
-	const ms = def.options.gcTime ?? 300_000;
 	let timer: unknown;
 	const free = () => {
 		sched.clearTimeout(timer);
-		if (watchers.get(key) === free) watchers.delete(key);
+		if (watchers.get(key) === soon) watchers.delete(key);
 		release();
 	};
+	const soon = () => void sched.setTimeout(free, 0);
 	watchers.get(key)?.();
-	watchers.set(key, free);
-	if (ms !== Infinity) timer = sched.setTimeout(free, ms);
+	watchers.set(key, soon);
+	timer = sched.setTimeout(
+		free,
+		Math.min(def.options.gcTime ?? CAP_MS, CAP_MS),
+	);
+	if (
+		(riva.queries.ctx.entries.get(stableKey(def.id, vars))?.observers ?? 0) > 1
+	)
+		soon();
 }
 
 // The errors a suspense hook threw, per riva: false until a later task arms them.
